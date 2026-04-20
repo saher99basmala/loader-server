@@ -8,7 +8,7 @@ app.get("/script", async (req, res) => {
   if (req.query.key !== "12345") return res.send("DENIED");
 
   try {
-    const r = await fetch("https://pastebin.com/raw/eenW85wk");
+    const r = await fetch("https://pastebin.com/raw/F43kqh4s");
     const t = await r.text();
 
     res.send(Buffer.from(t).toString("base64"));
