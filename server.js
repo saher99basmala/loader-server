@@ -12,8 +12,8 @@ app.get("/script", async (req, res) => {
 
   const ua = req.headers["user-agent"] || "";
 
-  // 👤 منع المتصفح فقط
-  if (ua.includes("Mozilla")) {
+  // 🔒 السماح فقط للسكربت
+  if (!ua.toLowerCase().includes("okhttp")) {
     return res.send("السلام عليكم");
   }
 
