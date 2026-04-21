@@ -11,26 +11,28 @@ app.get("/script", async (req, res) => {
     return res.send("DENIED");
   }
 
-  // 🔍 التحقق من نوع الطلب
+  // 🔍 قراءة User-Agent
   const ua = req.headers["user-agent"] || "";
 
-  // 👤 إذا فتحه متصفح عادي
-  if (ua.includes("Mozilla")) {
+  // 🚫 إذا مو طلب من سكربت (مثل المتصفح)
+  if (!ua.includes("okhttp")) {
     return res.send("السلام عليكم");
   }
 
   try {
+    // 📥 جلب المحتوى من Pastebin
     const r = await fetch("https://pastebin.com/raw/F43kqh4s");
     const t = await r.text();
 
-    // 🔐 تشفير
+    // 🔐 تحويل إلى Base64
     const encoded = Buffer.from(t).toString("base64");
 
+    // 📤 إرسال للمستخدم
     res.send(encoded);
 
-  } catch {
+  } catch (e) {
     res.send("ERROR");
   }
 });
 
-app.listen(PORT, () => console.log("Server running"));
+app.listen(PORT, () => console.log("Server running..."));
