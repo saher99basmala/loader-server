@@ -18,8 +18,7 @@ app.get("/script", async (req, res) => {
   const secretHeader = req.headers["x-secret"];
 
   if (secretHeader !== SECRET) {
-    return res.send("حسابك صار ف ايد المطور 
-خلي فك التشفير ينفعك");
+    return res.send("حسابك صار ف ايد المطور");
   }
 
   try {
