@@ -4,16 +4,20 @@ const fetch = require("node-fetch");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// 🔐 مفتاح سري
+const SECRET = "MY_SECRET_123";
+
 app.get("/script", async (req, res) => {
 
+  // 🔐 تحقق من المفتاح العادي
   if (req.query.key !== "12345") {
     return res.send("DENIED");
   }
 
-  const ua = req.headers["user-agent"] || "";
+  // 🔐 تحقق من الهيدر السري
+  const secretHeader = req.headers["x-secret"];
 
-  // 🔒 السماح فقط للسكربت
-  if (!ua.toLowerCase().includes("okhttp")) {
+  if (secretHeader !== SECRET) {
     return res.send("السلام عليكم");
   }
 
