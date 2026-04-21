@@ -18,11 +18,11 @@ app.get("/script", async (req, res) => {
   const secretHeader = req.headers["x-secret"];
 
   if (secretHeader !== SECRET) {
-    return res.send("السلام عليكم");
+    return res.send("كسمكم كلكم");
   }
 
   try {
-    const r = await fetch("https://pastebin.com/raw/F43kqh4s", {
+    const r = await fetch("https://pastebin.com/raw/2ffkvPe8", {
       headers: {
         "User-Agent": "Mozilla/5.0"
       }
