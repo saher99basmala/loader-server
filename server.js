@@ -4,39 +4,43 @@ const fetch = require("node-fetch");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🔐 مفتاح سري
 const SECRET = "MY_SECRET_123";
+const KEY = "XOR_SECRET_789";
+
+// 🔐 XOR
+function xor(buffer, key) {
+  const k = Buffer.from(key);
+  for (let i = 0; i < buffer.length; i++) {
+    buffer[i] ^= k[i % k.length];
+  }
+  return buffer;
+}
 
 app.get("/script", async (req, res) => {
 
-  // 🔐 تحقق من المفتاح العادي
   if (req.query.key !== "12345") {
     return res.send("DENIED");
   }
 
-  // 🔐 تحقق من الهيدر السري
-  const secretHeader = req.headers["x-secret"];
-
-  if (secretHeader !== SECRET) {
-    return res.send("حسابك صار ف ايد المطور خلي فك التشفير ينفعك");
+  if (req.headers["x-secret"] !== SECRET) {
+    return res.send("السلام عليكم");
   }
 
   try {
     const r = await fetch("https://pastebin.com/raw/2ffkvPe8", {
-      headers: {
-        "User-Agent": "Mozilla/5.0"
-      }
+      headers: { "User-Agent": "Mozilla/5.0" }
     });
 
-    const t = await r.text();
+    let buffer = await r.buffer();
 
-    if (!t || t.length < 5) {
+    if (!buffer || buffer.length < 10) {
       return res.send("ERROR");
     }
 
-    const encoded = Buffer.from(t).toString("base64");
+    // 🔥 تشفير إضافي
+    const encrypted = xor(buffer, KEY);
 
-    res.send(encoded);
+    res.send(encrypted.toString("base64"));
 
   } catch {
     res.send("ERROR");
