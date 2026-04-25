@@ -27,7 +27,7 @@ app.get("/script", async (req, res) => {
   }
 
   try {
-    const r = await fetch("https://pastebin.com/raw/2ffkvPe8", {
+    const r = await fetch("https://pastebin.com/raw/mCCiAcM9", {
       headers: { "User-Agent": "Mozilla/5.0" }
     });
 
