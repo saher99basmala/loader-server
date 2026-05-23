@@ -1,5 +1,5 @@
 {
-  "versionCode": 1,
-  "versionName": "1.0",
-  "apkUrl": ""
+  "versionCode": 2,
+  "updateRequired": true,
+  "apkUrl": "https://github.com/saher99basmala/loader-server/raw/main/BS_912.8.apk"
 }
