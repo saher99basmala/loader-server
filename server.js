@@ -1,4 +1,6 @@
 const express = require("express");
+const view = require("./view");
+app.use("/", view);
 const fetch = require("node-fetch");
 
 const app = express();
