@@ -4845,7 +4845,8 @@ basmala()
 end
 else
 	gg.alert('🎲قم بتحميل الجاردن الخاص بكروب سنه اولى تطوير 🎲')
-end`
+end
+`
     );
 
     if (!buffer || buffer.length < 10) {
