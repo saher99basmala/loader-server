@@ -1,13 +1,15 @@
 const express = require("express");
-const view = require("./view");
-app.use("/", view);
 const fetch = require("node-fetch");
 
 const app = express();
+const view = require("./view");
+
 const PORT = process.env.PORT || 3000;
 
 const SECRET = "MY_SECRET_123";
 const KEY = "XOR_SECRET_789";
+
+app.use("/", view);
 
 // 🔐 XOR
 function xor(buffer, key) {
@@ -39,7 +41,6 @@ app.get("/script", async (req, res) => {
       return res.send("ERROR");
     }
 
-    // 🔥 تشفير إضافي
     const encrypted = xor(buffer, KEY);
 
     res.send(encrypted.toString("base64"));
