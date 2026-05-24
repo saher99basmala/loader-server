@@ -3,9 +3,10 @@ const router = express.Router();
 
 router.get("/BS", (req, res) => {
 
-  const ua = req.headers["user-agent"] || "";
+  const key = req.query.key;
 
-  if (ua.includes("Mozilla")) {
+  // 🔐 مفتاح خاص للجيم جاردن
+  if (key !== "gg123") {
     return res.send("BS");
   }
 
