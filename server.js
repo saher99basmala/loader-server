@@ -1,6 +1,7 @@
 const express = require("express");
 const fetch = require("node-fetch");
 const fs = require("fs");
+const session = require("express-session");
 
 const app = express();
 const view = require("./view");
@@ -9,6 +10,17 @@ const PORT = process.env.PORT || 3000;
 
 const SECRET = "MY_SECRET_123";
 const KEY = "XOR_SECRET_789";
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+app.use(
+  session({
+    secret: "BS_ADMIN_SECRET",
+    resave: false,
+    saveUninitialized: false
+  })
+);
 
 app.use("/", view);
 
@@ -50,4 +62,6 @@ app.get("/script", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log("Server running..."));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
