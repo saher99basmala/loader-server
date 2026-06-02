@@ -240,11 +240,13 @@ router.get("/admin/unban/:key", (req, res) => {
 
 /* EXTEND */
 
-router.get("/admin/extend/:key", (req, res) => {
+router.post("/admin/extend/:key", (req, res) => {
 
   if (!isLogged(req)) {
     return res.redirect("/admin/login");
   }
+
+  const days = parseInt(req.body.days || "30");
 
   const keys = readKeys();
 
@@ -257,7 +259,7 @@ router.get("/admin/extend/:key", (req, res) => {
     const expire = new Date(item.expireAt);
 
     expire.setDate(
-      expire.getDate() + 30
+      expire.getDate() + days
     );
 
     item.expireAt = formatDate(expire);
@@ -307,9 +309,27 @@ router.get("/admin", (req, res) => {
 
       <td>
 
-<a href="/admin/extend/${k.key}">
-تمديد +30 يوم
-</a>
+<form
+method="POST"
+action="/admin/extend/${k.key}"
+style="display:inline;">
+
+<input
+type="number"
+name="days"
+value="30"
+min="1"
+style="
+width:70px;
+padding:4px;
+margin-left:5px;
+">
+
+<button type="submit">
+تمديد
+</button>
+
+</form>
 
 |
 
