@@ -23,7 +23,63 @@ app.use(
 );
 
 app.use("/", view);
+/* API CHECK */
+function readKeys() {
+  try {
+    return JSON.parse(
+      fs.readFileSync("./keys.json", "utf8")
+    );
+  } catch {
+    return [];
+  }
+}
 
+function saveKeys(data) {
+  fs.writeFileSync(
+    "./keys.json",
+    JSON.stringify(data, null, 2)
+  );
+}
+
+app.get("/api/check", (req, res) => {
+
+  const key = req.query.key;
+
+  if (!key) {
+    return res.json({
+      status: "invalid"
+    });
+  }
+
+  const keys = readKeys();
+
+  const item = keys.find(
+    k => k.key === key
+  );
+
+  if (!item) {
+    return res.json({
+      status: "invalid"
+    });
+  }
+
+  const today = new Date();
+  const expire = new Date(item.expireAt);
+
+  if (expire < today) {
+
+    item.status = "expired";
+
+    saveKeys(keys);
+
+    return res.json({
+      status: "expired"
+    });
+  }
+  return res.json({
+    status: item.status
+  });
+});
 // 🔐 XOR
 function xor(buffer, key) {
   const k = Buffer.from(key);
