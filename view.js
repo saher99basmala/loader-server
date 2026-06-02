@@ -5,7 +5,11 @@ const fs = require("fs");
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "123456";
 
-function getKeys() {
+function isLogged(req) {
+  return req.session && req.session.admin;
+}
+
+function readKeys() {
   try {
     return JSON.parse(fs.readFileSync("./keys.json", "utf8"));
   } catch {
@@ -13,13 +17,34 @@ function getKeys() {
   }
 }
 
-function isLogged(req) {
-  return req.session && req.session.admin;
+function saveKeys(data) {
+  fs.writeFileSync(
+    "./keys.json",
+    JSON.stringify(data, null, 2)
+  );
+}
+
+function generateKey() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+  let result = "BS-";
+
+  for (let i = 0; i < 8; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+
+  return result;
+}
+
+function formatDate(date) {
+  return date.toISOString().split("T")[0];
 }
 
 router.get("/", (req, res) => {
   res.redirect("/admin");
 });
+
+/* LOGIN */
 
 router.get("/admin/login", (req, res) => {
 
@@ -35,15 +60,14 @@ router.get("/admin/login", (req, res) => {
 <title>BS Admin</title>
 
 <style>
-
 body{
-margin:0;
-height:100vh;
+font-family:Tahoma;
+background:#f3f4f6;
 display:flex;
 justify-content:center;
 align-items:center;
-background:#f3f4f6;
-font-family:Tahoma;
+height:100vh;
+margin:0;
 }
 
 .box{
@@ -51,21 +75,16 @@ background:white;
 padding:30px;
 width:350px;
 border-radius:20px;
-box-shadow:0 5px 20px rgba(0,0,0,.1);
-}
-
-h2{
-text-align:center;
-margin-bottom:20px;
+box-shadow:0 5px 25px rgba(0,0,0,.1);
 }
 
 input{
 width:100%;
 padding:12px;
 margin-top:10px;
+box-sizing:border-box;
 border:1px solid #ddd;
 border-radius:10px;
-box-sizing:border-box;
 }
 
 button{
@@ -75,37 +94,22 @@ margin-top:15px;
 border:none;
 background:#14b8a6;
 color:white;
-font-size:18px;
 border-radius:10px;
+font-size:18px;
 cursor:pointer;
 }
-
 </style>
-</head>
 
+</head>
 <body>
 
 <div class="box">
-
 <h2>BS Admin Login</h2>
 
 <form method="POST" action="/admin/login">
-
-<input
-name="username"
-placeholder="اسم المستخدم"
-required>
-
-<input
-name="password"
-type="password"
-placeholder="كلمة المرور"
-required>
-
-<button type="submit">
-دخول
-</button>
-
+<input name="username" placeholder="اسم المستخدم">
+<input type="password" name="password" placeholder="كلمة المرور">
+<button>دخول</button>
 </form>
 
 </div>
@@ -127,14 +131,114 @@ router.post("/admin/login", (req, res) => {
     return res.redirect("/admin");
   }
 
-  res.send("بيانات الدخول غير صحيحة");
+  res.send("بيانات غير صحيحة");
 });
 
 router.get("/logout", (req, res) => {
+
   req.session.destroy(() => {
     res.redirect("/admin/login");
   });
+
 });
+
+/* CREATE KEY */
+
+router.post("/admin/create", (req, res) => {
+
+  if (!isLogged(req)) {
+    return res.redirect("/admin/login");
+  }
+
+  const days = parseInt(req.body.days || "30");
+
+  const created = new Date();
+
+  const expire = new Date();
+
+  expire.setDate(expire.getDate() + days);
+
+  const keys = readKeys();
+
+  keys.push({
+    key: generateKey(),
+    createdAt: formatDate(created),
+    expireAt: formatDate(expire),
+    status: "active",
+    deviceId: null
+  });
+
+  saveKeys(keys);
+
+  res.redirect("/admin");
+});
+
+/* DELETE */
+
+router.get("/admin/delete/:key", (req, res) => {
+
+  if (!isLogged(req)) {
+    return res.redirect("/admin/login");
+  }
+
+  let keys = readKeys();
+
+  keys = keys.filter(
+    k => k.key !== req.params.key
+  );
+
+  saveKeys(keys);
+
+  res.redirect("/admin");
+});
+
+/* BAN */
+
+router.get("/admin/ban/:key", (req, res) => {
+
+  if (!isLogged(req)) {
+    return res.redirect("/admin/login");
+  }
+
+  const keys = readKeys();
+
+  const item = keys.find(
+    k => k.key === req.params.key
+  );
+
+  if (item) {
+    item.status = "banned";
+  }
+
+  saveKeys(keys);
+
+  res.redirect("/admin");
+});
+
+/* UNBAN */
+
+router.get("/admin/unban/:key", (req, res) => {
+
+  if (!isLogged(req)) {
+    return res.redirect("/admin/login");
+  }
+
+  const keys = readKeys();
+
+  const item = keys.find(
+    k => k.key === req.params.key
+  );
+
+  if (item) {
+    item.status = "active";
+  }
+
+  saveKeys(keys);
+
+  res.redirect("/admin");
+});
+
+/* DASHBOARD */
 
 router.get("/admin", (req, res) => {
 
@@ -142,7 +246,7 @@ router.get("/admin", (req, res) => {
     return res.redirect("/admin/login");
   }
 
-  const keys = getKeys();
+  const keys = readKeys();
 
   const total = keys.length;
 
@@ -158,88 +262,165 @@ router.get("/admin", (req, res) => {
     k => k.status === "expired"
   ).length;
 
+  let rows = "";
+
+  keys.forEach(k => {
+
+    rows += `
+    <tr>
+      <td>${k.key}</td>
+      <td>${k.expireAt}</td>
+      <td>${k.status}</td>
+
+      <td>
+
+      ${
+        k.status === "banned"
+        ? `<a href="/admin/unban/${k.key}">فك الحظر</a>`
+        : `<a href="/admin/ban/${k.key}">حظر</a>`
+      }
+
+      |
+
+      <a href="/admin/delete/${k.key}">
+      حذف
+      </a>
+
+      </td>
+    </tr>
+    `;
+  });
+
   res.send(`
 <!DOCTYPE html>
 <html dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>BS Dashboard</title>
+<title>BS Admin</title>
 
 <style>
 
 body{
-margin:0;
-padding:20px;
-background:#f3f4f6;
 font-family:Tahoma;
+background:#f3f4f6;
+padding:20px;
+margin:0;
 }
 
 .header{
 display:flex;
 justify-content:space-between;
 align-items:center;
-margin-bottom:20px;
 }
 
 .logout{
 background:#f59e0b;
+color:white;
 padding:10px 15px;
 border-radius:10px;
-color:white;
 text-decoration:none;
 }
 
 .card{
 background:white;
 padding:20px;
-margin-bottom:15px;
+margin-top:15px;
 border-radius:15px;
-font-size:22px;
-font-weight:bold;
 box-shadow:0 2px 10px rgba(0,0,0,.05);
 }
 
-.blue{
-border-right:6px solid #2196f3;
+.stats{
+font-size:20px;
+margin-bottom:10px;
 }
 
-.green{
-border-right:6px solid #14b8a6;
+form input{
+padding:10px;
+border:1px solid #ddd;
+border-radius:10px;
 }
 
-.orange{
-border-right:6px solid #f59e0b;
+form button{
+padding:10px 15px;
+border:none;
+background:#14b8a6;
+color:white;
+border-radius:10px;
+cursor:pointer;
 }
 
-.red{
-border-right:6px solid #ef4444;
+table{
+width:100%;
+background:white;
+margin-top:20px;
+border-collapse:collapse;
+}
+
+th,td{
+padding:12px;
+border:1px solid #ddd;
+text-align:center;
+}
+
+th{
+background:#14b8a6;
+color:white;
+}
+
+a{
+text-decoration:none;
 }
 
 </style>
+
 </head>
 
 <body>
 
 <div class="header">
 <h1>BS Admin Panel</h1>
-<a class="logout" href="/logout">تسجيل خروج</a>
+<a class="logout" href="/logout">خروج</a>
 </div>
 
-<div class="card blue">
-إجمالي المفاتيح: ${total}
+<div class="card">
+<div class="stats">إجمالي المفاتيح: ${total}</div>
+<div class="stats">النشطة: ${active}</div>
+<div class="stats">المحظورة: ${banned}</div>
+<div class="stats">المنتهية: ${expired}</div>
 </div>
 
-<div class="card green">
-المفاتيح النشطة: ${active}
+<div class="card">
+
+<h3>إنشاء مفتاح جديد</h3>
+
+<form method="POST" action="/admin/create">
+
+<input
+type="number"
+name="days"
+value="30"
+min="1">
+
+<button>
+توليد مفتاح
+</button>
+
+</form>
+
 </div>
 
-<div class="card orange">
-المفاتيح المنتهية: ${expired}
-</div>
+<table>
 
-<div class="card red">
-المفاتيح المحظورة: ${banned}
-</div>
+<tr>
+<th>المفتاح</th>
+<th>الانتهاء</th>
+<th>الحالة</th>
+<th>الإجراءات</th>
+</tr>
+
+${rows}
+
+</table>
 
 </body>
 </html>
