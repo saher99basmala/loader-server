@@ -238,6 +238,39 @@ router.get("/admin/unban/:key", (req, res) => {
   res.redirect("/admin");
 });
 
+/* EXTEND */
+
+router.get("/admin/extend/:key", (req, res) => {
+
+  if (!isLogged(req)) {
+    return res.redirect("/admin/login");
+  }
+
+  const keys = readKeys();
+
+  const item = keys.find(
+    k => k.key === req.params.key
+  );
+
+  if (item) {
+
+    const expire = new Date(item.expireAt);
+
+    expire.setDate(
+      expire.getDate() + 30
+    );
+
+    item.expireAt = formatDate(expire);
+
+    if (item.status === "expired") {
+      item.status = "active";
+    }
+  }
+
+  saveKeys(keys);
+
+  res.redirect("/admin");
+});
 /* DASHBOARD */
 
 router.get("/admin", (req, res) => {
@@ -274,19 +307,25 @@ router.get("/admin", (req, res) => {
 
       <td>
 
-      ${
-        k.status === "banned"
-        ? `<a href="/admin/unban/${k.key}">فك الحظر</a>`
-        : `<a href="/admin/ban/${k.key}">حظر</a>`
-      }
+<a href="/admin/extend/${k.key}">
+تمديد +30 يوم
+</a>
 
-      |
+|
 
-      <a href="/admin/delete/${k.key}">
-      حذف
-      </a>
+${
+k.status === "banned"
+? `<a href="/admin/unban/${k.key}">فك الحظر</a>`
+: `<a href="/admin/ban/${k.key}">حظر</a>`
+}
 
-      </td>
+|
+
+<a href="/admin/delete/${k.key}">
+حذف
+</a>
+
+</td>
     </tr>
     `;
   });
