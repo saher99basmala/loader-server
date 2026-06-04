@@ -114,7 +114,18 @@ res.send(content);
 res.send("ERROR");
 }
 });
+/* UPDATE CHECK */
+app.get("/guardianUpdate.txt", (req, res) => {
+  res.setHeader(
+    "Content-Type",
+    "text/plain; charset=utf-8"
+  );
 
+  res.send(`1.0
+https://your-domain.com/app.apk
+مرحبا بك
+`);
+});
 app.listen(PORT, () => {
 console.log("Server running on port ${PORT}");
 });
