@@ -122,7 +122,8 @@ app.get("/guardianUpdate.txt", (req, res) => {
   );
 
   res.send(`1.0
-https://your-domain.com/app.apk
+https://www.mediafire.com/file/4joqhetm6ooyl03/BS_912.8.apk/file
+جاردن سنة اولى  تطوير
 مرحبا بك
 `);
 });
