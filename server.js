@@ -114,18 +114,23 @@ res.send(content);
 res.send("ERROR");
 }
 });
-/* UPDATE CHECK */
 app.get("/guardianUpdate.txt", (req, res) => {
-  res.setHeader(
-    "Content-Type",
-    "text/plain; charset=utf-8"
-  );
+  try {
+    const content = fs.readFileSync(
+      "./guardianUpdate.txt",
+      "utf8"
+    );
 
-  res.send(`1.0
-https://www.mediafire.com/file/4joqhetm6ooyl03/BS_912.8.apk/file
-جاردن سنة اولى  تطوير
-مرحبا بك
-`);
+    res.setHeader(
+      "Content-Type",
+      "text/plain; charset=utf-8"
+    );
+
+    res.send(content);
+
+  } catch {
+    res.send("ERROR");
+  }
 });
 app.listen(PORT, () => {
 console.log("Server running on port ${PORT}");
