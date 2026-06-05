@@ -2,7 +2,6 @@ const express = require("express");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const session = require("express-session");
-const getDB = require("./db");
 const app = express();
 const view = require("./view");
 
