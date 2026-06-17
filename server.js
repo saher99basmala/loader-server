@@ -8,7 +8,6 @@ const view = require("./view");
 const PORT = process.env.PORT || 3000;
 
 const SECRET = "MY_SECRET_123";
-const KEY = "XOR_SECRET_789";
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -22,6 +21,7 @@ app.use(
 );
 
 app.use("/", view);
+
 /* API CHECK */
 function readKeys() {
   try {
@@ -75,20 +75,11 @@ app.get("/api/check", (req, res) => {
       status: "expired"
     });
   }
+
   return res.json({
     status: item.status
   });
 });
-// 🔐 XOR
-function xor(buffer, key) {
-  const k = Buffer.from(key);
-
-  for (let i = 0; i < buffer.length; i++) {
-    buffer[i] ^= k[i % k.length];
-  }
-
-  return buffer;
-}
 
 app.get("/script", async (req, res) => {
 
@@ -102,15 +93,13 @@ app.get("/script", async (req, res) => {
 
   try {
 
-    let buffer = fs.readFileSync("./BS.lua");
+    const buffer = fs.readFileSync("./BS.lua");
 
     if (!buffer || buffer.length < 10) {
       return res.send("ERROR");
     }
 
-    const encrypted = xor(buffer, KEY);
-
-    res.send(encrypted.toString("base64"));
+    res.send(buffer.toString());
 
   } catch {
     res.send("ERROR");
