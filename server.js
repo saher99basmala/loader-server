@@ -93,15 +93,19 @@ app.get("/script", async (req, res) => {
 
   try {
 
-    const buffer = fs.readFileSync("./BS.lua");
+    const response = await fetch(
+      "https://pastebin.com/raw/uFVCAKm0"
+    );
 
-    if (!buffer || buffer.length < 10) {
+    const script = await response.text();
+
+    if (!script || script.length < 10) {
       return res.send("ERROR");
     }
 
-    res.send(buffer.toString());
+    res.send(script);
 
-  } catch {
+  } catch (e) {
     res.send("ERROR");
   }
 });
