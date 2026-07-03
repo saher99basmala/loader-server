@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { supabase } = require("./supabase");
 
-const ADMIN_USER = "admin2";
-const ADMIN_PASS = "1234567";
+const ADMIN_USER = "basmala";
+const ADMIN_PASS = "BSBSBS";
 
 function isLogged(req) {
   return req.session && req.session.admin;
