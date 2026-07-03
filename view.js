@@ -5,6 +5,7 @@ const supabase = require("./supabase");
 
 const ADMIN_USER = "admin2";
 const ADMIN_PASS = "1234567";
+
 function isLogged(req) {
   return req.session && req.session.admin;
 }
