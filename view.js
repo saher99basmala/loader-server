@@ -144,7 +144,7 @@ router.get("/logout", (req, res) => {
 
 /* CREATE KEY */
 
-router.post("/admin/create", (req, res) => {
+router.post("/admin/create", async (req, res) => {
 
   if (!isLogged(req)) {
     return res.redirect("/admin/login");
@@ -158,17 +158,15 @@ router.post("/admin/create", (req, res) => {
 
   expire.setDate(expire.getDate() + days);
 
-  const keys = readKeys();
-
-  keys.push({
+await supabase.from("keys").insert([
+  {
     key: generateKey(),
     createdAt: formatDate(created),
     expireAt: formatDate(expire),
     status: "active",
     deviceId: null
-  });
-
-  saveKeys(keys);
+  }
+]);
 
   res.redirect("/admin");
 });
