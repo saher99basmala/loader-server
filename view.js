@@ -3,7 +3,7 @@ const router = express.Router();
 const { supabase } = require("./supabase");
 
 const ADMIN_USER = "admin";
-const ADMIN_PASS = "123456";
+const ADMIN_PASS = "1234567";
 
 function isLogged(req) {
   return req.session && req.session.admin;
@@ -179,10 +179,14 @@ router.get("/admin/delete/:key", async (req, res) => {
     return res.redirect("/admin/login");
   }
 
-await supabase
+const { error } = await supabase
   .from("keys")
   .delete()
   .eq("key", req.params.key);
+
+if (error) {
+  return res.send(error.message);
+}
 
   res.redirect("/admin");
 });
