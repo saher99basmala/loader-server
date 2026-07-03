@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { supabase } = require("./supabase");
 
-const ADMIN_USER = "basmala";
-const ADMIN_PASS = "BSBSBS";
+const ADMIN_USER = "admin2";
+const ADMIN_PASS = "1234567";
 
 function isLogged(req) {
   return req.session && req.session.admin;
@@ -51,6 +51,10 @@ router.get("/admin/login", (req, res) => {
   if (isLogged(req)) {
     return res.redirect("/admin");
   }
+
+  return res.send(
+    "USER=" + ADMIN_USER + " PASS=" + ADMIN_PASS
+  );
 
   res.send(`
 <!DOCTYPE html>
