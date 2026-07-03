@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const fs = require("fs");
+const { supabase } = require("./supabase");
 
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "123456";
