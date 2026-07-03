@@ -273,13 +273,19 @@ router.post("/admin/extend/:key", (req, res) => {
 });
 /* DASHBOARD */
 
-router.get("/admin", (req, res) => {
+router.get("/admin", async (req, res) => {
 
   if (!isLogged(req)) {
     return res.redirect("/admin/login");
   }
 
-  const keys = readKeys();
+ const { data: keys, error } = await supabase
+  .from("keys")
+  .select("*");
+
+if (error) {
+  return res.send(error.message);
+}
 
   const total = keys.length;
 
