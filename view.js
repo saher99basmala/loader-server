@@ -173,19 +173,16 @@ await supabase.from("keys").insert([
 
 /* DELETE */
 
-router.get("/admin/delete/:key", (req, res) => {
+router.get("/admin/delete/:key", async (req, res) => {
 
   if (!isLogged(req)) {
     return res.redirect("/admin/login");
   }
 
-  let keys = readKeys();
-
-  keys = keys.filter(
-    k => k.key !== req.params.key
-  );
-
-  saveKeys(keys);
+await supabase
+  .from("keys")
+  .delete()
+  .eq("key", req.params.key);
 
   res.redirect("/admin");
 });
