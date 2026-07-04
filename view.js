@@ -144,10 +144,10 @@ router.post("/admin/create", async (req, res) => {
 .insert([
 {
   key: generateKey(),
-  createdAt: formatDate(created),
-  expireAt: formatDate(expire),
+  createdat: formatDate(created),
+  expireat: formatDate(expire),
   status: "active",
-  deviceId: null
+  deviceid: null
 }
 ]);
 
@@ -229,7 +229,7 @@ router.post("/admin/extend/:key", async (req, res) => {
 
   const { data, error } = await supabase
     .from("keys")
-    .select("expireAt,status")
+    .select("expireat,status")
     .eq("key", req.params.key)
     .single();
 
@@ -237,16 +237,16 @@ router.post("/admin/extend/:key", async (req, res) => {
     return res.send(error.message);
   }
 
-  const expire = new Date(data.expireAt);
+  const expire = new Date(data.expireat);
 
   expire.setDate(expire.getDate() + days);
 
   const { error: updateError } = await supabase
     .from("keys")
-    .update({
-      expireAt: formatDate(expire),
-      status: "active"
-    })
+.update({
+  expireat: formatDate(expire),
+  status: "active"
+})
     .eq("key", req.params.key);
 
   if (updateError) {
@@ -287,7 +287,7 @@ router.get("/admin", async (req, res) => {
     rows += `
 <tr>
 <td>${k.key}</td>
-<td>${k.expireAt}</td>
+<td>${k.expireat}</td>
 <td>${k.status}</td>
 
 <td>
