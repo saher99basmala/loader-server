@@ -264,6 +264,8 @@ router.get("/admin", async (req, res) => {
     return res.redirect("/admin/login");
   }
 
+  console.log("SUPABASE =", supabase);
+
   const { data: keys, error } = await supabase
     .from("keys")
     .select("*")
