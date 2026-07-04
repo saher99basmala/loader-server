@@ -1,9 +1,10 @@
 const express = require("express");
 const fetch = require("node-fetch");
-const fs = require("fs");
 const session = require("express-session");
 const app = express();
+
 const view = require("./view");
+const { supabase } = require("./supabase");
 
 const PORT = process.env.PORT || 3000;
 
@@ -23,24 +24,8 @@ app.use(
 app.use("/", view);
 
 /* API CHECK */
-function readKeys() {
-  try {
-    return JSON.parse(
-      fs.readFileSync("./keys.json", "utf8")
-    );
-  } catch {
-    return [];
-  }
-}
 
-function saveKeys(data) {
-  fs.writeFileSync(
-    "./keys.json",
-    JSON.stringify(data, null, 2)
-  );
-}
-
-app.get("/api/check", (req, res) => {
+app.get("/api/check", async (req, res) => {
 
   const key = req.query.key;
 
@@ -50,26 +35,29 @@ app.get("/api/check", (req, res) => {
     });
   }
 
-  const keys = readKeys();
+  const { data: item, error } = await supabase
+    .from("keys")
+    .select("*")
+    .eq("key", key)
+    .single();
 
-  const item = keys.find(
-    k => k.key === key
-  );
-
-  if (!item) {
+  if (error || !item) {
     return res.json({
       status: "invalid"
     });
   }
 
   const today = new Date();
-  const expire = new Date(item.expireAt);
+  const expire = new Date(item.expireat);
 
   if (expire < today) {
 
-    item.status = "expired";
-
-    saveKeys(keys);
+    await supabase
+      .from("keys")
+      .update({
+        status: "expired"
+      })
+      .eq("key", key);
 
     return res.json({
       status: "expired"
@@ -79,7 +67,10 @@ app.get("/api/check", (req, res) => {
   return res.json({
     status: item.status
   });
+
 });
+
+/* SCRIPT */
 
 app.get("/script", async (req, res) => {
 
@@ -108,6 +99,7 @@ app.get("/script", async (req, res) => {
   } catch (e) {
     res.send("ERROR");
   }
+
 });
 
 app.listen(PORT, () => {
