@@ -141,15 +141,15 @@ router.post("/admin/create", async (req, res) => {
 
   const { error } = await supabase
     .from("keys")
-    .insert([
-      {
-        key: generateKey(),
-        createdAt: formatDate(created),
-        expireAt: formatDate(expire),
-        status: "active",
-        deviceId: null
-      }
-    ]);
+.insert([
+{
+  key: generateKey(),
+  createdAt: formatDate(created),
+  expireAt: formatDate(expire),
+  status: "active",
+  deviceId: null
+}
+]);
 
   if (error) {
     return res.send(error.message);
