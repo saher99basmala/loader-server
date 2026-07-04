@@ -23,16 +23,16 @@ app.use(
 
 app.use("/", view);
 
-/* API CHECK */
+/*==========================
+  CHECK KEY
+==========================*/
 
 app.get("/api/check", async (req, res) => {
 
   const key = req.query.key;
 
   if (!key) {
-    return res.json({
-      status: "invalid"
-    });
+    return res.json({ status: "invalid" });
   }
 
   const { data: item, error } = await supabase
@@ -42,9 +42,7 @@ app.get("/api/check", async (req, res) => {
     .single();
 
   if (error || !item) {
-    return res.json({
-      status: "invalid"
-    });
+    return res.json({ status: "invalid" });
   }
 
   const today = new Date();
@@ -54,14 +52,10 @@ app.get("/api/check", async (req, res) => {
 
     await supabase
       .from("keys")
-      .update({
-        status: "expired"
-      })
+      .update({ status: "expired" })
       .eq("key", key);
 
-    return res.json({
-      status: "expired"
-    });
+    return res.json({ status: "expired" });
   }
 
   return res.json({
@@ -70,7 +64,52 @@ app.get("/api/check", async (req, res) => {
 
 });
 
-/* SCRIPT */
+/*==========================
+  CHECK PASSWORD
+==========================*/
+
+app.get("/api/check-password", async (req, res) => {
+
+  const password = req.query.password;
+
+  if (!password) {
+    return res.send("INVALID");
+  }
+
+  const { data: item, error } = await supabase
+    .from("keys")
+    .select("*")
+    .eq("key", password)
+    .single();
+
+  if (error || !item) {
+    return res.send("INVALID");
+  }
+
+  if (item.status !== "active") {
+    return res.send("INVALID");
+  }
+
+  const today = new Date();
+  const expire = new Date(item.expireat);
+
+  if (expire < today) {
+
+    await supabase
+      .from("keys")
+      .update({ status: "expired" })
+      .eq("key", password);
+
+    return res.send("EXPIRED");
+  }
+
+  return res.send("OK");
+
+});
+
+/*==========================
+  SCRIPT
+==========================*/
 
 app.get("/script", async (req, res) => {
 
@@ -97,7 +136,9 @@ app.get("/script", async (req, res) => {
     res.send(script);
 
   } catch (e) {
+
     res.send("ERROR");
+
   }
 
 });
