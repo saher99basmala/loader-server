@@ -133,6 +133,8 @@ router.post("/admin/create", async (req, res) => {
   }
 
   const days = parseInt(req.body.days || "30");
+  const name = req.body.name || "";
+const deviceid = req.body.deviceid || "";
 
   const created = new Date();
   const expire = new Date();
@@ -143,11 +145,12 @@ router.post("/admin/create", async (req, res) => {
     .from("keys")
 .insert([
 {
+  name: name,
+  deviceid: deviceid,
   key: generateKey(),
   createdat: formatDate(created),
   expireat: formatDate(expire),
-  status: "active",
-  deviceid: null
+  status: "active"
 }
 ]);
 
@@ -284,10 +287,25 @@ router.get("/admin", async (req, res) => {
 
   keys.forEach(k => {
 
-    rows += `
+rows += `
 <tr>
-<td>${k.key}</td>
+
+<td>${k.name || "-"}</td>
+
+<td>${k.deviceid || "-"}</td>
+
+<td>
+${k.key}
+<br><br>
+<button
+type="button"
+onclick="copyKey('${k.key}')">
+📋 نسخ
+</button>
+</td>
+
 <td>${k.expireat}</td>
+
 <td>${k.status}</td>
 
 <td>
@@ -430,10 +448,23 @@ text-decoration:none;
 <form method="POST" action="/admin/create">
 
 <input
+type="text"
+name="name"
+placeholder="اسم العميل"
+required>
+
+<input
+type="text"
+name="deviceid"
+placeholder="Install ID"
+required>
+
+<input
 type="number"
 name="days"
 value="30"
-min="1">
+min="1"
+placeholder="عدد الأيام">
 
 <button>
 توليد مفتاح
@@ -446,6 +477,8 @@ min="1">
 <table>
 
 <tr>
+<th>الاسم</th>
+<th>Install ID</th>
 <th>المفتاح</th>
 <th>الانتهاء</th>
 <th>الحالة</th>
@@ -455,6 +488,18 @@ min="1">
 ${rows}
 
 </table>
+
+<script>
+
+function copyKey(key){
+
+    navigator.clipboard.writeText(key);
+
+    alert("✅ تم نسخ المفتاح");
+
+}
+
+</script>
 
 </body>
 </html>
