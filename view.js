@@ -22,7 +22,7 @@ function generateKey() {
 }
 
 function formatDate(date) {
-  return date.toISOString();
+  return date.toISOString().split("T")[0];
 }
 
 router.get("/", (req, res) => {
