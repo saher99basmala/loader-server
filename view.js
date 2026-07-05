@@ -246,14 +246,40 @@ router.post("/admin/extend/:key", async (req, res) => {
 
   const { error: updateError } = await supabase
     .from("keys")
-.update({
-  expireat: formatDate(expire),
-  status: "active"
-})
+    .update({
+      expireat: formatDate(expire),
+      status: "active"
+    })
     .eq("key", req.params.key);
 
   if (updateError) {
     return res.send(updateError.message);
+  }
+
+  res.redirect("/admin");
+});
+
+/* RESET DAYS */
+
+router.get("/admin/reset/:key", async (req, res) => {
+
+  if (!isLogged(req)) {
+    return res.redirect("/admin/login");
+  }
+
+  const expire = new Date();
+  expire.setDate(expire.getDate() - 1);
+
+  const { error } = await supabase
+    .from("keys")
+    .update({
+      expireat: formatDate(expire),
+      status: "expired"
+    })
+    .eq("key", req.params.key);
+
+  if (error) {
+    return res.send(error.message);
   }
 
   res.redirect("/admin");
@@ -333,6 +359,10 @@ ${k.status === "banned"
 
 |
 
+<a href="/admin/reset/${k.key}">
+تصفير الأيام
+</a>
+|
 <a href="/admin/delete/${k.key}">
 حذف
 </a>
