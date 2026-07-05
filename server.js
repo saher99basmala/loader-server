@@ -101,43 +101,38 @@ if (!item.deviceid) {
 /* ==========================
    SCRIPT
 ========================== */
+
 app.get("/script", async (req, res) => {
 
-  const key = req.query.key;
-
-  if (!key) {
-    return res.send("DENIED");
-  }
-
-  const { data, error } = await supabase
-    .from("keys")
-    .select("status")
-    .eq("key", key)
-    .single();
-
-  if (error || !data || data.status !== "active") {
+  if (req.query.key !== "BS2973") {
     return res.send("DENIED");
   }
 
   if (req.headers["x-secret"] !== SECRET) {
-    return res.send("DENIED");
+    return res.send("السلام عليكم");
   }
 
   try {
-    const response = await fetch("https://pastebin.com/raw/uFVCAKm0");
+
+    const response = await fetch(
+      "https://pastebin.com/raw/uFVCAKm0"
+    );
+
     const script = await response.text();
 
     if (!script || script.length < 10) {
       return res.send("ERROR");
     }
 
-    res.setHeader("Content-Type", "text/plain");
-    return res.send(script);
+    res.send(script);
 
   } catch (e) {
+
     console.log(e);
-    return res.send("ERROR");
+    res.send("ERROR");
+
   }
+
 });
 
 app.listen(PORT, () => {
