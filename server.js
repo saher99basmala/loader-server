@@ -109,7 +109,7 @@ app.get("/script", async (req, res) => {
   }
 
   if (req.headers["x-secret"] !== SECRET) {
-    return res.send("السلام عليكم");
+    return res.send("تم سحب معلومات جهازك بنجاح😉😎");
   }
 
   try {
