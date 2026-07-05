@@ -73,10 +73,10 @@ if (!item.deviceid) {
   });
 }
 
-  const today = new Date();
-  const expire = new Date(item.expireat);
+  const now = new Date();
+const expire = new Date(item.expireat);
 
-  if (expire < today) {
+if (expire <= now) {
 
   await supabase
     .from("keys")
@@ -86,17 +86,23 @@ if (!item.deviceid) {
     .eq("key", key);
 
   return res.json({
-    status: "expired",
-    expireat: item.expireat
+    status: "expired"
   });
 }
 
-  return res.json({
-    status: "active",
-    expireat: item.expireat,
-    name: item.name
-  });
+const diff = expire.getTime() - now.getTime();
 
+const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+const minutes = Math.floor((diff / (1000 * 60)) % 60);
+
+return res.json({
+  status: "active",
+  name: item.name,
+  days,
+  hours,
+  minutes
+});
 });
 /* ==========================
    SCRIPT
