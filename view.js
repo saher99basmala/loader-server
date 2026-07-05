@@ -132,7 +132,7 @@ router.post("/admin/create", async (req, res) => {
     return res.redirect("/admin/login");
   }
 
-  const days = parseInt(req.body.days || "30");
+  const days = parseInt(req.body.days || "10");
   const name = req.body.name || "";
 const deviceid = req.body.deviceid || "";
 
@@ -228,7 +228,7 @@ router.post("/admin/extend/:key", async (req, res) => {
     return res.redirect("/admin/login");
   }
 
-  const days = parseInt(req.body.days || "30");
+  const days = parseInt(req.body.days || "10");
 
   const { data, error } = await supabase
     .from("keys")
@@ -341,7 +341,7 @@ onclick="copyKey('${k.key}')">
 <input
 type="number"
 name="days"
-value="30"
+value="10"
 min="1"
 style="width:70px;padding:4px;margin-left:5px;">
 
@@ -492,7 +492,7 @@ required>
 <input
 type="number"
 name="days"
-value="30"
+value="10"
 min="1"
 placeholder="عدد الأيام">
 
