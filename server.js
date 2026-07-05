@@ -101,10 +101,13 @@ if (!item.deviceid) {
 /* ==========================
    SCRIPT
 ========================== */
-
 app.get("/script", async (req, res) => {
 
   const key = req.query.key;
+
+  if (!key) {
+    return res.send("DENIED");
+  }
 
   const { data, error } = await supabase
     .from("keys")
@@ -128,14 +131,15 @@ app.get("/script", async (req, res) => {
       return res.send("ERROR");
     }
 
-    res.send(script);
+    res.setHeader("Content-Type", "text/plain");
+    return res.send(script);
 
   } catch (e) {
     console.log(e);
-    res.send("ERROR");
+    return res.send("ERROR");
   }
-
 });
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
