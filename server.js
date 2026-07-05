@@ -30,8 +30,9 @@ app.use("/", view);
 app.get("/api/check", async (req, res) => {
 
   const key = req.query.key;
+  const deviceid = req.query.deviceid;
 
-  if (!key) {
+  if (!key || !deviceid) {
     return res.json({
       status: "invalid"
     });
@@ -46,6 +47,18 @@ app.get("/api/check", async (req, res) => {
   if (error || !item) {
     return res.json({
       status: "invalid"
+    });
+  }
+
+  if (item.status === "banned") {
+    return res.json({
+      status: "banned"
+    });
+  }
+
+  if (item.deviceid !== deviceid) {
+    return res.json({
+      status: "another_device"
     });
   }
 
@@ -69,12 +82,12 @@ app.get("/api/check", async (req, res) => {
   }
 
   return res.json({
-    status: item.status,
-    expireat: item.expireat
+    status: "active",
+    expireat: item.expireat,
+    name: item.name
   });
 
 });
-
 /* ==========================
    SCRIPT
 ========================== */
