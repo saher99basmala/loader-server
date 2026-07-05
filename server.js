@@ -56,30 +56,40 @@ app.get("/api/check", async (req, res) => {
     });
   }
 
-  if (item.deviceid !== deviceid) {
-    return res.json({
-      status: "another_device"
-    });
+if (!item.deviceid) {
+  const { error: updateError } = await supabase
+    .from("keys")
+    .update({ deviceid: deviceid })
+    .eq("key", key)
+    .is("deviceid", null);
+
+  if (updateError) {
+    return res.json({ status: "invalid" });
   }
+
+} else if (item.deviceid !== deviceid) {
+  return res.json({
+    status: "another_device"
+  });
+}
 
   const today = new Date();
   const expire = new Date(item.expireat);
 
   if (expire < today) {
 
-    await supabase
-      .from("keys")
-      .update({
-        status: "expired"
-      })
-      .eq("key", key);
+  await supabase
+    .from("keys")
+    .update({
+      status: "expired"
+    })
+    .eq("key", key);
 
-    return res.json({
-      status: "expired",
-      expireat: item.expireat
-    });
-
-  }
+  return res.json({
+    status: "expired",
+    expireat: item.expireat
+  });
+}
 
   return res.json({
     status: "active",
@@ -94,20 +104,24 @@ app.get("/api/check", async (req, res) => {
 
 app.get("/script", async (req, res) => {
 
-  if (req.query.key !== "12345") {
+  const key = req.query.key;
+
+  const { data, error } = await supabase
+    .from("keys")
+    .select("status")
+    .eq("key", key)
+    .single();
+
+  if (error || !data || data.status !== "active") {
     return res.send("DENIED");
   }
 
   if (req.headers["x-secret"] !== SECRET) {
-    return res.send("السلام عليكم");
+    return res.send("DENIED");
   }
 
   try {
-
-    const response = await fetch(
-      "https://pastebin.com/raw/uFVCAKm0"
-    );
-
+    const response = await fetch("https://pastebin.com/raw/uFVCAKm0");
     const script = await response.text();
 
     if (!script || script.length < 10) {
@@ -117,14 +131,11 @@ app.get("/script", async (req, res) => {
     res.send(script);
 
   } catch (e) {
-
     console.log(e);
     res.send("ERROR");
-
   }
 
 });
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
