@@ -305,9 +305,9 @@ router.get("/admin", async (req, res) => {
   }
 
   const total = keys.length;
-  const active = keys.filter(k => k.status === "نشط").length;
-  const banned = keys.filter(k => k.status === "محظور").length;
-  const expired = keys.filter(k => k.status === "منتهي").length;
+  const active = keys.filter(k => k.status === "active").length;
+  const banned = keys.filter(k => k.status === "banned").length;
+  const expired = keys.filter(k => k.status === "expired").length;
 
   let rows = "";
 
