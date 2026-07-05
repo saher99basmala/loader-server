@@ -104,7 +104,7 @@ if (!item.deviceid) {
 
 app.get("/script", async (req, res) => {
 
-  if (req.query.key !== "BS2973") {
+  if (req.query.key !== "12345") {
     return res.send("DENIED");
   }
 
