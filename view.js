@@ -42,7 +42,7 @@ router.get("/admin/login", (req, res) => {
 <html dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>BS Admin</title>
+<title>BS RAMZE</title>
 
 <style>
 body{
@@ -89,7 +89,7 @@ cursor:pointer;
 <body>
 
 <div class="box">
-<h2>BS Admin Login</h2>
+<h2>BS RAMZE Login</h2>
 
 <form method="POST" action="/admin/login">
 <input name="username" placeholder="اسم المستخدم">
@@ -377,7 +377,7 @@ ${k.status === "banned"
 <html dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>BS Admin</title>
+<title>BS RAMZE</title>
 
 <style>
 
@@ -460,7 +460,7 @@ text-decoration:none;
 <body>
 
 <div class="header">
-<h1>BS Admin Panel</h1>
+<h1>BS RAMZE Panel</h1>
 <a class="logout" href="/logout">خروج</a>
 </div>
 
