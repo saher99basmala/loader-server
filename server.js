@@ -4,6 +4,7 @@ const session = require("express-session");
 const app = express();
 
 const view = require("./view");
+const api = require("./api");
 const { supabase } = require("./supabase");
 
 const PORT = process.env.PORT || 3000;
@@ -22,6 +23,7 @@ app.use(
 );
 
 app.use("/", view);
+app.use("/api", api);
 
 /* ==========================
    API CHECK KEY
