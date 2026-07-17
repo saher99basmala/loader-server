@@ -96,17 +96,10 @@ router.post("/extend_key", async (req, res) => {
         });
     }
 
-    if (data.status !== "active") {
-        return res.json({
-            success: false,
-            message: "لا يمكن تمديد هذا المفتاح."
-        });
-    }
-
     let expire = new Date(data.expireat);
     const now = new Date();
 
-    // إذا انتهى الاشتراك يبدأ من اليوم
+    // إذا كان الاشتراك منتهيًا يبدأ من تاريخ اليوم
     if (expire < now) {
         expire = now;
     }
@@ -116,7 +109,8 @@ router.post("/extend_key", async (req, res) => {
     const { error: updateError } = await supabase
         .from("keys")
         .update({
-            expireat: formatDate(expire)
+            expireat: formatDate(expire),
+            status: "active"
         })
         .eq("key", key);
 
