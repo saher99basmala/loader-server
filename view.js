@@ -125,7 +125,6 @@ router.get("/logout", (req, res) => {
   });
 });
 /* CREATE KEY */
-
 router.post("/admin/create", async (req, res) => {
 
   if (!isLogged(req)) {
@@ -134,25 +133,46 @@ router.post("/admin/create", async (req, res) => {
 
   const days = parseInt(req.body.days || "10");
   const name = req.body.name || "";
-const deviceid = req.body.deviceid || "";
+  const deviceid = req.body.deviceid || "";
 
+  // ❌ لو فاضي
+  if (!deviceid) {
+    return res.send("❌ يجب إدخال Install ID");
+  }
+
+  // ✅ تحقق إذا مسجل مسبقًا
+  const { data: existing, error: checkError } = await supabase
+    .from("keys")
+    .select("id")
+    .eq("deviceid", deviceid)
+    .maybeSingle();
+
+  if (checkError) {
+    return res.send(checkError.message);
+  }
+
+  // ❌ إذا موجود → ارفض
+  if (existing) {
+    return res.send("❌ هذا الجهاز مستخدم من قبل");
+  }
+
+  // ✅ إنشاء المفتاح
   const created = new Date();
   const expire = new Date();
-
   expire.setDate(expire.getDate() + days);
 
   const { error } = await supabase
     .from("keys")
-.insert([
-{
-  name: name,
-  deviceid: deviceid,
-  key: generateKey(),
-  createdat: formatDate(created),
-  expireat: formatDate(expire),
-  status: "active"
-}
-]);
+    .insert([
+      {
+        name: name,
+        deviceid: deviceid,
+        key: generateKey(),
+        createdat: formatDate(created),
+        expireat: formatDate(expire),
+        status: "active"
+      }
+    ]);
 
   if (error) {
     return res.send(error.message);
