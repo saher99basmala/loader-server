@@ -19,21 +19,41 @@ function formatDate(date) {
     return date.toISOString().split("T")[0];
 }
 
-// إنشاء مفتاح جديد
+/* =========================
+   CREATE KEY
+========================= */
 router.post("/create_key", async (req, res) => {
 
     if (req.headers["x-api-key"] !== API_KEY) {
         return res.status(401).json({
-            success: false,
-            message: "Unauthorized"
+            status: "unauthorized"
         });
     }
 
     const { name, deviceid, days } = req.body;
 
+    if (!name || !deviceid) {
+        return res.json({
+            status: "error",
+            message: "البيانات ناقصة"
+        });
+    }
+
+    // 🔥 تحقق من التكرار
+    const { data: existing } = await supabase
+        .from("keys")
+        .select("id")
+        .eq("deviceid", deviceid)
+        .maybeSingle();
+
+    if (existing) {
+        return res.json({
+            status: "duplicate"
+        });
+    }
+
     const created = new Date();
     const expire = new Date();
-
     expire.setDate(expire.getDate() + parseInt(days || 10));
 
     const key = generateKey();
@@ -50,27 +70,35 @@ router.post("/create_key", async (req, res) => {
         }]);
 
     if (error) {
+
+        // 🔐 حماية إضافية لو bypass
+        if (error.code === "23505") {
+            return res.json({
+                status: "duplicate"
+            });
+        }
+
         return res.json({
-            success: false,
+            status: "error",
             message: error.message
         });
     }
 
     res.json({
-        success: true,
+        status: "success",
         key,
         expireat: formatDate(expire)
     });
-
 });
 
-// تمديد الاشتراك
+/* =========================
+   EXTEND KEY
+========================= */
 router.post("/extend_key", async (req, res) => {
 
     if (req.headers["x-api-key"] !== API_KEY) {
         return res.status(401).json({
-            success: false,
-            message: "Unauthorized"
+            status: "unauthorized"
         });
     }
 
@@ -78,35 +106,33 @@ router.post("/extend_key", async (req, res) => {
 
     if (!key || !days) {
         return res.json({
-            success: false,
-            message: "يرجى إدخال المفتاح وعدد الأيام."
+            status: "error",
+            message: "البيانات ناقصة"
         });
     }
 
-    const { data, error } = await supabase
+    const { data } = await supabase
         .from("keys")
         .select("*")
         .eq("key", key)
         .single();
 
-    if (error || !data) {
+    if (!data) {
         return res.json({
-            success: false,
-            message: "المفتاح غير موجود."
+            status: "not_found"
         });
     }
 
     let expire = new Date(data.expireat);
     const now = new Date();
 
-    // إذا كان الاشتراك منتهيًا يبدأ من تاريخ اليوم
     if (expire < now) {
         expire = now;
     }
 
     expire.setDate(expire.getDate() + parseInt(days));
 
-    const { error: updateError } = await supabase
+    const { error } = await supabase
         .from("keys")
         .update({
             expireat: formatDate(expire),
@@ -114,19 +140,17 @@ router.post("/extend_key", async (req, res) => {
         })
         .eq("key", key);
 
-    if (updateError) {
+    if (error) {
         return res.json({
-            success: false,
-            message: updateError.message
+            status: "error",
+            message: error.message
         });
     }
 
     res.json({
-        success: true,
-        message: "تم تمديد الاشتراك بنجاح.",
+        status: "success",
         expireat: formatDate(expire)
     });
-
 });
 
 module.exports = router;
