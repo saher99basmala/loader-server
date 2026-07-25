@@ -87,3 +87,86 @@ function getHashTable(length, seed) {
 
     return table;
 }
+
+// ==============================
+// seed من المحتوى
+// ==============================
+function seedFromContent(data) {
+    let s = 1 >>> 0;
+    let cum = 0 >>> 0;
+
+    for (let i = 0; i < data.length; i++) {
+        let b = data[i] & 0xff;
+
+        s = u32(s + b);
+        cum = u32(cum + s);
+    }
+
+    let seed = u32(((cum << 16) ^ (s & 0xffff)));
+
+    // إضافة عشوائية مثل التطبيق
+    let rand = (Math.floor(Math.random() * 0xffff) + 1) << 16;
+
+    return u32(seed | rand);
+}
+
+// ==============================
+// XOR ENCODE
+// ==============================
+function xorEncode(data, seedOverride = null) {
+
+    let size = data.length >>> 0;
+
+    let hl = u32((0x396a8 ^ size) + ((size + 8) ^ 0xc5eed));
+
+    let hs = seedOverride !== null
+        ? u32(seedOverride)
+        : seedFromContent(data);
+
+    // header (8 bytes)
+    let header = new Uint8Array(8);
+
+    header[0] = 0x79;
+
+    header[1] = (hl) & 0xff;
+    header[2] = (hl >> 8) & 0xff;
+    header[3] = (hl >> 16) & 0xff;
+
+    header[4] = (hs) & 0xff;
+    header[5] = (hs >> 8) & 0xff;
+    header[6] = (hs >> 16) & 0xff;
+    header[7] = (hs >> 24) & 0xff;
+
+    let payload = new Uint8Array(data);
+
+    let table = getHashTable(hl, u32(4 + hs));
+
+    let prev = 0;
+    let j = 0;
+
+    for (let i = 0; i < payload.length; i++) {
+
+        let curr = payload[i] & 0xff;
+
+        // XOR
+        payload[i] = curr ^ table[j];
+
+        // إضافة prev
+        payload[i] = (payload[i] + prev) & 0xff;
+
+        prev = curr;
+
+        j = (j + 1) % 0x2d7;
+    }
+
+    // دمج header + payload
+    let result = new Uint8Array(header.length + payload.length);
+
+    result.set(header, 0);
+    result.set(payload, header.length);
+
+    return result;
+}
+module.exports = {
+    xorEncode
+};
