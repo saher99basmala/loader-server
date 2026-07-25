@@ -3,7 +3,7 @@ const fetch = require("node-fetch");
 const session = require("express-session");
 const fs = require("fs");
 const path = require("path");
-
+const { xorEncode } = require("./crypto");
 const app = express();
 
 const view = require("./view");
