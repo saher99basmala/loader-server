@@ -3,7 +3,7 @@ const fetch = require("node-fetch");
 const session = require("express-session");
 const fs = require("fs");
 const path = require("path");
-
+const SECRET = "MY_SECRET_123";
 const { supabase } = require("./supabase");
 const view = require("./view");
 const api = require("./api");
