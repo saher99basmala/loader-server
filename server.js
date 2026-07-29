@@ -2,16 +2,18 @@ const express = require("express");
 const fetch = require("node-fetch");
 const session = require("express-session");
 const fs = require("fs");
-const path = require("path"); 
-const app = express();
+const path = require("path");
 
+const { supabase } = require("./supabase");
 const view = require("./view");
 const api = require("./api");
-const { supabase } = require("./supabase");
 
+const app = express();
 const PORT = process.env.PORT || 3000;
 
-const SECRET = "MY_SECRET_123";
+/* ==========================
+   إعدادات أساسية
+========================== */
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -28,67 +30,76 @@ app.use("/", view);
 app.use("/api", api);
 
 /* ==========================
-   API CHECK KEY
+   دالة التحقق الموحدة 🔐
 ========================== */
 
-app.get("/api/check", async (req, res) => {
+async function checkKey(key, deviceid) {
+  if (!key || !deviceid) return { ok: false };
 
-  const key = req.query.key;
-  const deviceid = req.query.deviceid;
-
-  if (!key || !deviceid) {
-    return res.json({ status: "invalid" });
-  }
-
-  const { data: item, error } = await supabase
+  const { data: item } = await supabase
     .from("keys")
     .select("*")
     .eq("key", key)
     .single();
 
-  if (error || !item) {
-    return res.json({ status: "invalid" });
-  }
+  if (!item) return { ok: false };
 
   if (item.status === "banned") {
-    return res.json({ status: "banned" });
+    return { ok: false, status: "banned" };
   }
 
+  // ربط أول جهاز
   if (!item.deviceid) {
-    const { error: updateError } = await supabase
+    await supabase
       .from("keys")
-      .update({ deviceid: deviceid })
+      .update({ deviceid })
       .eq("key", key)
       .is("deviceid", null);
-
-    if (updateError) {
-      return res.json({ status: "invalid" });
-    }
-
   } else if (item.deviceid !== deviceid) {
-    return res.json({ status: "another_device" });
+    return { ok: false, status: "another_device" };
   }
 
+  // التحقق من الانتهاء
   const now = new Date();
   const expire = new Date(item.expireat);
 
   if (expire <= now) {
-
     await supabase
       .from("keys")
       .update({ status: "expired" })
       .eq("key", key);
 
-    return res.json({ status: "expired" });
+    return { ok: false, status: "expired" };
   }
 
-  const diff = expire.getTime() - now.getTime();
+  return { ok: true, item };
+}
+
+/* ==========================
+   API CHECK
+========================== */
+
+app.get("/api/check", async (req, res) => {
+  const { key, deviceid } = req.query;
+
+  const result = await checkKey(key, deviceid);
+
+  if (!result.ok) {
+    return res.json({ status: result.status || "invalid" });
+  }
+
+  const item = result.item;
+
+  const now = new Date();
+  const expire = new Date(item.expireat);
+
+  const diff = expire - now;
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
   const minutes = Math.floor((diff / (1000 * 60)) % 60);
 
-  return res.json({
+  res.json({
     status: "active",
     name: item.name,
     days,
@@ -135,15 +146,16 @@ app.get("/script", async (req, res) => {
 });
 
 /* ==========================
-   GET FILES FROM FOLDERS 🔥
+   GET FILES (محمي)
 ========================== */
 
-app.get("/getFiles", (req, res) => {
+app.get("/getFiles", async (req, res) => {
+  const { key, deviceid, option } = req.query;
 
-  const option = req.query.option;
+  const result = await checkKey(key, deviceid);
 
-  if (!option) {
-    return res.json({ error: "no option" });
+  if (!result.ok) {
+    return res.json({ status: result.status || "invalid" });
   }
 
   const folderPath = path.join(__dirname, "data", "option" + option);
@@ -154,18 +166,40 @@ app.get("/getFiles", (req, res) => {
 
   const files = fs.readdirSync(folderPath);
 
-  const result = files.map(file => ({
+  const resultFiles = files.map(file => ({
     name: file,
-    url: `https://raw.githubusercontent.com/saher99basmala/loader-server/main/data/option${option}/${file}`
+    url: `${req.protocol}://${req.get("host")}/file?f=${option}/${file}&key=${key}&deviceid=${deviceid}`
   }));
 
-  res.json(result);
+  res.json(resultFiles);
 });
 
 /* ==========================
-   START SERVER
+   تحميل ملف واحد (محمي)
+========================== */
+
+app.get("/file", async (req, res) => {
+  const { key, deviceid, f } = req.query;
+
+  const result = await checkKey(key, deviceid);
+
+  if (!result.ok) {
+    return res.send("DENIED");
+  }
+
+  const filePath = path.join(__dirname, "data", f);
+
+  if (!fs.existsSync(filePath)) {
+    return res.send("NOT FOUND");
+  }
+
+  res.sendFile(filePath);
+});
+
+/* ==========================
+   تشغيل السيرفر
 ========================== */
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
