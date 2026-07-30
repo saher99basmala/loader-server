@@ -156,8 +156,8 @@ return res.json({ error: "not found" });
 const files = fs.readdirSync(folderPath);
 
 const result = files.map(file => ({
-name: file,
-url: https://raw.githubusercontent.com/saher99basmala/loader-server/main/data/option${option}/${file}
+  name: file,
+  url: `https://raw.githubusercontent.com/saher99basmala/loader-server/main/data/option${option}/${file}`
 }));
 
 res.json(result);
@@ -168,5 +168,4 @@ START SERVER
 ========================== */
 
 app.listen(PORT, () => {
-console.log(Server running on port ${PORT});
-});
+console.log(`Server running on port ${PORT}`);
