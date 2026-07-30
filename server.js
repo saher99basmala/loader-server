@@ -1,4 +1,3 @@
-
 const express = require("express");
 const fetch = require("node-fetch");
 const session = require("express-session");
@@ -145,7 +144,5 @@ res.send("ERROR");
 });
 
 app.listen(PORT, () => {
-console.log(Server running on port ${PORT});
+  console.log(`Server running on port ${PORT}`);
 });
-
-هكذت؟
