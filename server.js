@@ -10,6 +10,7 @@ const { supabase } = require("./supabase");
 const PORT = process.env.PORT || 3000;
 
 const SECRET = "MY_SECRET_123";
+const AES_KEY = "Wucai6oj0sheiX3p";
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
