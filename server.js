@@ -51,6 +51,51 @@ app.post("/api/decode", (req, res) => {
     }
 });
 
+app.use("/api/edit-level", express.raw({
+    type: "application/octet-stream",
+    limit: "50mb"
+}));
+
+app.post("/api/edit-level", (req, res) => {
+    try {
+        const level = req.query.level;
+
+        if (!level) {
+            return res.status(400).send(
+                "Missing level"
+            );
+        }
+
+        const decoded =
+            mGameInfoDecoder.decodeFile(req.body);
+
+        const edited =
+            mGameInfoEditor.changeLevel(
+                decoded,
+                level
+            );
+
+        res.set(
+            "Content-Type",
+            "application/octet-stream"
+        );
+
+        res.send(edited);
+
+    } catch (e) {
+
+        console.error(
+            "Edit level error:",
+            e
+        );
+
+        res.status(400).send(
+            "Edit level error: " +
+            e.message
+        );
+    }
+});
+
 /* ==========================
 API CHECK KEY
 ========================== */
