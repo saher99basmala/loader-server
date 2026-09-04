@@ -1,6 +1,6 @@
 // ============================================
 // mGameInfoEditor.js
-// جميع تعديلات mGameInfo.xml هنا
+// جميع تعديلات mGameInfo.xml
 // ============================================
 
 
@@ -67,12 +67,85 @@ function changeVar(xml, varName, newValue) {
 
 
 // ============================================
+// تعديل DataElem عام
+// ============================================
+
+function changeDataElem(
+    xml,
+    elemName,
+    newValue
+) {
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    const text =
+        xml.toString("utf8");
+
+    const escapedName =
+        String(elemName).replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+        );
+
+    const pattern =
+        new RegExp(
+            `<DataElem\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*>`
+        );
+
+    const match =
+        text.match(pattern);
+
+    if (!match) {
+        throw new Error(
+            `لم يتم العثور على DataElem: ${elemName}`
+        );
+    }
+
+    const oldElement =
+        match[0];
+
+    const newValueString =
+        String(newValue)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+    const newElement =
+        oldElement.replace(
+            /(\bvalue\s*=\s*)(["'])[^"']*\2/,
+            `$1"${newValueString}"`
+        );
+
+    if (newElement === oldElement) {
+        throw new Error(
+            `لم يتم العثور على الخاصية value داخل ${elemName}`
+        );
+    }
+
+    return Buffer.from(
+        text.replace(
+            oldElement,
+            newElement
+        ),
+        "utf8"
+    );
+}
+
+
+// ============================================
 // تعديل المستوى
 // ============================================
 
-function changeLevel(xml, newLevel) {
+function changeLevel(
+    xml,
+    newLevel
+) {
 
-    newLevel = Number(newLevel);
+    newLevel =
+        Number(newLevel);
 
     if (
         !Number.isInteger(newLevel) ||
@@ -87,12 +160,14 @@ function changeLevel(xml, newLevel) {
         xml = Buffer.from(xml);
     }
 
-    const text = xml.toString("utf8");
+    const text =
+        xml.toString("utf8");
 
     const pattern =
         /<Var\b(?=[^>]*\bname=["']levelup["'])[^>]*>/;
 
-    const match = text.match(pattern);
+    const match =
+        text.match(pattern);
 
     if (!match) {
         throw new Error(
@@ -100,7 +175,8 @@ function changeLevel(xml, newLevel) {
         );
     }
 
-    const oldElement = match[0];
+    const oldElement =
+        match[0];
 
     const newElement =
         oldElement.replace(
@@ -128,47 +204,92 @@ function changeLevel(xml, newLevel) {
 
 
 // ============================================
+// قيم الإطارات والستايلات
+// ============================================
+
+const UNLOCKED_FRAMES_VALUE =
+    "JBsYDjhUWyATVlUjXw==,VFBKNx5FUig9Gy0tFgIwCCM=,VEdYLhJsA3U9Gy0tFgIwCCM=,VEdYLhJsA3Y9Gy0tFgIwCCM=,VEdYLhJsA3c9Gy0tFgIwCCM=,VEdYLhJsA3A9Gy0tFgIwCCM=,VEdYLhJsA3E9Gy0tFgIwCCM=,VEdYLhJsA3I9Gy0tFgIwCCM=,VEdYLhJsA3M9Gy0tFgIwCCM=,VEdYLhJsA3w9Gy0tFgIwCCM=,VEdYLhJsA309Gy0tFgIwCCM=";
+
+
+const UNLOCKED_STYLES_VALUE =
+    "gold,festival,cooking,neon,default,animatedUnderwaterViolet,easter";
+
+
+// ============================================
 // قائمة التعديلات
 // ============================================
 
 const EDITORS = {
 
+    // ----------------------------------------
     // المستوى
+    // ----------------------------------------
+
     level: function(xml, value) {
-        return changeLevel(xml, value);
+
+        return changeLevel(
+            xml,
+            value
+        );
+
     },
 
 
+    // ----------------------------------------
     // اسم المدينة
+    // ----------------------------------------
+
     townName: function(xml, value) {
+
         return changeVar(
             xml,
             "townName",
             value
         );
+
     },
 
 
-    // ========================================
-    // سنضيف هنا التعديلات القادمة
-    // مثال:
-    //
-    // products: function(xml, value) {
-    //     return changeVar(
-    //         xml,
-    //         "اسم_المتغير",
-    //         value
-    //     );
-    // },
-    // ========================================
+    // ----------------------------------------
+    // الإطارات
+    // ----------------------------------------
+
+    unlockedFrames: function(xml) {
+
+        return changeDataElem(
+            xml,
+            "UnlockedFrames",
+            UNLOCKED_FRAMES_VALUE
+        );
+
+    },
+
+
+    // ----------------------------------------
+    // الستايلات
+    // ----------------------------------------
+
+    unlockedStyles: function(xml) {
+
+        return changeDataElem(
+            xml,
+            "UnlockedStyles",
+            UNLOCKED_STYLES_VALUE
+        );
+
+    }
+
 };
 
 
 // ============================================
-// تنفيذ التعديلات المطلوبة
+// تنفيذ التعديلات
 // ============================================
 
-function applyEdits(xml, edits) {
+function applyEdits(
+    xml,
+    edits
+) {
 
     if (!Array.isArray(edits)) {
         throw new Error(
@@ -176,11 +297,17 @@ function applyEdits(xml, edits) {
         );
     }
 
-    let result = xml;
+    let result =
+        xml;
 
-    for (const edit of edits) {
+    for (
+        const edit of edits
+    ) {
 
-        if (!edit || !edit.type) {
+        if (
+            !edit ||
+            !edit.type
+        ) {
             continue;
         }
 
@@ -198,14 +325,22 @@ function applyEdits(xml, edits) {
                 result,
                 edit.value
             );
+
     }
 
     return result;
 }
 
 
+// ============================================
+// التصدير
+// ============================================
+
 module.exports = {
+
     changeVar,
+    changeDataElem,
     changeLevel,
     applyEdits
+
 };
