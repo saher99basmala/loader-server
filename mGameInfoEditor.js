@@ -1,4 +1,5 @@
 function changeLevel(xml, newLevel) {
+
     newLevel = Number(newLevel);
 
     if (!Number.isInteger(newLevel) || newLevel < 0) {
@@ -12,20 +13,40 @@ function changeLevel(xml, newLevel) {
     const text = xml.toString("utf8");
 
     const pattern =
-        /(<Var\b[^>]*\bname=["']levelup["'][^>]*\bv=["'])\d+(["'][^>]*>)/;
+        /<Var\b(?=[^>]*\bname=["']levelup["'])[^>]*>/;
 
-    if (!pattern.test(text)) {
+    const match = text.match(pattern);
+
+    if (!match) {
         throw new Error(
             'لم يتم العثور على عنصر name="levelup"'
         );
     }
 
-    const updated = text.replace(
-        pattern,
-        `$1${newLevel}$2`
-    );
+    const oldElement = match[0];
 
-    return Buffer.from(updated, "utf8");
+    const newElement =
+        oldElement.replace(
+            /(\bv=["'])[^"']*(["'])/,
+            `$1${newLevel}$2`
+        );
+
+    if (newElement === oldElement) {
+        throw new Error(
+            'تم العثور على levelup ولكن لم يتم العثور على الخاصية v'
+        );
+    }
+
+    const updated =
+        text.replace(
+            oldElement,
+            newElement
+        );
+
+    return Buffer.from(
+        updated,
+        "utf8"
+    );
 }
 
 module.exports = {
