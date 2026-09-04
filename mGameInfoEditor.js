@@ -1,10 +1,28 @@
-function changeVar(xml, varName, newValue) {
+/*
+========================================
+mGameInfoEditor.js
+========================================
+*/
+
+
+/*
+========================================
+تعديل Var عام
+========================================
+*/
+
+function changeVar(
+    xml,
+    varName,
+    newValue
+) {
 
     if (!Buffer.isBuffer(xml)) {
         xml = Buffer.from(xml);
     }
 
-    const text = xml.toString("utf8");
+    const text =
+        xml.toString("utf8");
 
     const escapedName =
         String(varName).replace(
@@ -17,15 +35,19 @@ function changeVar(xml, varName, newValue) {
             `<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*>`
         );
 
-    const match = text.match(pattern);
+    const match =
+        text.match(pattern);
 
     if (!match) {
+
         throw new Error(
             `لم يتم العثور على Var: ${varName}`
         );
+
     }
 
-    const oldElement = match[0];
+    const oldElement =
+        match[0];
 
     const newValueString =
         String(newValue)
@@ -40,11 +62,19 @@ function changeVar(xml, varName, newValue) {
             `$1"${newValueString}"`
         );
 
-    if (newElement === oldElement) {
+    /*
+    نفس القيمة = نجاح
+    */
+
+    if (
+        newElement === oldElement
+    ) {
+
         return Buffer.from(
             text,
             "utf8"
         );
+
     }
 
     return Buffer.from(
@@ -56,6 +86,12 @@ function changeVar(xml, varName, newValue) {
     );
 }
 
+
+/*
+========================================
+تعديل DataElem عام
+========================================
+*/
 
 function changeDataElem(
     xml,
@@ -85,9 +121,11 @@ function changeDataElem(
         text.match(pattern);
 
     if (!match) {
+
         throw new Error(
             `لم يتم العثور على DataElem: ${elemName}`
         );
+
     }
 
     const oldElement =
@@ -100,9 +138,11 @@ function changeDataElem(
         oldElement.match(valuePattern);
 
     if (!valueMatch) {
+
         throw new Error(
             `لم يتم العثور على الخاصية value داخل ${elemName}`
         );
+
     }
 
     const newValueString =
@@ -118,11 +158,19 @@ function changeDataElem(
             `$1$2${newValueString}$2`
         );
 
-    if (newElement === oldElement) {
+    /*
+    نفس القيمة = نجاح
+    */
+
+    if (
+        newElement === oldElement
+    ) {
+
         return Buffer.from(
             text,
             "utf8"
         );
+
     }
 
     return Buffer.from(
@@ -135,7 +183,16 @@ function changeDataElem(
 }
 
 
-function changeLevel(xml, newLevel) {
+/*
+========================================
+تعديل المستوى
+========================================
+*/
+
+function changeLevel(
+    xml,
+    newLevel
+) {
 
     newLevel =
         Number(newLevel);
@@ -144,9 +201,11 @@ function changeLevel(xml, newLevel) {
         !Number.isInteger(newLevel) ||
         newLevel < 0
     ) {
+
         throw new Error(
             "المستوى يجب أن يكون رقمًا صحيحًا"
         );
+
     }
 
     if (!Buffer.isBuffer(xml)) {
@@ -163,9 +222,11 @@ function changeLevel(xml, newLevel) {
         text.match(pattern);
 
     if (!match) {
+
         throw new Error(
             'لم يتم العثور على عنصر name="levelup"'
         );
+
     }
 
     const oldElement =
@@ -177,11 +238,19 @@ function changeLevel(xml, newLevel) {
             `$1${newLevel}$2`
         );
 
-    if (newElement === oldElement) {
+    /*
+    نفس المستوى = نجاح
+    */
+
+    if (
+        newElement === oldElement
+    ) {
+
         return Buffer.from(
             text,
             "utf8"
         );
+
     }
 
     const updated =
@@ -197,6 +266,12 @@ function changeLevel(xml, newLevel) {
 }
 
 
+/*
+========================================
+القيم الثابتة
+========================================
+*/
+
 const UNLOCKED_FRAMES_VALUE =
     "JBsYDjhUWyATVlUjXw==,VEdYLhJsA309Gy0tFgIwCCM=";
 
@@ -206,16 +281,32 @@ const UNLOCKED_STYLES_VALUE =
 
 
 const UNLOCKED_EXP_RANKS_VALUE =
-    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAUVwcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
+    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UUlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UUlE=";
 
 
 /*
 ========================================
 فتح جميع الكروت 1 - 150
 ========================================
+
+كل بطاقة يتم إنشاؤها بالقيم:
+
+generatedCount = 1000
+inStockCount = 1000
+maxInStockCount = 1000
+
+والكروت:
+
+card_01
+card_02
+...
+card_150
+========================================
 */
 
-function unlockAllCards(xml) {
+function unlockAllCards(
+    xml
+) {
 
     if (!Buffer.isBuffer(xml)) {
         xml = Buffer.from(xml);
@@ -224,6 +315,10 @@ function unlockAllCards(xml) {
     const text =
         xml.toString("utf8");
 
+    /*
+    البحث عن OwnedCards
+    */
+
     const openPattern =
         /<DataElem\b(?=[^>]*\bname=["']OwnedCards["'])[^>]*>/;
 
@@ -231,9 +326,11 @@ function unlockAllCards(xml) {
         text.match(openPattern);
 
     if (!openMatch) {
+
         throw new Error(
             'لم يتم العثور على OwnedCards'
         );
+
     }
 
     const start =
@@ -245,8 +342,15 @@ function unlockAllCards(xml) {
     let position =
         start + openTag.length;
 
-    let depth = 1;
-    let end = -1;
+    let depth =
+        1;
+
+    let end =
+        -1;
+
+    /*
+    البحث عن نهاية OwnedCards
+    */
 
     const tagPattern =
         /<DataElem\b[^>]*>|<\/DataElem\s*>/g;
@@ -263,41 +367,79 @@ function unlockAllCards(xml) {
         const tag =
             tagMatch[0];
 
+        /*
+        تجاهل DataElem ذاتية الإغلاق
+        */
+
         if (
             /^<DataElem\b[^>]*\/\s*>$/i.test(tag)
         ) {
+
             continue;
+
         }
+
+        /*
+        DataElem مفتوح
+        */
 
         if (
             /^<DataElem\b/i.test(tag)
         ) {
+
             depth++;
+
         }
+
+        /*
+        DataElem مغلق
+        */
 
         else if (
             /^<\/DataElem/i.test(tag)
         ) {
+
             depth--;
 
-            if (depth === 0) {
+            if (
+                depth === 0
+            ) {
+
                 end =
                     tagMatch.index;
 
                 break;
+
             }
+
         }
+
     }
 
-    if (end === -1) {
+    if (
+        end === -1
+    ) {
+
         throw new Error(
             "لم يتم العثور على نهاية OwnedCards"
         );
+
     }
 
-    let cards = "";
+    /*
+    ========================================
+    إنشاء الكروت
+    ========================================
+    */
 
-    for (let i = 1; i <= 150; i++) {
+    let cards =
+        "";
+
+    for (
+        let i = 1;
+        i <= 150;
+        i++
+    ) {
 
         const cardId =
             `card_${String(i).padStart(2, "0")}`;
@@ -305,138 +447,32 @@ function unlockAllCards(xml) {
         cards += `
 <DataElem type="dataStore">
 <DataElem name="cardId" type="string" value="${cardId}"/>
-<DataElem name="generatedCount" type="int" value="1"/>
-<DataElem name="inStockCount" type="int" value="1"/>
+<DataElem name="generatedCount" type="int" value="1000"/>
+<DataElem name="inStockCount" type="int" value="1000"/>
 <DataElem name="isNew" type="bool" value="false"/>
-<DataElem name="maxInStockCount" type="int" value="1"/>
+<DataElem name="maxInStockCount" type="int" value="1000"/>
 </DataElem>`;
+
     }
 
+    /*
+    ========================================
+    استبدال محتوى OwnedCards
+    ========================================
+    */
+
     const updated =
-        text.substring(0, start + openTag.length) +
+        text.substring(
+            0,
+            start + openTag.length
+        ) +
         cards +
-        text.substring(end);
+        text.substring(
+            end
+        );
 
     return Buffer.from(
         updated,
-        "utf8"
-    );
-}
-
-
-/*
-========================================
-تعديل عدد جميع الكروت 1 - 150
-========================================
-
-مثلاً:
-
-cardsCount = 100
-
-سيصبح:
-
-generatedCount = 100
-inStockCount = 100
-maxInStockCount = 100
-
-للكروت:
-
-card_01
-card_02
-...
-card_150
-========================================
-*/
-
-function changeAllCardsCount(
-    xml,
-    count
-) {
-
-    count =
-        Number(count);
-
-    if (
-        !Number.isInteger(count) ||
-        count < 0
-    ) {
-        throw new Error(
-            "عدد الكروت يجب أن يكون رقمًا صحيحًا"
-        );
-    }
-
-    if (!Buffer.isBuffer(xml)) {
-        xml = Buffer.from(xml);
-    }
-
-    let text =
-        xml.toString("utf8");
-
-    for (let i = 1; i <= 150; i++) {
-
-        const cardId =
-            `card_${String(i).padStart(2, "0")}`;
-
-        const escapedCardId =
-            cardId.replace(
-                /[.*+?^${}()|[\]\\]/g,
-                "\\$&"
-            );
-
-        const pattern =
-            new RegExp(
-                `<DataElem\\b(?=[^>]*\\bname=["']cardId["'])(?=[^>]*\\bvalue=["']${escapedCardId}["'])[^>]*>[\\s\\S]*?<\\/DataElem>`
-            );
-
-        const match =
-            text.match(pattern);
-
-        if (!match) {
-            continue;
-        }
-
-        let cardBlock =
-            match[0];
-
-        /*
-        generatedCount
-        */
-
-        cardBlock =
-            cardBlock.replace(
-                /(<DataElem\b(?=[^>]*\bname=["']generatedCount["'])[^>]*\bvalue=["'])[^"']*(["'])/,
-                `$1${count}$2`
-            );
-
-        /*
-        inStockCount
-        */
-
-        cardBlock =
-            cardBlock.replace(
-                /(<DataElem\b(?=[^>]*\bname=["']inStockCount["'])[^>]*\bvalue=["'])[^"']*(["'])/,
-                `$1${count}$2`
-            );
-
-        /*
-        maxInStockCount
-        */
-
-        cardBlock =
-            cardBlock.replace(
-                /(<DataElem\b(?=[^>]*\bname=["']maxInStockCount["'])[^>]*\bvalue=["'])[^"']*(["'])/,
-                `$1${count}$2`
-            );
-
-        text =
-            text.replace(
-                match[0],
-                cardBlock
-            );
-    }
-
-    return Buffer.from(
-        text,
         "utf8"
     );
 }
@@ -450,129 +486,213 @@ EDITORS
 
 const EDITORS = {
 
-    level: function(xml, value) {
+    /*
+    المستوى
+    */
+
+    level: function(
+        xml,
+        value
+    ) {
 
         return changeLevel(
             xml,
             value
         );
+
     },
 
 
-    townName: function(xml, value) {
+    /*
+    اسم المدينة
+    */
+
+    townName: function(
+        xml,
+        value
+    ) {
 
         return changeVar(
             xml,
             "townName",
             value
         );
+
     },
 
 
-    achievementTeamwork: function(xml, value) {
+    /*
+    إنجاز التعاون
+    */
+
+    achievementTeamwork: function(
+        xml,
+        value
+    ) {
 
         return changeVar(
             xml,
             "Achievement_Teamwork",
             value
         );
+
     },
 
 
-    firstAttemptM3Levels: function(xml, value) {
+    /*
+    مستويات المحاولة الأولى
+    */
+
+    firstAttemptM3Levels: function(
+        xml,
+        value
+    ) {
 
         return changeVar(
             xml,
             "FirstAttemptM3Levels",
             value
         );
+
     },
 
 
-    fullCardCollections: function(xml, value) {
+    /*
+    مجموعات البطاقات المكتملة
+    */
+
+    fullCardCollections: function(
+        xml,
+        value
+    ) {
 
         return changeVar(
             xml,
             "FullCardCollections",
             value
         );
+
     },
 
 
-    livesSent: function(xml, value) {
+    /*
+    الحيوات المرسلة
+    */
+
+    livesSent: function(
+        xml,
+        value
+    ) {
 
         return changeVar(
             xml,
             "LivesSent",
             value
         );
+
     },
 
 
-    m3CompLvls: function(xml, value) {
+    /*
+    مستويات M3 المكتملة
+    */
+
+    m3CompLvls: function(
+        xml,
+        value
+    ) {
 
         return changeVar(
             xml,
             "m3_comp_lvls",
             value
         );
+
     },
 
 
-    regataTasksCompleted: function(xml, value) {
+    /*
+    مهام السباق المكتملة
+    */
+
+    regataTasksCompleted: function(
+        xml,
+        value
+    ) {
 
         return changeVar(
             xml,
             "RegataTasksCompleted",
             value
         );
+
     },
 
 
-    unlockedFrames: function(xml) {
+    /*
+    فتح الإطارات
+    */
+
+    unlockedFrames: function(
+        xml
+    ) {
 
         return changeDataElem(
             xml,
             "UnlockedFrames",
             UNLOCKED_FRAMES_VALUE
         );
+
     },
 
 
-    unlockedStyles: function(xml) {
+    /*
+    فتح الستايلات
+    */
+
+    unlockedStyles: function(
+        xml
+    ) {
 
         return changeDataElem(
             xml,
             "UnlockedStyles",
             UNLOCKED_STYLES_VALUE
         );
+
     },
 
 
-    unlockedExpRanks: function(xml) {
+    /*
+    فتح رتب الخبرة
+    */
+
+    unlockedExpRanks: function(
+        xml
+    ) {
 
         return changeDataElem(
             xml,
             "UnlockedExpRanks",
             UNLOCKED_EXP_RANKS_VALUE
         );
+
     },
 
 
-    unlockAllCards: function(xml) {
+    /*
+    فتح وإظهار الكروت 1 - 150
+    بقيمة 1000 تلقائيًا
+    */
+
+    unlockAllCards: function(
+        xml
+    ) {
 
         return unlockAllCards(
             xml
         );
-    },
 
-
-    cardsCount: function(xml, value) {
-
-        return changeAllCardsCount(
-            xml,
-            value
-        );
     }
 
 };
@@ -596,6 +716,26 @@ function applyEdits(
     let result =
         xml;
 
+    /*
+    حماية إضافية
+    */
+
+    if (
+        !edits ||
+        typeof edits !== "object" ||
+        Array.isArray(edits)
+    ) {
+
+        throw new Error(
+            "صيغة التعديلات غير صحيحة"
+        );
+
+    }
+
+    /*
+    تنفيذ التعديلات بالترتيب
+    */
+
     for (
         const editName in edits
     ) {
@@ -606,16 +746,20 @@ function applyEdits(
                 editName
             )
         ) {
+
             continue;
+
         }
 
         const editor =
             EDITORS[editName];
 
         if (!editor) {
+
             throw new Error(
                 `تعديل غير معروف: ${editName}`
             );
+
         }
 
         result =
@@ -623,6 +767,7 @@ function applyEdits(
                 result,
                 edits[editName]
             );
+
     }
 
     return result;
@@ -645,8 +790,6 @@ module.exports = {
 
     changeLevel,
 
-    unlockAllCards,
-
-    changeAllCardsCount
+    unlockAllCards
 
 };
