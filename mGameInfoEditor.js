@@ -212,7 +212,7 @@ const UNLOCKED_FRAMES_VALUE =
 
 
 const UNLOCKED_STYLES_VALUE =
-    "gold,festival,cooking,neon,default,animatedUnderwaterViolet,easter";
+    "gold,festival,cooking,bsboste,neon,default,animatedUnderwaterViolet,easter";
 
 
 // ============================================
