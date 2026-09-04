@@ -272,6 +272,37 @@ const EDITORS = {
     );
 
 },
+    firstAttemptM3Levels: function(xml, value) {
+    return changeVar(
+        xml,
+        "FirstAttemptM3Levels",
+        value
+    );
+},
+
+fullCardCollections: function(xml, value) {
+    return changeVar(
+        xml,
+        "FullCardCollections",
+        value
+    );
+},
+
+livesSent: function(xml, value) {
+    return changeVar(
+        xml,
+        "LivesSent",
+        value
+    );
+},
+
+problemLevel: function(xml, value) {
+    return changeVar(
+        xml,
+        "problemLevel",
+        value
+    );
+},
 
 
     // ----------------------------------------
