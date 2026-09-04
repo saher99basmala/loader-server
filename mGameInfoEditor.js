@@ -294,7 +294,21 @@ livesSent: function(xml, value) {
         "LivesSent",
         value
     );
+m3CompLvls: function(xml, value) {
+    return changeVar(
+        xml,
+        "m3_comp_lvls",
+        value
+    );
+},
 
+regataTasksCompleted: function(xml, value) {
+    return changeVar(
+        xml,
+        "RegataTasksCompleted",
+        value
+    );
+},
 
 
     // ----------------------------------------
