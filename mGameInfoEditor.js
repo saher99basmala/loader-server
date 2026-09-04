@@ -263,6 +263,15 @@ const EDITORS = {
         );
 
     },
+    achievementTeamwork: function(xml, value) {
+
+    return changeVar(
+        xml,
+        "Achievement_Teamwork",
+        value
+    );
+
+},
 
 
     // ----------------------------------------
