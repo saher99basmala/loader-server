@@ -58,6 +58,7 @@ app.use("/api/edit-level", express.raw({
 app.post("/api/edit-level", (req, res) => {
     try {
         const level = req.query.level;
+        const townName = req.query.townName;
 
         if (!level) {
             return res.status(400).send(
