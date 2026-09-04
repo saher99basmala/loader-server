@@ -1,13 +1,3 @@
-// ============================================
-// mGameInfoEditor.js
-// جميع تعديلات mGameInfo.xml
-// ============================================
-
-
-// ============================================
-// تعديل Var عام
-// ============================================
-
 function changeVar(xml, varName, newValue) {
 
     if (!Buffer.isBuffer(xml)) {
@@ -50,7 +40,6 @@ function changeVar(xml, varName, newValue) {
             `$1"${newValueString}"`
         );
 
-    // القيمة الجديدة هي نفسها القديمة
     if (newElement === oldElement) {
         return Buffer.from(
             text,
@@ -67,10 +56,6 @@ function changeVar(xml, varName, newValue) {
     );
 }
 
-
-// ============================================
-// تعديل DataElem عام
-// ============================================
 
 function changeDataElem(
     xml,
@@ -133,7 +118,6 @@ function changeDataElem(
             `$1$2${newValueString}$2`
         );
 
-    // القيمة الجديدة هي نفسها القديمة
     if (newElement === oldElement) {
         return Buffer.from(
             text,
@@ -151,14 +135,7 @@ function changeDataElem(
 }
 
 
-// ============================================
-// تعديل المستوى
-// ============================================
-
-function changeLevel(
-    xml,
-    newLevel
-) {
+function changeLevel(xml, newLevel) {
 
     newLevel =
         Number(newLevel);
@@ -220,10 +197,6 @@ function changeLevel(
 }
 
 
-// ============================================
-// قيم الإطارات والستايلات ورتب الخبرة
-// ============================================
-
 const UNLOCKED_FRAMES_VALUE =
     "JBsYDjhUWyATVlUjXw==,VEdYLhJsA309Gy0tFgIwCCM=";
 
@@ -233,12 +206,14 @@ const UNLOCKED_STYLES_VALUE =
 
 
 const UNLOCKED_EXP_RANKS_VALUE =
-    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UUlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UUlE=";
+    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAUVwcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
 
 
-// ============================================
-// فتح جميع الكروت من 1 إلى 150
-// ============================================
+/*
+========================================
+فتح جميع الكروت 1 - 150
+========================================
+*/
 
 function unlockAllCards(xml) {
 
@@ -249,59 +224,66 @@ function unlockAllCards(xml) {
     const text =
         xml.toString("utf8");
 
-    const pattern =
+    const openPattern =
         /<DataElem\b(?=[^>]*\bname=["']OwnedCards["'])[^>]*>/;
 
-    const match =
-        text.match(pattern);
+    const openMatch =
+        text.match(openPattern);
 
-    if (!match) {
+    if (!openMatch) {
         throw new Error(
-            'لم يتم العثور على DataElem: OwnedCards'
+            'لم يتم العثور على OwnedCards'
         );
     }
 
     const start =
-        match.index + match[0].length;
+        openMatch.index;
 
-    /*
-     * نبحث عن نهاية OwnedCards.
-     * العناصر الموجودة بداخله كلها DataElem،
-     * ونحدد الإغلاق الخاص بالـ array اعتمادًا
-     * على البنية المتوقعة.
-     */
+    const openTag =
+        openMatch[0];
+
+    let position =
+        start + openTag.length;
 
     let depth = 1;
-    let position = start;
+    let end = -1;
 
     const tagPattern =
-        /<\/?DataElem\b[^>]*>/g;
+        /<DataElem\b[^>]*>|<\/DataElem\s*>/g;
 
-    tagPattern.lastIndex = start;
+    tagPattern.lastIndex =
+        position;
 
-    let end = -1;
-    let tag;
+    let tagMatch;
 
     while (
-        (tag = tagPattern.exec(text)) !== null
+        (tagMatch = tagPattern.exec(text)) !== null
     ) {
 
-        const tagText = tag[0];
+        const tag =
+            tagMatch[0];
 
         if (
-            /^<DataElem\b/i.test(tagText) &&
-            !/\/>$/.test(tagText)
+            /^<DataElem\b[^>]*\/\s*>$/i.test(tag)
+        ) {
+            continue;
+        }
+
+        if (
+            /^<DataElem\b/i.test(tag)
         ) {
             depth++;
         }
 
-        if (
-            /^<\/DataElem>/i.test(tagText)
+        else if (
+            /^<\/DataElem/i.test(tag)
         ) {
             depth--;
 
             if (depth === 0) {
-                end = tag.index;
+                end =
+                    tagMatch.index;
+
                 break;
             }
         }
@@ -309,7 +291,7 @@ function unlockAllCards(xml) {
 
     if (end === -1) {
         throw new Error(
-            "تعذر تحديد نهاية OwnedCards"
+            "لم يتم العثور على نهاية OwnedCards"
         );
     }
 
@@ -320,20 +302,20 @@ function unlockAllCards(xml) {
         const cardId =
             `card_${String(i).padStart(2, "0")}`;
 
-        cards +=
-            `<DataElem type="dataStore">` +
-            `<DataElem name="cardId" type="string" value="${cardId}"/>` +
-            `<DataElem name="generatedCount" type="int" value="1"/>` +
-            `<DataElem name="inStockCount" type="int" value="1"/>` +
-            `<DataElem name="isNew" type="bool" value="false"/>` +
-            `<DataElem name="maxInStockCount" type="int" value="1"/>` +
-            `</DataElem>`;
+        cards += `
+<DataElem type="dataStore">
+<DataElem name="cardId" type="string" value="${cardId}"/>
+<DataElem name="generatedCount" type="int" value="1"/>
+<DataElem name="inStockCount" type="int" value="1"/>
+<DataElem name="isNew" type="bool" value="false"/>
+<DataElem name="maxInStockCount" type="int" value="1"/>
+</DataElem>`;
     }
 
     const updated =
-        text.slice(0, start) +
+        text.substring(0, start + openTag.length) +
         cards +
-        text.slice(end);
+        text.substring(end);
 
     return Buffer.from(
         updated,
@@ -342,15 +324,131 @@ function unlockAllCards(xml) {
 }
 
 
-// ============================================
-// قائمة التعديلات
-// ============================================
+/*
+========================================
+تعديل عدد جميع الكروت 1 - 150
+========================================
+
+مثلاً:
+
+cardsCount = 100
+
+سيصبح:
+
+generatedCount = 100
+inStockCount = 100
+maxInStockCount = 100
+
+للكروت:
+
+card_01
+card_02
+...
+card_150
+========================================
+*/
+
+function changeAllCardsCount(
+    xml,
+    count
+) {
+
+    count =
+        Number(count);
+
+    if (
+        !Number.isInteger(count) ||
+        count < 0
+    ) {
+        throw new Error(
+            "عدد الكروت يجب أن يكون رقمًا صحيحًا"
+        );
+    }
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    let text =
+        xml.toString("utf8");
+
+    for (let i = 1; i <= 150; i++) {
+
+        const cardId =
+            `card_${String(i).padStart(2, "0")}`;
+
+        const escapedCardId =
+            cardId.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                "\\$&"
+            );
+
+        const pattern =
+            new RegExp(
+                `<DataElem\\b(?=[^>]*\\bname=["']cardId["'])(?=[^>]*\\bvalue=["']${escapedCardId}["'])[^>]*>[\\s\\S]*?<\\/DataElem>`
+            );
+
+        const match =
+            text.match(pattern);
+
+        if (!match) {
+            continue;
+        }
+
+        let cardBlock =
+            match[0];
+
+        /*
+        generatedCount
+        */
+
+        cardBlock =
+            cardBlock.replace(
+                /(<DataElem\b(?=[^>]*\bname=["']generatedCount["'])[^>]*\bvalue=["'])[^"']*(["'])/,
+                `$1${count}$2`
+            );
+
+        /*
+        inStockCount
+        */
+
+        cardBlock =
+            cardBlock.replace(
+                /(<DataElem\b(?=[^>]*\bname=["']inStockCount["'])[^>]*\bvalue=["'])[^"']*(["'])/,
+                `$1${count}$2`
+            );
+
+        /*
+        maxInStockCount
+        */
+
+        cardBlock =
+            cardBlock.replace(
+                /(<DataElem\b(?=[^>]*\bname=["']maxInStockCount["'])[^>]*\bvalue=["'])[^"']*(["'])/,
+                `$1${count}$2`
+            );
+
+        text =
+            text.replace(
+                match[0],
+                cardBlock
+            );
+    }
+
+    return Buffer.from(
+        text,
+        "utf8"
+    );
+}
+
+
+/*
+========================================
+EDITORS
+========================================
+*/
 
 const EDITORS = {
-
-    // ----------------------------------------
-    // المستوى
-    // ----------------------------------------
 
     level: function(xml, value) {
 
@@ -358,13 +456,8 @@ const EDITORS = {
             xml,
             value
         );
-
     },
 
-
-    // ----------------------------------------
-    // اسم المدينة
-    // ----------------------------------------
 
     townName: function(xml, value) {
 
@@ -373,13 +466,8 @@ const EDITORS = {
             "townName",
             value
         );
-
     },
 
-
-    // ----------------------------------------
-    // إنجاز التعاون
-    // ----------------------------------------
 
     achievementTeamwork: function(xml, value) {
 
@@ -388,13 +476,8 @@ const EDITORS = {
             "Achievement_Teamwork",
             value
         );
-
     },
 
-
-    // ----------------------------------------
-    // مستويات المحاولة الأولى
-    // ----------------------------------------
 
     firstAttemptM3Levels: function(xml, value) {
 
@@ -403,13 +486,8 @@ const EDITORS = {
             "FirstAttemptM3Levels",
             value
         );
-
     },
 
-
-    // ----------------------------------------
-    // مجموعات البطاقات المكتملة
-    // ----------------------------------------
 
     fullCardCollections: function(xml, value) {
 
@@ -418,13 +496,8 @@ const EDITORS = {
             "FullCardCollections",
             value
         );
-
     },
 
-
-    // ----------------------------------------
-    // الحيوات المرسلة
-    // ----------------------------------------
 
     livesSent: function(xml, value) {
 
@@ -433,13 +506,8 @@ const EDITORS = {
             "LivesSent",
             value
         );
-
     },
 
-
-    // ----------------------------------------
-    // مستويات M3 المكتملة
-    // ----------------------------------------
 
     m3CompLvls: function(xml, value) {
 
@@ -448,13 +516,8 @@ const EDITORS = {
             "m3_comp_lvls",
             value
         );
-
     },
 
-
-    // ----------------------------------------
-    // مهام السباق المكتملة
-    // ----------------------------------------
 
     regataTasksCompleted: function(xml, value) {
 
@@ -463,13 +526,8 @@ const EDITORS = {
             "RegataTasksCompleted",
             value
         );
-
     },
 
-
-    // ----------------------------------------
-    // الإطارات
-    // ----------------------------------------
 
     unlockedFrames: function(xml) {
 
@@ -478,13 +536,8 @@ const EDITORS = {
             "UnlockedFrames",
             UNLOCKED_FRAMES_VALUE
         );
-
     },
 
-
-    // ----------------------------------------
-    // الستايلات
-    // ----------------------------------------
 
     unlockedStyles: function(xml) {
 
@@ -493,13 +546,8 @@ const EDITORS = {
             "UnlockedStyles",
             UNLOCKED_STYLES_VALUE
         );
-
     },
 
-
-    // ----------------------------------------
-    // رتب الخبرة
-    // ----------------------------------------
 
     unlockedExpRanks: function(xml) {
 
@@ -508,85 +556,97 @@ const EDITORS = {
             "UnlockedExpRanks",
             UNLOCKED_EXP_RANKS_VALUE
         );
-
     },
 
-
-    // ----------------------------------------
-    // فتح جميع الكروت 1 - 150
-    // ----------------------------------------
 
     unlockAllCards: function(xml) {
 
         return unlockAllCards(
             xml
         );
+    },
 
+
+    cardsCount: function(xml, value) {
+
+        return changeAllCardsCount(
+            xml,
+            value
+        );
     }
 
 };
 
 
-// ============================================
-// تنفيذ التعديلات
-// ============================================
+/*
+========================================
+APPLY EDITS
+========================================
+*/
 
 function applyEdits(
     xml,
     edits
 ) {
 
-    if (!Array.isArray(edits)) {
-        throw new Error(
-            "قائمة التعديلات غير صحيحة"
-        );
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
     }
 
     let result =
         xml;
 
     for (
-        const edit of edits
+        const editName in edits
     ) {
 
         if (
-            !edit ||
-            !edit.type
+            !Object.prototype.hasOwnProperty.call(
+                edits,
+                editName
+            )
         ) {
             continue;
         }
 
         const editor =
-            EDITORS[edit.type];
+            EDITORS[editName];
 
         if (!editor) {
             throw new Error(
-                `التعديل غير معروف: ${edit.type}`
+                `تعديل غير معروف: ${editName}`
             );
         }
 
         result =
             editor(
                 result,
-                edit.value
+                edits[editName]
             );
-
     }
 
     return result;
 }
 
 
-// ============================================
-// التصدير
-// ============================================
+/*
+========================================
+EXPORT
+========================================
+*/
 
 module.exports = {
 
+    applyEdits,
+
     changeVar,
+
     changeDataElem,
+
     changeLevel,
+
     unlockAllCards,
-    applyEdits
+
+    changeAllCardsCount
 
 };
