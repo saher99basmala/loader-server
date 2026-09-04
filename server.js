@@ -6,6 +6,7 @@ const app = express();
 const view = require("./view");
 const api = require("./api");
 const { supabase } = require("./supabase");
+const mGameInfoDecoder = require("./mGameInfoDecoder");
 
 const PORT = process.env.PORT || 3000;
 
