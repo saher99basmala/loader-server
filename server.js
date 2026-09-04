@@ -50,39 +50,46 @@ app.post("/api/decode", (req, res) => {
     }
 });
 
-app.use("/api/edit-level", express.raw({
+app.use("/api/edit", express.raw({
     type: "application/octet-stream",
     limit: "50mb"
 }));
 
-app.post("/api/edit-level", (req, res) => {
-    try {
-        const level = req.query.level;
-        const townName = req.query.townName;
+app.post("/api/edit", (req, res) => {
 
-        if (!level) {
+    try {
+
+        const editsText = req.query.edits;
+
+        if (!editsText) {
             return res.status(400).send(
-                "Missing level"
+                "Missing edits"
+            );
+        }
+
+        let edits;
+
+        try {
+
+            edits = JSON.parse(editsText);
+
+        } catch (e) {
+
+            return res.status(400).send(
+                "Invalid edits JSON"
             );
         }
 
         const decoded =
-            mGameInfoDecoder.decodeFile(req.body);
+            mGameInfoDecoder.decodeFile(
+                req.body
+            );
 
-        let edited =
-    mGameInfoEditor.changeLevel(
-        decoded,
-        level
-    );
-
-if (townName !== undefined) {
-    edited =
-        mGameInfoEditor.changeVar(
-            edited,
-            "townName",
-            townName
-        );
-}
+        const edited =
+            mGameInfoEditor.applyEdits(
+                decoded,
+                edits
+            );
 
         res.set(
             "Content-Type",
@@ -94,12 +101,12 @@ if (townName !== undefined) {
     } catch (e) {
 
         console.error(
-            "Edit level error:",
+            "Edit error:",
             e
         );
 
         res.status(400).send(
-            "Edit level error: " +
+            "Edit error: " +
             e.message
         );
     }
