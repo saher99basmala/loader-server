@@ -26,6 +26,12 @@ saveUninitialized: false
 
 app.use("/", view);
 app.use("/api", api);
+
+app.use("/api/decode", express.raw({
+    type: "application/octet-stream",
+    limit: "50mb"
+}));
+
 app.post("/api/decode", (req, res) => {
     try {
         const decoded = mGameInfoDecoder.decodeFile(
