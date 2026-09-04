@@ -69,11 +69,20 @@ app.post("/api/edit-level", (req, res) => {
         const decoded =
             mGameInfoDecoder.decodeFile(req.body);
 
-        const edited =
-            mGameInfoEditor.changeLevel(
-                decoded,
-                level
-            );
+        let edited =
+    mGameInfoEditor.changeLevel(
+        decoded,
+        level
+    );
+
+if (townName !== undefined) {
+    edited =
+        mGameInfoEditor.changeVar(
+            edited,
+            "townName",
+            townName
+        );
+}
 
         res.set(
             "Content-Type",
