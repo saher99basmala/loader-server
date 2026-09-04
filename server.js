@@ -8,7 +8,6 @@ const api = require("./api");
 const { supabase } = require("./supabase");
 const mGameInfoDecoder = require("./mGameInfoDecoder");
 const mGameInfoEditor = require("./mGameInfoEditor");
-console.log("mGameInfoDecoder loaded:", mGameInfoDecoder.test);
 
 const PORT = process.env.PORT || 3000;
 
