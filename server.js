@@ -7,7 +7,7 @@ const view = require("./view");
 const api = require("./api");
 const { supabase } = require("./supabase");
 const mGameInfoDecoder = require("./mGameInfoDecoder");
-const mGameInfoEditor = require("./mGameInfoDecoder");
+const mGameInfoEditor = require("./mGameInfoEditor");
 console.log("mGameInfoDecoder loaded:", mGameInfoDecoder.test);
 
 const PORT = process.env.PORT || 3000;
