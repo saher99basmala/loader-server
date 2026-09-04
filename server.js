@@ -26,6 +26,23 @@ saveUninitialized: false
 
 app.use("/", view);
 app.use("/api", api);
+app.post("/api/decode", (req, res) => {
+    try {
+        const decoded = mGameInfoDecoder.decodeFile(
+            req.body
+        );
+
+        res.set("Content-Type", "application/octet-stream");
+        res.send(decoded);
+
+    } catch (e) {
+        console.error("Decode error:", e);
+
+        res.status(400).send(
+            "Decode error: " + e.message
+        );
+    }
+});
 
 /* ==========================
 API CHECK KEY
