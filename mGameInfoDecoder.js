@@ -1,1 +1,1 @@
-mGameInfoDecoder.js
+module.exports = {};
