@@ -1,31 +1,25 @@
 const TABLE_SIZE = 0x2D7;
 
-// ============================================
-// U32
-// ============================================
-
-function u32(n) {
-    return n >>> 0;
+function u32(v) {
+    return v >>> 0;
 }
 
-// ============================================
-// قراءة U32 من Buffer
-// ============================================
+function readU32(data, pos) {
+    if (pos + 4 > data.length) {
+        throw new Error("بيانات غير كافية لقراءة UInt32");
+    }
 
-function readU32(buf, offset) {
     return (
-        (buf[offset]) |
-        (buf[offset + 1] << 8) |
-        (buf[offset + 2] << 16) |
-        (buf[offset + 3] << 24)
+        data[pos] |
+        (data[pos + 1] << 8) |
+        (data[pos + 2] << 16) |
+        (data[pos + 3] << 24)
     ) >>> 0;
 }
 
-// ============================================
-// U32 -> Bytes
-// ============================================
-
 function u32Bytes(v) {
+    v = u32(v);
+
     return Buffer.from([
         v & 0xff,
         (v >>> 8) & 0xff,
@@ -34,344 +28,343 @@ function u32Bytes(v) {
     ]);
 }
 
-// ============================================
-// MurmurHash2
-// ============================================
-
-function mmh2(data, seed = 0) {
-
+function mmh2(data, seed) {
     const m = 0x5bd1e995;
-    const r = 24;
 
     let h = u32(seed ^ data.length);
     let i = 0;
+    let length = data.length;
 
-    while (data.length - i >= 4) {
+    while (length >= 4) {
+        let k = readU32(data, i);
 
-        let k =
-            (data[i]) |
-            (data[i + 1] << 8) |
-            (data[i + 2] << 16) |
-            (data[i + 3] << 24);
+        k = Math.imul(k, m) >>> 0;
+        k = (k ^ (k >>> 24)) >>> 0;
+        k = Math.imul(k, m) >>> 0;
 
-        k = Math.imul(k, m);
-        k ^= k >>> r;
-        k = Math.imul(k, m);
-
-        h = Math.imul(h, m);
-        h ^= k;
+        h = Math.imul(h, m) >>> 0;
+        h = (h ^ k) >>> 0;
 
         i += 4;
+        length -= 4;
     }
 
-    switch (data.length - i) {
-
-        case 3:
-            h ^= data[i + 2] << 16;
-
-        case 2:
-            h ^= data[i + 1] << 8;
-
-        case 1:
-            h ^= data[i];
-            h = Math.imul(h, m);
+    if (length === 3) {
+        h = (h ^ (data[i + 2] << 16)) >>> 0;
     }
 
-    h ^= h >>> 13;
-    h = Math.imul(h, m);
-    h ^= h >>> 15;
+    if (length >= 2) {
+        h = (h ^ (data[i + 1] << 8)) >>> 0;
+    }
 
-    return u32(h);
+    if (length >= 1) {
+        h = (h ^ data[i]) >>> 0;
+        h = Math.imul(h, m) >>> 0;
+    }
+
+    h = (h ^ (h >>> 13)) >>> 0;
+    h = Math.imul(h, m) >>> 0;
+    h = (h ^ (h >>> 15)) >>> 0;
+
+    return h >>> 0;
 }
 
-// ============================================
-// Hash Table
-// ============================================
-
-function getHashTable(key) {
-
+function getHashTable(length, seed) {
     const table = Buffer.alloc(TABLE_SIZE);
 
-    let seed = 0;
+    let h = u32(seed);
+    let i = 0;
 
-    if (typeof key === "string") {
-        key = Buffer.from(key, "utf8");
-    }
+    while (i < TABLE_SIZE) {
+        const v = u32Bytes(h);
 
-    if (!Buffer.isBuffer(key)) {
-        throw new Error("Invalid key");
-    }
+        h = mmh2(v, length);
 
-    for (let i = 0; i < TABLE_SIZE; i += 4) {
+        const hb = u32Bytes(h);
 
-        seed = mmh2(key, seed);
+        for (let j = 0; j < 4 && i + j < TABLE_SIZE; j++) {
+            table[i + j] = hb[j];
+        }
 
-        const bytes = u32Bytes(seed);
-
-        bytes.copy(
-            table,
-            i,
-            0,
-            Math.min(4, TABLE_SIZE - i)
-        );
+        i += 4;
     }
 
     return table;
 }
 
-// ============================================
-// XOR Decode
-// ============================================
+function xorDecode(data) {
+    if (data.length < 8) {
+        throw new Error("الملف صغير جدًا");
+    }
 
-function xorDecode(data, table) {
+    const hl =
+        data[1] |
+        (data[2] << 8) |
+        (data[3] << 16);
 
-    const output = Buffer.alloc(data.length);
+    const hs =
+        data[4] |
+        (data[5] << 8) |
+        (data[6] << 16) |
+        (data[7] << 24);
 
-    for (let i = 0; i < data.length; i++) {
+    const srcSize = data.length;
 
-        output[i] =
-            data[i] ^
-            table[i % table.length];
+    const table = getHashTable(
+        hl,
+        u32(4 + hs)
+    );
+
+    const sf = u32(
+        (hl -
+            u32(
+                0xC5EED ^ srcSize
+            )) ^
+        0x396A8
+    );
+
+    const actual = Math.min(
+        sf,
+        srcSize - 8
+    );
+
+    const out = Buffer.alloc(actual);
+
+    for (let i = 0; i < actual; i++) {
+        out[i] = data[8 + i];
+    }
+
+    let j = 0;
+
+    for (let i = 0; i < out.length; i++) {
+
+        if (i > 0) {
+            out[i] =
+                (out[i] - out[i - 1]) & 0xff;
+        }
+
+        out[i] =
+            (out[i] ^ table[j]) & 0xff;
+
+        j++;
+
+        if (j >= TABLE_SIZE) {
+            j = 0;
+        }
+    }
+
+    return out;
+}
+
+function isLz4(data) {
+    return (
+        data.length >= 4 &&
+        data[0] === 0x04 &&
+        data[1] === 0x22 &&
+        data[2] === 0x4D &&
+        data[3] === 0x18
+    );
+}
+
+function lz4Decompress(data) {
+    if (data.length < 9) {
+        throw new Error("LZ4: البيانات صغيرة جدًا");
+    }
+
+    const size = readU32(data, 4);
+
+    let src = 8;
+    let output = Buffer.alloc(size);
+
+    let outLen = 0;
+
+    function readByte() {
+        if (src >= data.length) {
+            throw new Error(
+                "LZ4: نهاية بيانات غير متوقعة"
+            );
+        }
+
+        return data[src++];
+    }
+
+    while (
+        src < data.length &&
+        outLen < size
+    ) {
+
+        const token = readByte();
+
+        let literalLen =
+            token >>> 4;
+
+        if (literalLen === 15) {
+            let b;
+
+            do {
+                b = readByte();
+                literalLen += b;
+            } while (b === 255);
+        }
+
+        if (
+            src + literalLen >
+            data.length
+        ) {
+            throw new Error(
+                "LZ4: Literal خارج النطاق"
+            );
+        }
+
+        if (
+            outLen + literalLen >
+            size
+        ) {
+            throw new Error(
+                "LZ4: حجم Literal غير صحيح"
+            );
+        }
+
+        for (
+            let i = 0;
+            i < literalLen;
+            i++
+        ) {
+            output[outLen++] =
+                data[src++];
+        }
+
+        if (outLen >= size) {
+            break;
+        }
+
+        if (src + 2 > data.length) {
+            throw new Error(
+                "LZ4: لا يوجد Offset"
+            );
+        }
+
+        const offset =
+            readByte() |
+            (readByte() << 8);
+
+        if (offset === 0) {
+            throw new Error(
+                "LZ4: Offset غير صالح"
+            );
+        }
+
+        let matchLen =
+            token & 0x0F;
+
+        if (matchLen === 15) {
+            let b;
+
+            do {
+                b = readByte();
+                matchLen += b;
+            } while (b === 255);
+        }
+
+        matchLen += 4;
+
+        const start =
+            outLen - offset;
+
+        if (start < 0) {
+            throw new Error(
+                "LZ4: Offset خارج النطاق"
+            );
+        }
+
+        for (
+            let i = 0;
+            i < matchLen;
+            i++
+        ) {
+            if (outLen >= size) {
+                throw new Error(
+                    "LZ4: الحجم الناتج تجاوز المتوقع"
+                );
+            }
+
+            output[outLen++] =
+                output[
+                    start +
+                    (i % offset)
+                ];
+        }
+    }
+
+    if (outLen !== size) {
+        throw new Error(
+            "LZ4: الحجم الناتج غير صحيح\n" +
+            "Expected: " +
+            size +
+            "\nActual: " +
+            outLen
+        );
     }
 
     return output;
 }
 
-// ============================================
-// LZ4 Check
-// ============================================
-
-function isLz4(data) {
-
-    if (!data || data.length < 4) {
-        return false;
-    }
-
-    return (
-        data[0] === 0x04 &&
-        data[1] === 0x22 &&
-        data[2] === 0x4d &&
-        data[3] === 0x18
-    );
-}
-
-// ============================================
-// LZ4 Decompress
-// ============================================
-
-function lz4Decompress(data) {
-
-    // محاولة استخدام lz4 إذا كانت مثبتة
-    let lz4;
-
-    try {
-        lz4 = require("lz4");
-    } catch (e) {
-        throw new Error(
-            "مكتبة lz4 غير مثبتة في السيرفر"
-        );
-    }
-
-    // قراءة الحجم الأصلي إذا كان موجودًا
-    let maxSize = data.length * 20;
-
-    if (data.length >= 8) {
-
-        const possibleSize =
-            readU32(data, 4);
-
-        if (
-            possibleSize > 0 &&
-            possibleSize < 100 * 1024 * 1024
-        ) {
-            maxSize = possibleSize;
-        }
-    }
-
-    const output = Buffer.alloc(maxSize);
-
-    let decoded;
-
-    try {
-
-        decoded =
-            lz4.decodeBlock(
-                data,
-                output
-            );
-
-    } catch (e) {
-
-        throw new Error(
-            "فشل فك ضغط LZ4: " +
-            e.message
-        );
-    }
-
-    if (typeof decoded === "number") {
-
-        return output.subarray(
-            0,
-            decoded
-        );
-    }
-
-    if (Buffer.isBuffer(decoded)) {
-        return decoded;
-    }
-
-    throw new Error(
-        "نتيجة LZ4 غير صالحة"
-    );
-}
-
-// ============================================
-// Trim XML
-// ============================================
-
 function trimXml(data) {
+    const marker = Buffer.from("</root>");
+
+    const pos = data.lastIndexOf(marker);
+
+    if (pos !== -1) {
+        return data.subarray(
+            0,
+            pos + marker.length
+        );
+    }
+
+    let end = data.length;
+
+    while (
+        end > 0 &&
+        data[end - 1] === 0
+    ) {
+        end--;
+    }
+
+    return data.subarray(0, end);
+}
+
+function decodeFile(data) {
 
     if (!Buffer.isBuffer(data)) {
         data = Buffer.from(data);
     }
 
-    const text =
-        data.toString("utf8");
+    if (data.length === 0) {
+        throw new Error("ملف فارغ");
+    }
 
-    const start =
-        text.indexOf("<");
-
-    if (start === -1) {
+    // XML أصلاً
+    if (data[0] === 0x3C) {
         return data;
     }
 
-    const xml =
-        text.substring(start);
-
-    return Buffer.from(
-        xml.trim(),
-        "utf8"
-    );
-}
-
-// ============================================
-// Decode File
-// ============================================
-
-function decodeFile(input) {
-
-    if (!Buffer.isBuffer(input)) {
-        input = Buffer.from(input);
-    }
-
-    if (input.length === 0) {
-        throw new Error("الملف فارغ");
-    }
-
-    /*
-     * المفتاح المستخدم في خوارزمية
-     * mGameInfo.xml
-     */
-
-    const key =
-        Buffer.from(
-            "mGameInfo.xml",
-            "utf8"
-        );
-
-    const table =
-        getHashTable(key);
-
-    let decoded =
-        xorDecode(
-            input,
-            table
-        );
-
-    // ========================================
-    // LZ4
-    // ========================================
-
-    if (isLz4(decoded)) {
-
-        decoded =
-            lz4Decompress(decoded);
-    }
-
-    // ========================================
-    // تنظيف XML
-    // ========================================
-
-    decoded =
-        trimXml(decoded);
-
-    return decoded;
-}
-
-// ============================================
-// تغيير مستوى اللاعب
-// ============================================
-
-function changeLevel(xml, newLevel) {
-
-    newLevel =
-        Number(newLevel);
-
-    if (
-        !Number.isInteger(newLevel) ||
-        newLevel < 0
-    ) {
+    // يجب أن يبدأ بـ 0x79
+    if (data[0] !== 0x79) {
         throw new Error(
-            "المستوى يجب أن يكون رقمًا صحيحًا"
+            "نوع غير مدعوم\nMagic: 0x" +
+            data[0].toString(16).padStart(2, "0")
         );
     }
 
-    if (!Buffer.isBuffer(xml)) {
-        xml = Buffer.from(xml);
+    let payload = xorDecode(data);
+
+    if (isLz4(payload)) {
+        payload = lz4Decompress(payload);
     }
 
-    const text =
-        xml.toString("utf8");
-
-    /*
-     * نبحث عن عنصر Var الذي اسمه levelup
-     *
-     * مثال:
-     *
-     * <Var name="levelup" v="1089" t="i"/>
-     *
-     * ويصبح:
-     *
-     * <Var name="levelup" v="99999" t="i"/>
-     */
-
-    const pattern =
-        /(<Var\b[^>]*\bname=["']levelup["'][^>]*\bv=["'])\d+(["'][^>]*>)/;
-
-    if (!pattern.test(text)) {
-
-        throw new Error(
-            'لم يتم العثور على عنصر name="levelup"'
-        );
-    }
-
-    const updated =
-        text.replace(
-            pattern,
-            `$1${newLevel}$2`
-        );
-
-    return Buffer.from(
-        updated,
-        "utf8"
-    );
+    return trimXml(payload);
 }
-
-// ============================================
-// Exports
-// ============================================
 
 module.exports = {
-    decodeFile,
-    changeLevel
+    decodeFile
 };
