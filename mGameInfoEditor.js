@@ -106,6 +106,18 @@ function changeDataElem(
     const oldElement =
         match[0];
 
+    const valuePattern =
+        /(\bvalue\s*=\s*)(["'])([^"']*)\2/;
+
+    const valueMatch =
+        oldElement.match(valuePattern);
+
+    if (!valueMatch) {
+        throw new Error(
+            `لم يتم العثور على الخاصية value داخل ${elemName}`
+        );
+    }
+
     const newValueString =
         String(newValue)
             .replace(/&/g, "&amp;")
@@ -115,13 +127,15 @@ function changeDataElem(
 
     const newElement =
         oldElement.replace(
-            /(\bvalue\s*=\s*)(["'])[^"']*\2/,
-            `$1"${newValueString}"`
+            valuePattern,
+            `$1$2${newValueString}$2`
         );
 
+    // القيمة الجديدة هي نفسها القديمة
     if (newElement === oldElement) {
-        throw new Error(
-            `لم يتم العثور على الخاصية value داخل ${elemName}`
+        return Buffer.from(
+            text,
+            "utf8"
         );
     }
 
