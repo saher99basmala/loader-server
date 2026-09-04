@@ -48,11 +48,10 @@ function changeLevel(xml, newLevel) {
         match[0];
 
     const newElement =
-        oldElement.replace(
-            /(\bv=["'])[^"']*(["'])/,
-            `$1${newLevel}$2`
-        );
-
+    oldElement.replace(
+        /v\s*=\s*(["'])[^"']*\1/,
+        `v="${newLevel}"`
+    );
     if (
         newElement === oldElement
     ) {
