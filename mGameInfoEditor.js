@@ -228,7 +228,8 @@ const UNLOCKED_FRAMES_VALUE =
 const UNLOCKED_STYLES_VALUE =
     "gold,festival,cooking,bsboste,neon,default,animatedUnderwaterViolet,easter";
 
-
+const UNLOCKED_EXP_RANKS_VALUE =
+    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UUlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UUlE=";
 // ============================================
 // قائمة التعديلات
 // ============================================
@@ -291,8 +292,15 @@ const EDITORS = {
             UNLOCKED_STYLES_VALUE
         );
 
-    }
+    }, 
 
+unlockedExpRanks: function(xml) {
+    return changeDataElem(
+        xml,
+        "UnlockedExpRanks",
+        UNLOCKED_EXP_RANKS_VALUE
+    );
+}
 };
 
 
