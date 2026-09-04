@@ -1,7 +1,69 @@
 // ============================================
 // mGameInfoEditor.js
-// محرر XML بعد فك التشفير
+// جميع تعديلات mGameInfo.xml هنا
 // ============================================
+
+
+// ============================================
+// تعديل Var عام
+// ============================================
+
+function changeVar(xml, varName, newValue) {
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    const text = xml.toString("utf8");
+
+    const escapedName =
+        String(varName).replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+        );
+
+    const pattern =
+        new RegExp(
+            `<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*>`
+        );
+
+    const match = text.match(pattern);
+
+    if (!match) {
+        throw new Error(
+            `لم يتم العثور على Var: ${varName}`
+        );
+    }
+
+    const oldElement = match[0];
+
+    const newValueString =
+        String(newValue)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+    const newElement =
+        oldElement.replace(
+            /(\bv\s*=\s*)(["'])[^"']*\2/,
+            `$1"${newValueString}"`
+        );
+
+    if (newElement === oldElement) {
+        throw new Error(
+            `لم يتم العثور على الخاصية v داخل ${varName}`
+        );
+    }
+
+    return Buffer.from(
+        text.replace(
+            oldElement,
+            newElement
+        ),
+        "utf8"
+    );
+}
 
 
 // ============================================
@@ -12,8 +74,13 @@ function changeLevel(xml, newLevel) {
 
     newLevel = Number(newLevel);
 
-    if (!Number.isInteger(newLevel) || newLevel < 0) {
-        throw new Error("المستوى يجب أن يكون رقمًا صحيحًا");
+    if (
+        !Number.isInteger(newLevel) ||
+        newLevel < 0
+    ) {
+        throw new Error(
+            "المستوى يجب أن يكون رقمًا صحيحًا"
+        );
     }
 
     if (!Buffer.isBuffer(xml)) {
@@ -61,80 +128,84 @@ function changeLevel(xml, newLevel) {
 
 
 // ============================================
-// تعديل أي Var
-//
-// مثال:
-// <Var name="townName" v="سنة اولى BSB"/>
-//
-// يمكن تغييرها إلى:
-// <Var name="townName" v="مدينتي"/>
+// قائمة التعديلات
 // ============================================
 
-function changeVar(xml, varName, newValue) {
+const EDITORS = {
 
-    if (!Buffer.isBuffer(xml)) {
-        xml = Buffer.from(xml);
-    }
+    // المستوى
+    level: function(xml, value) {
+        return changeLevel(xml, value);
+    },
 
-    const text = xml.toString("utf8");
 
-    // حماية اسم Var عند استخدامه داخل RegExp
-    const escapedName =
-        varName.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
+    // اسم المدينة
+    townName: function(xml, value) {
+        return changeVar(
+            xml,
+            "townName",
+            value
         );
+    },
 
-    // البحث عن Var حسب name
-    const pattern =
-        new RegExp(
-            `<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*>`
-        );
 
-    const match =
-        text.match(pattern);
+    // ========================================
+    // سنضيف هنا التعديلات القادمة
+    // مثال:
+    //
+    // products: function(xml, value) {
+    //     return changeVar(
+    //         xml,
+    //         "اسم_المتغير",
+    //         value
+    //     );
+    // },
+    // ========================================
+};
 
-    if (!match) {
+
+// ============================================
+// تنفيذ التعديلات المطلوبة
+// ============================================
+
+function applyEdits(xml, edits) {
+
+    if (!Array.isArray(edits)) {
         throw new Error(
-            `لم يتم العثور على العنصر name="${varName}"`
+            "قائمة التعديلات غير صحيحة"
         );
     }
 
-    const oldElement =
-        match[0];
+    let result = xml;
 
-    // تغيير قيمة v فقط
-    const newElement =
-        oldElement.replace(
-            /(\bv=["'])[^"']*(["'])/,
-            `$1${String(newValue)
-                .replace(/"/g, "&quot;")}$2`
-        );
+    for (const edit of edits) {
 
-    if (newElement === oldElement) {
-        throw new Error(
-            `تم العثور على ${varName} ولكن لم يتم العثور على الخاصية v`
-        );
+        if (!edit || !edit.type) {
+            continue;
+        }
+
+        const editor =
+            EDITORS[edit.type];
+
+        if (!editor) {
+            throw new Error(
+                `التعديل غير معروف: ${edit.type}`
+            );
+        }
+
+        result =
+            editor(
+                result,
+                edit.value
+            );
     }
 
-    const updated =
-        text.replace(
-            oldElement,
-            newElement
-        );
-
-    return Buffer.from(
-        updated,
-        "utf8"
-    );
+    return result;
 }
 
 
-// ============================================
-// التصدير
-// ============================================
-
 module.exports = {
+    changeVar,
     changeLevel,
-    changeVar
+    applyEdits
 };
