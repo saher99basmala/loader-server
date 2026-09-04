@@ -294,15 +294,7 @@ livesSent: function(xml, value) {
         "LivesSent",
         value
     );
-},
 
-problemLevel: function(xml, value) {
-    return changeVar(
-        xml,
-        "problemLevel",
-        value
-    );
-},
 
 
     // ----------------------------------------
