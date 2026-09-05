@@ -2,7 +2,7 @@ const express = require("express");
 const fetch = require("node-fetch");
 const session = require("express-session");
 const app = express();
-
+const fetchCity = require("./fetchCity");
 const view = require("./view");
 const api = require("./api");
 const { supabase } = require("./supabase");
