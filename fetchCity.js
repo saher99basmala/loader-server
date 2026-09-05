@@ -1,6 +1,9 @@
+const express = require("express");
 const fetch = require("node-fetch");
 const crypto = require("crypto");
 const zlib = require("zlib");
+
+const router = express.Router();
 
 const AES_KEY = Buffer.from(
     process.env.FETCHCITY_AES_KEY || "Wucai6oj0sheiX3p",
@@ -179,7 +182,6 @@ async function fetchCity({
         `{"cityId":"","cityVer":${cityVer},"fetchCityId":"${cityId}","important":true}`;
 
 
-    // UTF-8
     const requestBytes =
         Buffer.from(
             requestJson,
@@ -192,7 +194,7 @@ async function fetchCity({
         gzip(requestBytes);
 
 
-    // AES-GCM
+    // AES-128-GCM
     const encrypted =
         encryptRequest(
             compressed
@@ -200,7 +202,7 @@ async function fetchCity({
 
 
     // ==========================
-    // REQUEST TO PLAYRIX
+    // REQUEST TO UPSTREAM
     // ==========================
 
     const controller =
@@ -263,7 +265,7 @@ async function fetchCity({
 
 
     // ==========================
-    // CHECK HTTP
+    // HTTP STATUS
     // ==========================
 
     if (!response.ok) {
@@ -303,7 +305,7 @@ async function fetchCity({
 
 
     // ==========================
-    // READ RESPONSE
+    // RESPONSE BODY
     // ==========================
 
     const responseBody =
@@ -312,10 +314,7 @@ async function fetchCity({
         );
 
 
-    // ==========================
-    // AES DECRYPT
-    // ==========================
-
+    // AES-GCM decrypt
     const decrypted =
         decryptResponse(
             responseBody,
@@ -323,10 +322,7 @@ async function fetchCity({
         );
 
 
-    // ==========================
-    // GZIP DECRYPTED RESPONSE
-    // ==========================
-
+    // GZIP decompress
     const jsonText =
         gunzip(
             decrypted
@@ -378,12 +374,11 @@ async function fetchCity({
 
 
     // ==========================
-    // BASE64 ONLY
+    // BASE64 DECODE ONLY
     // ==========================
     //
-    // لا نفك SaveCrypto هنا.
-    // نحصل فقط على bytes الخاصة
-    // بالملف الداخلي ونرجعها كما هي.
+    // لا نفك SaveCrypto.
+    // الملف الداخلي يبقى كما استلمه العميل.
     //
 
     const cityBytes =
@@ -403,9 +398,138 @@ async function fetchCity({
 
 
 // ==========================
+// GET /api/fetch-city
+// ==========================
+
+router.get("/", async (req, res) => {
+
+    try {
+
+        const result =
+            await fetchCity({
+
+                cityId:
+                    String(
+                        req.query.cityId || ""
+                    ),
+
+                cityVer:
+                    String(
+                        req.query.cityVer || ""
+                    ),
+
+                bver:
+                    String(
+                        req.query.bver || ""
+                    ),
+
+                fver:
+                    String(
+                        req.query.fver || ""
+                    )
+            });
+
+
+        res.set(
+            "Content-Type",
+            "application/octet-stream"
+        );
+
+        res.set(
+            "Content-Disposition",
+            `attachment; filename="${result.cityId}.bin"`
+        );
+
+        return res.send(
+            result.bytes
+        );
+
+    } catch (e) {
+
+        console.error(
+            "FetchCity error:",
+            e
+        );
+
+        return res.status(400).json({
+
+            status: "error",
+
+            error:
+                e.message
+        });
+    }
+});
+
+
+// ==========================
+// POST /api/fetch-city
+// ==========================
+
+router.post("/", async (req, res) => {
+
+    try {
+
+        const result =
+            await fetchCity({
+
+                cityId:
+                    String(
+                        req.body.cityId || ""
+                    ),
+
+                cityVer:
+                    String(
+                        req.body.cityVer || ""
+                    ),
+
+                bver:
+                    String(
+                        req.body.bver || ""
+                    ),
+
+                fver:
+                    String(
+                        req.body.fver || ""
+                    )
+            });
+
+
+        res.set(
+            "Content-Type",
+            "application/octet-stream"
+        );
+
+        res.set(
+            "Content-Disposition",
+            `attachment; filename="${result.cityId}.bin"`
+        );
+
+        return res.send(
+            result.bytes
+        );
+
+    } catch (e) {
+
+        console.error(
+            "FetchCity error:",
+            e
+        );
+
+        return res.status(400).json({
+
+            status: "error",
+
+            error:
+                e.message
+        });
+    }
+});
+
+
+// ==========================
 // EXPORT
 // ==========================
 
-module.exports = {
-    fetchCity
-};
+module.exports = router;
+module.exports.fetchCity = fetchCity;
