@@ -1,8 +1,9 @@
 const express = require("express");
 const fetch = require("node-fetch");
 const session = require("express-session");
-const app = express();
 const fetchCity = require("./fetchCity");
+const app = express();
+
 const view = require("./view");
 const api = require("./api");
 const { supabase } = require("./supabase");
@@ -17,15 +18,26 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.use(
-session({
-secret: "BS_ADMIN_SECRET",
-resave: false,
-saveUninitialized: false
-})
+    session({
+        secret: "BS_ADMIN_SECRET",
+        resave: false,
+        saveUninitialized: false
+    })
 );
 
 app.use("/", view);
 app.use("/api", api);
+
+// ==========================
+// FETCH CITY
+// ==========================
+
+app.use("/api/fetch-city", fetchCity);
+
+
+// ==========================
+// DECODE
+// ==========================
 
 app.use("/api/decode", express.raw({
     type: "application/octet-stream",
@@ -33,22 +45,39 @@ app.use("/api/decode", express.raw({
 }));
 
 app.post("/api/decode", (req, res) => {
+
     try {
-        const decoded = mGameInfoDecoder.decodeFile(
-            req.body
+
+        const decoded =
+            mGameInfoDecoder.decodeFile(
+                req.body
+            );
+
+        res.set(
+            "Content-Type",
+            "application/octet-stream"
         );
 
-        res.set("Content-Type", "application/octet-stream");
         res.send(decoded);
 
     } catch (e) {
-        console.error("Decode error:", e);
+
+        console.error(
+            "Decode error:",
+            e
+        );
 
         res.status(400).send(
-            "Decode error: " + e.message
+            "Decode error: " +
+            e.message
         );
     }
 });
+
+
+// ==========================
+// EDIT
+// ==========================
 
 app.use("/api/edit", express.raw({
     type: "application/octet-stream",
@@ -59,19 +88,25 @@ app.post("/api/edit", (req, res) => {
 
     try {
 
-        const editsText = req.query.edits;
+        const editsText =
+            req.query.edits;
 
         if (!editsText) {
+
             return res.status(400).send(
                 "Missing edits"
             );
         }
 
+
         let edits;
 
         try {
 
-            edits = JSON.parse(editsText);
+            edits =
+                JSON.parse(
+                    editsText
+                );
 
         } catch (e) {
 
@@ -80,10 +115,12 @@ app.post("/api/edit", (req, res) => {
             );
         }
 
+
         const decoded =
             mGameInfoDecoder.decodeFile(
                 req.body
             );
+
 
         const edited =
             mGameInfoEditor.applyEdits(
@@ -91,12 +128,15 @@ app.post("/api/edit", (req, res) => {
                 edits
             );
 
+
         res.set(
             "Content-Type",
             "application/octet-stream"
         );
 
-        res.send(edited);
+        res.send(
+            edited
+        );
 
     } catch (e) {
 
@@ -112,124 +152,232 @@ app.post("/api/edit", (req, res) => {
     }
 });
 
-/* ==========================
-API CHECK KEY
-========================== */
+
+// ==========================
+// API CHECK KEY
+// ==========================
 
 app.get("/api/check", async (req, res) => {
 
-const key = req.query.key;
-const deviceid = req.query.deviceid;
+    const key =
+        req.query.key;
 
-if (!key || !deviceid) {
-return res.json({
-status: "invalid"
+    const deviceid =
+        req.query.deviceid;
+
+
+    if (!key || !deviceid) {
+
+        return res.json({
+            status: "invalid"
+        });
+    }
+
+
+    const {
+        data: item,
+        error
+    } = await supabase
+        .from("keys")
+        .select("*")
+        .eq("key", key)
+        .single();
+
+
+    if (error || !item) {
+
+        return res.json({
+            status: "invalid"
+        });
+    }
+
+
+    if (item.status === "banned") {
+
+        return res.json({
+            status: "banned"
+        });
+    }
+
+
+    if (!item.deviceid) {
+
+        const {
+            error: updateError
+        } = await supabase
+            .from("keys")
+            .update({
+                deviceid: deviceid
+            })
+            .eq("key", key)
+            .is("deviceid", null);
+
+
+        if (updateError) {
+
+            return res.json({
+                status: "invalid"
+            });
+        }
+
+    } else if (
+        item.deviceid !== deviceid
+    ) {
+
+        return res.json({
+            status: "another_device"
+        });
+    }
+
+
+    const now =
+        new Date();
+
+    const expire =
+        new Date(
+            item.expireat
+        );
+
+
+    if (expire <= now) {
+
+        await supabase
+            .from("keys")
+            .update({
+                status: "expired"
+            })
+            .eq("key", key);
+
+
+        return res.json({
+            status: "expired"
+        });
+    }
+
+
+    const diff =
+        expire.getTime() -
+        now.getTime();
+
+
+    const days =
+        Math.floor(
+            diff /
+            (1000 * 60 * 60 * 24)
+        );
+
+
+    const hours =
+        Math.floor(
+            (
+                diff /
+                (1000 * 60 * 60)
+            ) % 24
+        );
+
+
+    const minutes =
+        Math.floor(
+            (
+                diff /
+                (1000 * 60)
+            ) % 60
+        );
+
+
+    return res.json({
+
+        status: "active",
+
+        name: item.name,
+
+        days,
+
+        hours,
+
+        minutes
+
+    });
+
 });
-}
 
-const { data: item, error } = await supabase
-.from("keys")
-.select("*")
-.eq("key", key)
-.single();
 
-if (error || !item) {
-return res.json({
-status: "invalid"
-});
-}
-
-if (item.status === "banned") {
-return res.json({
-status: "banned"
-});
-}
-
-if (!item.deviceid) {
-const { error: updateError } = await supabase
-.from("keys")
-.update({ deviceid: deviceid })
-.eq("key", key)
-.is("deviceid", null);
-
-if (updateError) {
-return res.json({ status: "invalid" });
-}
-
-} else if (item.deviceid !== deviceid) {
-return res.json({
-status: "another_device"
-});
-}
-
-const now = new Date();
-const expire = new Date(item.expireat);
-
-if (expire <= now) {
-
-await supabase
-.from("keys")
-.update({
-status: "expired"
-})
-.eq("key", key);
-
-return res.json({
-status: "expired"
-});
-}
-
-const diff = expire.getTime() - now.getTime();
-
-const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-const minutes = Math.floor((diff / (1000 * 60)) % 60);
-
-return res.json({
-status: "active",
-name: item.name,
-days,
-hours,
-minutes
-});
-});
-/* ==========================
-SCRIPT
-========================== */
+// ==========================
+// SCRIPT
+// ==========================
 
 app.get("/script", async (req, res) => {
 
-if (req.query.key !== "12345") {
-return res.send("DENIED");
-}
+    if (
+        req.query.key !== "12345"
+    ) {
 
-if (req.headers["x-secret"] !== SECRET) {
-return res.send("تم سحب معلومات جهازك بنجاح😉😎");
-}
+        return res.send(
+            "DENIED"
+        );
+    }
 
-try {
 
-const response = await fetch(
-"https://pastebin.com/raw/uFVCAKm0"
+    if (
+        req.headers["x-secret"] !== SECRET
+    ) {
+
+        return res.send(
+            "تم سحب معلومات جهازك بنجاح😉😎"
+        );
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "https://pastebin.com/raw/uFVCAKm0"
+            );
+
+
+        const script =
+            await response.text();
+
+
+        if (
+            !script ||
+            script.length < 10
+        ) {
+
+            return res.send(
+                "ERROR"
+            );
+        }
+
+
+        res.send(
+            script
+        );
+
+    } catch (e) {
+
+        console.log(
+            e
+        );
+
+        res.send(
+            "ERROR"
+        );
+    }
+
+});
+
+
+// ==========================
+// START SERVER
+// ==========================
+
+app.listen(
+    PORT,
+    () => {
+        console.log(
+            `Server running on port ${PORT}`
+        );
+    }
 );
-
-const script = await response.text();
-
-if (!script || script.length < 10) {
-return res.send("ERROR");
-}
-
-res.send(script);
-
-} catch (e) {
-
-console.log(e);
-res.send("ERROR");
-
-}
-
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
