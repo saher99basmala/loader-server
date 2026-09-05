@@ -269,7 +269,7 @@ const UNLOCKED_STYLES_VALUE =
 
 
 const UNLOCKED_EXP_RANKS_VALUE =
-    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
+    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
 
 
 /*
@@ -425,16 +425,11 @@ function unlockAllCards(
 فتح جميع توسعات الأراضي
 ========================================
 
-مطابق لمنطق Smali الموجود في Lm0/n0:
-
 يبحث عن:
+
 <Object ... "storeId":"expandBuy" ... />
 
-ثم يستبدل العنصر بالكامل بقيمة فارغة.
-
-أي أن Object يتم حذفه من XML.
-
-العداد removed يمثل قيمة P في Smali.
+ثم يحذف العنصر بالكامل.
 ========================================
 */
 
@@ -452,20 +447,8 @@ function unlockLandExpansions(
     let removed =
         0;
 
-    /*
-    ========================================
-    Regex الخاص بـ expandBuy
-    ========================================
-    */
-
     const pattern =
         /<Object\b[^>]*\bdata='[^']*"storeId":"expandBuy"[^']*'\s*\/>/gi;
-
-    /*
-    ========================================
-    البحث والحذف
-    ========================================
-    */
 
     text =
         text.replace(
@@ -479,11 +462,397 @@ function unlockLandExpansions(
             }
         );
 
+    const result =
+        Buffer.from(
+            text,
+            "utf8"
+        );
+
+    result.removed =
+        removed;
+
+    return result;
+}
+
+
+/*
+========================================
+قائمة Avatars
+========================================
+
+نفس قائمة IDs الموجودة في Smali.
+========================================
+*/
+
+const AVATAR_IDS =
+    "116-167,168-221,223,225-248,254,256-258,261,263-265,267-300,302-310,312-315,317-336,338-341,346,350,6,95,34,397,50,30,100-104,0,1,10-18,21-24,3,32,35-39,364,370,371,373,377,382-385,387-394,4,43,45-49,5,51-53,55,58-64,66,67,69,7,70,72-74,77-81,8,84,85,9,94,96-98,33,31,27,26,25,29,28,398,19,2,20,264,379,380,44,48,1390,1391";
+
+
+/*
+========================================
+قائمة Migration Avatars
+========================================
+*/
+
+const MIGRATE_AVATAR_IDS =
+    "25-29";
+
+
+/*
+========================================
+تحويل النطاقات إلى IDs
+========================================
+
+مثال:
+
+116-119,223,225-227
+
+يصبح:
+
+116
+117
+118
+119
+223
+225
+226
+227
+========================================
+*/
+
+function parseRanges(
+    value
+) {
+
+    const result =
+        [];
+
+    const parts =
+        String(value)
+            .split(",");
+
+    for (
+        const part of parts
+    ) {
+
+        const item =
+            part.trim();
+
+        if (!item) {
+            continue;
+        }
+
+        if (
+            item.includes("-")
+        ) {
+
+            const range =
+                item.split("-");
+
+            const start =
+                Number(range[0]);
+
+            const end =
+                Number(range[1]);
+
+            if (
+                !Number.isInteger(start) ||
+                !Number.isInteger(end)
+            ) {
+
+                continue;
+
+            }
+
+            const from =
+                Math.min(
+                    start,
+                    end
+                );
+
+            const to =
+                Math.max(
+                    start,
+                    end
+                );
+
+            for (
+                let i = from;
+                i <= to;
+                i++
+            ) {
+
+                result.push(i);
+
+            }
+
+        } else {
+
+            const number =
+                Number(item);
+
+            if (
+                Number.isInteger(number)
+            ) {
+
+                result.push(number);
+
+            }
+
+        }
+
+    }
+
+    return [
+        ...new Set(result)
+    ];
+}
+
+
+/*
+========================================
+تشفير XML للنصوص
+========================================
+*/
+
+function escapeXml(
+    value
+) {
+
+    return String(value)
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        );
+}
+
+
+/*
+========================================
+إضافة / تحديث Avatar Var
+========================================
+
+Unlocked:
+
+<Var name="Unlocked_ava116" v="1" t="b"/>
+
+Migration:
+
+<Var name="MigrateUnlocked_ava25" v="1"/>
+========================================
+*/
+
+function setAvatarVar(
+    text,
+    name,
+    migrate = false
+) {
+
+    const escapedName =
+        String(name).replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+        );
+
+    const pattern =
+        new RegExp(
+            `<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*\\/?>`,
+            "i"
+        );
+
+    const match =
+        text.match(
+            pattern
+        );
+
+    const safeName =
+        escapeXml(
+            name
+        );
+
+    const newElement =
+        migrate
+            ? `<Var name="${safeName}" v="1"/>`
+            : `<Var name="${safeName}" v="1" t="b"/>`;
+
     /*
     ========================================
-    النتيجة
+    إذا كان موجودًا:
+    استبدله
     ========================================
     */
+
+    if (match) {
+
+        return text.replace(
+            match[0],
+            newElement
+        );
+
+    }
+
+    /*
+    ========================================
+    إذا لم يكن موجودًا:
+    أضفه قبل </Global>
+    ========================================
+    */
+
+    const globalEnd =
+        text.search(
+            /<\/Global\s*>/i
+        );
+
+    if (
+        globalEnd !== -1
+    ) {
+
+        return (
+            text.substring(
+                0,
+                globalEnd
+            ) +
+            newElement +
+            "\n" +
+            text.substring(
+                globalEnd
+            )
+        );
+
+    }
+
+    /*
+    ========================================
+    إذا لم يوجد Global:
+    أضفه قبل نهاية العنصر الجذر
+    ========================================
+    */
+
+    const rootEnd =
+        text.lastIndexOf(
+            "</"
+        );
+
+    if (
+        rootEnd !== -1
+    ) {
+
+        return (
+            text.substring(
+                0,
+                rootEnd
+            ) +
+            newElement +
+            "\n" +
+            text.substring(
+                rootEnd
+            )
+        );
+
+    }
+
+    /*
+    ========================================
+    كحل أخير
+    ========================================
+    */
+
+    return (
+        text +
+        "\n" +
+        newElement
+    );
+}
+
+
+/*
+========================================
+فتح جميع Avatars
+========================================
+*/
+
+function unlockAllAvatars(
+    xml
+) {
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    let text =
+        xml.toString("utf8");
+
+    /*
+    ========================================
+    تحويل قائمة Avatars
+    ========================================
+    */
+
+    const avatarIds =
+        parseRanges(
+            AVATAR_IDS
+        );
+
+    /*
+    ========================================
+    تحويل قائمة Migration
+    ========================================
+    */
+
+    const migrateIds =
+        parseRanges(
+            MIGRATE_AVATAR_IDS
+        );
+
+    /*
+    ========================================
+    إضافة Unlocked_ava
+    ========================================
+    */
+
+    for (
+        const id of avatarIds
+    ) {
+
+        text =
+            setAvatarVar(
+                text,
+                `Unlocked_ava${id}`,
+                false
+            );
+
+    }
+
+    /*
+    ========================================
+    إضافة MigrateUnlocked_ava
+    ========================================
+    */
+
+    for (
+        const id of migrateIds
+    ) {
+
+        text =
+            setAvatarVar(
+                text,
+                `MigrateUnlocked_ava${id}`,
+                true
+            );
+
+    }
 
     const result =
         Buffer.from(
@@ -492,13 +861,16 @@ function unlockLandExpansions(
         );
 
     /*
-    لا نغير شكل الـ Buffer.
-    نخزن العدد فقط كخاصية إضافية
-    إذا احتاجه السيرفر.
+    ========================================
+    معلومات إضافية للـ Server
+    ========================================
     */
 
-    result.removed =
-        removed;
+    result.avatarCount =
+        avatarIds.length;
+
+    result.migrateAvatarCount =
+        migrateIds.length;
 
     return result;
 }
@@ -513,7 +885,9 @@ EDITORS
 const EDITORS = {
 
     /*
-    المستوى
+    ========================================
+    Level
+    ========================================
     */
 
     level: function(
@@ -530,7 +904,9 @@ const EDITORS = {
 
 
     /*
-    اسم المدينة
+    ========================================
+    Town Name
+    ========================================
     */
 
     townName: function(
@@ -548,7 +924,9 @@ const EDITORS = {
 
 
     /*
-    إنجاز التعاون
+    ========================================
+    Achievement Teamwork
+    ========================================
     */
 
     achievementTeamwork: function(
@@ -566,7 +944,9 @@ const EDITORS = {
 
 
     /*
-    مستويات المحاولة الأولى
+    ========================================
+    First Attempt M3 Levels
+    ========================================
     */
 
     firstAttemptM3Levels: function(
@@ -584,7 +964,9 @@ const EDITORS = {
 
 
     /*
-    مجموعات البطاقات المكتملة
+    ========================================
+    Full Card Collections
+    ========================================
     */
 
     fullCardCollections: function(
@@ -602,7 +984,9 @@ const EDITORS = {
 
 
     /*
-    الحيوات المرسلة
+    ========================================
+    Lives Sent
+    ========================================
     */
 
     livesSent: function(
@@ -620,7 +1004,9 @@ const EDITORS = {
 
 
     /*
-    مستويات M3 المكتملة
+    ========================================
+    Match 3 Complete Levels
+    ========================================
     */
 
     m3CompLvls: function(
@@ -638,7 +1024,9 @@ const EDITORS = {
 
 
     /*
-    مهام السباق المكتملة
+    ========================================
+    Regata Tasks Completed
+    ========================================
     */
 
     regataTasksCompleted: function(
@@ -656,7 +1044,9 @@ const EDITORS = {
 
 
     /*
-    فتح الإطارات
+    ========================================
+    Unlocked Frames
+    ========================================
     */
 
     unlockedFrames: function(
@@ -673,7 +1063,9 @@ const EDITORS = {
 
 
     /*
-    فتح الستايلات
+    ========================================
+    Unlocked Styles
+    ========================================
     */
 
     unlockedStyles: function(
@@ -690,7 +1082,9 @@ const EDITORS = {
 
 
     /*
-    فتح رتب الخبرة
+    ========================================
+    Unlocked Experience Ranks
+    ========================================
     */
 
     unlockedExpRanks: function(
@@ -707,7 +1101,9 @@ const EDITORS = {
 
 
     /*
-    فتح الكروت 1 - 150
+    ========================================
+    فتح جميع الكروت
+    ========================================
     */
 
     unlockAllCards: function(
@@ -722,7 +1118,9 @@ const EDITORS = {
 
 
     /*
+    ========================================
     فتح جميع توسعات الأراضي
+    ========================================
     */
 
     unlockLandExpansions: function(
@@ -730,6 +1128,23 @@ const EDITORS = {
     ) {
 
         return unlockLandExpansions(
+            xml
+        );
+
+    },
+
+
+    /*
+    ========================================
+    فتح جميع Avatars
+    ========================================
+    */
+
+    unlockAllAvatars: function(
+        xml
+    ) {
+
+        return unlockAllAvatars(
             xml
         );
 
@@ -756,12 +1171,6 @@ function applyEdits(
     let result =
         xml;
 
-    /*
-    ========================================
-    التحقق من صيغة التعديلات
-    ========================================
-    */
-
     if (
         !edits ||
         typeof edits !== "object" ||
@@ -773,13 +1182,6 @@ function applyEdits(
         );
 
     }
-
-
-    /*
-    ========================================
-    تنفيذ التعديلات
-    ========================================
-    */
 
     for (
         const editName in edits
@@ -841,6 +1243,8 @@ module.exports = {
 
     unlockAllCards,
 
-    unlockLandExpansions
+    unlockLandExpansions,
+
+    unlockAllAvatars
 
 };
