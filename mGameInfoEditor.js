@@ -2,6 +2,29 @@
 ========================================
 mGameInfoEditor.js
 ========================================
+
+- تعديل Vars
+- تعديل DataElem
+- تعديل Level
+- فتح جميع البطاقات
+- فتح توسعات الأراضي
+- فتح جميع الـ Avatars
+- فتح جميع الـ Stickers / Chat Emojis
+
+منطق الـ Sticker مستخرج من ItemActivity:
+NewChatEmoji
+UnlockedChatEmoji
+
+IDs المستخرجة:
+sp1
+sp4-sp9
+sp10-sp27
+st1-st19
+st22-st32
+st34-st37
+st39-st80
+v1-v3
+========================================
 */
 
 
@@ -30,56 +53,23 @@ function changeVar(
             "\\$&"
         );
 
-    const pattern =
+    const regex =
         new RegExp(
-            `<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*>`
+            '(<Var\\b[^>]*\\bname="' +
+            escapedName +
+            '"[^>]*\\bv=")[^"]*(")',
+            "i"
         );
 
-    const match =
-        text.match(pattern);
-
-    if (!match) {
-
-        throw new Error(
-            `لم يتم العثور على Var: ${varName}`
-        );
-
-    }
-
-    const oldElement =
-        match[0];
-
-    const newValueString =
-        String(newValue)
-            .replace(/&/g, "&amp;")
-            .replace(/"/g, "&quot;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-
-    const newElement =
-        oldElement.replace(
-            /(\bv\s*=\s*)(["'])[^"']*\2/,
-            `$1"${newValueString}"`
-        );
-
-    if (
-        newElement === oldElement
-    ) {
-
-        return Buffer.from(
-            text,
-            "utf8"
-        );
-
-    }
-
-    return Buffer.from(
+    const result =
         text.replace(
-            oldElement,
-            newElement
-        ),
-        "utf8"
-    );
+            regex,
+            "$1" +
+            String(newValue) +
+            "$2"
+        );
+
+    return Buffer.from(result, "utf8");
 }
 
 
@@ -108,76 +98,29 @@ function changeDataElem(
             "\\$&"
         );
 
-    const pattern =
+    const regex =
         new RegExp(
-            `<DataElem\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*>`
+            '(<DataElem\\b[^>]*\\bname="' +
+            escapedName +
+            '"[^>]*\\bvalue=")[^"]*(")',
+            "i"
         );
 
-    const match =
-        text.match(pattern);
-
-    if (!match) {
-
-        throw new Error(
-            `لم يتم العثور على DataElem: ${elemName}`
-        );
-
-    }
-
-    const oldElement =
-        match[0];
-
-    const valuePattern =
-        /(\bvalue\s*=\s*)(["'])([^"']*)\2/;
-
-    const valueMatch =
-        oldElement.match(valuePattern);
-
-    if (!valueMatch) {
-
-        throw new Error(
-            `لم يتم العثور على الخاصية value داخل ${elemName}`
-        );
-
-    }
-
-    const newValueString =
-        String(newValue)
-            .replace(/&/g, "&amp;")
-            .replace(/"/g, "&quot;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-
-    const newElement =
-        oldElement.replace(
-            valuePattern,
-            `$1$2${newValueString}$2`
-        );
-
-    if (
-        newElement === oldElement
-    ) {
-
-        return Buffer.from(
-            text,
-            "utf8"
-        );
-
-    }
-
-    return Buffer.from(
+    const result =
         text.replace(
-            oldElement,
-            newElement
-        ),
-        "utf8"
-    );
+            regex,
+            "$1" +
+            String(newValue) +
+            "$2"
+        );
+
+    return Buffer.from(result, "utf8");
 }
 
 
 /*
 ========================================
-تعديل المستوى
+تعديل Level
 ========================================
 */
 
@@ -186,20 +129,6 @@ function changeLevel(
     newLevel
 ) {
 
-    newLevel =
-        Number(newLevel);
-
-    if (
-        !Number.isInteger(newLevel) ||
-        newLevel < 0
-    ) {
-
-        throw new Error(
-            "المستوى يجب أن يكون رقمًا صحيحًا"
-        );
-
-    }
-
     if (!Buffer.isBuffer(xml)) {
         xml = Buffer.from(xml);
     }
@@ -207,58 +136,50 @@ function changeLevel(
     const text =
         xml.toString("utf8");
 
-    const pattern =
-        /<Var\b(?=[^>]*\bname=["']levelup["'])[^>]*>/;
+    /*
+    نحاول أكثر من شكل شائع للـ Level
+    */
 
-    const match =
-        text.match(pattern);
+    let result = text;
 
-    if (!match) {
+    const patterns = [
 
-        throw new Error(
-            'لم يتم العثور على عنصر name="levelup"'
-        );
+        /(<Var\b[^>]*\bname="Level"[^>]*\bv=")[^"]*(")/i,
 
+        /(<Var\b[^>]*\bname="level"[^>]*\bv=")[^"]*(")/i,
+
+        /(<DataElem\b[^>]*\bname="Level"[^>]*\bvalue=")[^"]*(")/i,
+
+        /(<DataElem\b[^>]*\bname="level"[^>]*\bvalue=")[^"]*(")/i
+
+    ];
+
+    for (const regex of patterns) {
+
+        if (regex.test(result)) {
+
+            result =
+                result.replace(
+                    regex,
+                    "$1" +
+                    String(newLevel) +
+                    "$2"
+                );
+
+            break;
+        }
     }
 
-    const oldElement =
-        match[0];
-
-    const newElement =
-        oldElement.replace(
-            /(\bv=["'])[^"']*(["'])/,
-            `$1${newLevel}$2`
-        );
-
-    if (
-        newElement === oldElement
-    ) {
-
-        return Buffer.from(
-            text,
-            "utf8"
-        );
-
-    }
-
-    const updated =
-        text.replace(
-            oldElement,
-            newElement
-        );
-
-    return Buffer.from(
-        updated,
-        "utf8"
-    );
+    return Buffer.from(result, "utf8");
 }
 
 
 /*
 ========================================
-القيم الثابتة
+القيم الأصلية
 ========================================
 */
+
 
 const UNLOCKED_FRAMES_VALUE =
     "JBsYDjhUWyATVlUjXw==,VEdYLhJsA309Gy0tFgIwCCM=";
@@ -269,173 +190,40 @@ const UNLOCKED_STYLES_VALUE =
 
 
 const UNLOCKED_EXP_RANKS_VALUE =
-    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
+    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVgcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
 
 
 /*
 ========================================
-فتح جميع الكروت 1 - 150
+STICKER / CHAT EMOJI IDs
+مستخرجة من ItemActivity
 ========================================
 */
 
-function unlockAllCards(
-    xml
-) {
-
-    if (!Buffer.isBuffer(xml)) {
-        xml = Buffer.from(xml);
-    }
-
-    const text =
-        xml.toString("utf8");
-
-    const openPattern =
-        /<DataElem\b(?=[^>]*\bname=["']OwnedCards["'])[^>]*>/;
-
-    const openMatch =
-        text.match(openPattern);
-
-    if (!openMatch) {
-
-        throw new Error(
-            "لم يتم العثور على OwnedCards"
-        );
-
-    }
-
-    const start =
-        openMatch.index;
-
-    const openTag =
-        openMatch[0];
-
-    let position =
-        start + openTag.length;
-
-    let depth =
-        1;
-
-    let end =
-        -1;
-
-    const tagPattern =
-        /<DataElem\b[^>]*>|<\/DataElem\s*>/g;
-
-    tagPattern.lastIndex =
-        position;
-
-    let tagMatch;
-
-    while (
-        (tagMatch = tagPattern.exec(text)) !== null
-    ) {
-
-        const tag =
-            tagMatch[0];
-
-        if (
-            /^<DataElem\b[^>]*\/\s*>$/i.test(tag)
-        ) {
-
-            continue;
-
-        }
-
-        if (
-            /^<DataElem\b/i.test(tag)
-        ) {
-
-            depth++;
-
-        }
-
-        else if (
-            /^<\/DataElem/i.test(tag)
-        ) {
-
-            depth--;
-
-            if (
-                depth === 0
-            ) {
-
-                end =
-                    tagMatch.index;
-
-                break;
-
-            }
-
-        }
-
-    }
-
-    if (
-        end === -1
-    ) {
-
-        throw new Error(
-            "لم يتم العثور على نهاية OwnedCards"
-        );
-
-    }
-
-    let cards =
-        "";
-
-    for (
-        let i = 1;
-        i <= 150;
-        i++
-    ) {
-
-        const cardId =
-            `card_${String(i).padStart(2, "0")}`;
-
-        cards += `
-<DataElem type="dataStore">
-<DataElem name="cardId" type="string" value="${cardId}"/>
-<DataElem name="generatedCount" type="int" value="1000"/>
-<DataElem name="inStockCount" type="int" value="1000"/>
-<DataElem name="isNew" type="bool" value="false"/>
-<DataElem name="maxInStockCount" type="int" value="1000"/>
-</DataElem>`;
-
-    }
-
-    const updated =
-        text.substring(
-            0,
-            start + openTag.length
-        ) +
-        cards +
-        text.substring(
-            end
-        );
-
-    return Buffer.from(
-        updated,
-        "utf8"
-    );
-}
+const ALL_CHAT_EMOJI_IDS =
+    "sp4,sp5,sp6,sp7,sp8,sp9,sp1," +
+    "st1,st2,st3,st4,st5,st6,st7,st8,st9,st10," +
+    "st11,st12,st13,st14,st15,st16,st17,st18,st19," +
+    "st22,st23,st24,st25,st26,st27,st28,st29,st30," +
+    "st31,st32," +
+    "st34,st35,st36,st37," +
+    "st39,st40,st41,st42,st43,st44,st45,st46,st47," +
+    "st48,st49,st50,st51,st52,st53,st54,st55,st56," +
+    "st57,st58,st59,st60,st61,st62,st63,st64,st65," +
+    "st66,st67,st68,st69,st70,st71,st72,st73,st74," +
+    "st75,st76,st77,st78,st79,st80," +
+    "sp10,sp11,sp12,sp13,sp14,sp15,sp16,sp17,sp18,sp19," +
+    "sp20,sp21,sp22,sp23,sp24,sp25,sp26,sp27," +
+    "v1,v2,v3";
 
 
 /*
 ========================================
-فتح جميع توسعات الأراضي
-========================================
-
-يبحث عن:
-
-<Object ... "storeId":"expandBuy" ... />
-
-ثم يحذف العنصر بالكامل.
+Cards
 ========================================
 */
 
-function unlockLandExpansions(
-    xml
-) {
+function unlockAllCards(xml) {
 
     if (!Buffer.isBuffer(xml)) {
         xml = Buffer.from(xml);
@@ -444,43 +232,86 @@ function unlockLandExpansions(
     let text =
         xml.toString("utf8");
 
-    let removed =
-        0;
+    const ownedCardsRegex =
+        /(<DataElem\b[^>]*\bname="OwnedCards"[^>]*>)[\s\S]*?(<\/DataElem>)/i;
 
-    const pattern =
-        /<Object\b[^>]*\bdata='[^']*"storeId":"expandBuy"[^']*'\s*\/>/gi;
+    const match =
+        text.match(ownedCardsRegex);
+
+    if (!match) {
+        return Buffer.from(text, "utf8");
+    }
+
+    let cards = "";
+
+    for (let i = 1; i <= 150; i++) {
+
+        const id =
+            "card_" +
+            String(i).padStart(2, "0");
+
+        cards +=
+            '<DataElem type="dataStore">' +
+            '<DataElem name="cardId" type="string" value="' +
+            id +
+            '"/>' +
+            '<DataElem name="generatedCount" type="int" value="1000"/>' +
+            '<DataElem name="inStockCount" type="int" value="1000"/>' +
+            '<DataElem name="isNew" type="bool" value="false"/>' +
+            '<DataElem name="maxInStockCount" type="int" value="1000"/>' +
+            '</DataElem>';
+    }
 
     text =
         text.replace(
-            pattern,
-            function() {
-
-                removed++;
-
-                return "";
-
-            }
+            ownedCardsRegex,
+            "$1" +
+            cards +
+            "$2"
         );
 
-    const result =
-        Buffer.from(
-            text,
-            "utf8"
-        );
-
-    result.removed =
-        removed;
-
-    return result;
+    return Buffer.from(text, "utf8");
 }
 
 
 /*
 ========================================
-قائمة Avatars
+Land Expansions
 ========================================
+*/
 
-نفس قائمة IDs الموجودة في Smali.
+function unlockLandExpansions(xml) {
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    let text =
+        xml.toString("utf8");
+
+    /*
+    حذف Objects التي تحتوي على storeId=expandBuy
+    */
+
+    text =
+        text.replace(
+            /<Object\b[^>]*\bdata='[^']*"storeId"\s*:\s*"expandBuy"[^']*'\s*\/>/gi,
+            ""
+        );
+
+    text =
+        text.replace(
+            /<Object\b[^>]*\bdata="[^"]*"storeId"\s*:\s*"expandBuy"[^"]*"\s*\/>/gi,
+            ""
+        );
+
+    return Buffer.from(text, "utf8");
+}
+
+
+/*
+========================================
+Avatar IDs
 ========================================
 */
 
@@ -488,169 +319,95 @@ const AVATAR_IDS =
     "116-167,168-221,223,225-248,254,256-258,261,263-265,267-300,302-310,312-315,317-336,338-341,346,350,6,95,34,397,50,30,100-104,0,1,10-18,21-24,3,32,35-39,364,370,371,373,377,382-385,387-394,4,43,45-49,5,51-53,55,58-64,66,67,69,7,70,72-74,77-81,8,84,85,9,94,96-98,33,31,27,26,25,29,28,398,19,2,20,264,379,380,44,48,1390,1391";
 
 
-/*
-========================================
-قائمة Migration Avatars
-========================================
-*/
-
 const MIGRATE_AVATAR_IDS =
     "25-29";
 
 
 /*
 ========================================
-تحويل النطاقات إلى IDs
-========================================
-
-مثال:
-
-116-119,223,225-227
-
-يصبح:
-
-116
-117
-118
-119
-223
-225
-226
-227
+Parse ranges
 ========================================
 */
 
-function parseRanges(
-    value
-) {
+function parseRanges(value) {
 
-    const result =
-        [];
+    const result = [];
+
+    if (!value) {
+        return result;
+    }
 
     const parts =
-        String(value)
-            .split(",");
+        String(value).split(",");
 
-    for (
-        const part of parts
-    ) {
+    for (const raw of parts) {
 
-        const item =
-            part.trim();
+        const part =
+            raw.trim();
 
-        if (!item) {
+        if (!part) {
             continue;
         }
 
-        if (
-            item.includes("-")
-        ) {
+        if (part.includes("-")) {
 
             const range =
-                item.split("-");
+                part.split("-");
 
             const start =
-                Number(range[0]);
+                parseInt(range[0], 10);
 
             const end =
-                Number(range[1]);
+                parseInt(range[1], 10);
 
             if (
-                !Number.isInteger(start) ||
-                !Number.isInteger(end)
+                Number.isFinite(start) &&
+                Number.isFinite(end)
             ) {
 
-                continue;
+                const step =
+                    start <= end ? 1 : -1;
 
-            }
+                for (
+                    let i = start;
+                    step > 0 ? i <= end : i >= end;
+                    i += step
+                ) {
 
-            const from =
-                Math.min(
-                    start,
-                    end
-                );
-
-            const to =
-                Math.max(
-                    start,
-                    end
-                );
-
-            for (
-                let i = from;
-                i <= to;
-                i++
-            ) {
-
-                result.push(i);
-
+                    result.push(String(i));
+                }
             }
 
         } else {
 
-            const number =
-                Number(item);
-
-            if (
-                Number.isInteger(number)
-            ) {
-
-                result.push(number);
-
-            }
-
+            result.push(part);
         }
-
     }
 
-    return [
-        ...new Set(result)
-    ];
+    return result;
 }
 
 
 /*
 ========================================
-تشفير XML للنصوص
+XML Escape
 ========================================
 */
 
-function escapeXml(
-    value
-) {
+function escapeXml(value) {
 
     return String(value)
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        );
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/'/g, "&apos;");
 }
 
 
 /*
 ========================================
-إضافة / تحديث Avatar Var
-========================================
-
-Unlocked:
-
-<Var name="Unlocked_ava116" v="1" t="b"/>
-
-Migration:
-
-<Var name="MigrateUnlocked_ava25" v="1"/>
+Avatar Var
 ========================================
 */
 
@@ -666,125 +423,419 @@ function setAvatarVar(
             "\\$&"
         );
 
-    const pattern =
+    const regex =
         new RegExp(
-            `<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*\\/?>`,
+            '(<Var\\b[^>]*\\bname="' +
+            escapedName +
+            '"[^>]*\\bv=")[^"]*(")',
             "i"
         );
 
-    const match =
-        text.match(
-            pattern
-        );
+    const replacement =
+        '$1' +
+        '1' +
+        '$2';
 
-    const safeName =
-        escapeXml(
-            name
-        );
-
-    const newElement =
-        migrate
-            ? `<Var name="${safeName}" v="1"/>`
-            : `<Var name="${safeName}" v="1" t="b"/>`;
-
-    /*
-    ========================================
-    إذا كان موجودًا:
-    استبدله
-    ========================================
-    */
-
-    if (match) {
+    if (regex.test(text)) {
 
         return text.replace(
-            match[0],
-            newElement
+            regex,
+            replacement
         );
-
     }
 
     /*
-    ========================================
-    إذا لم يكن موجودًا:
-    أضفه قبل </Global>
-    ========================================
+    إذا لم يكن موجودًا نضيفه قبل Global
     */
+
+    const varXml =
+        '<Var name="' +
+        escapeXml(name) +
+        '" v="1"' +
+        (
+            migrate
+                ? ''
+                : ' t="b"'
+        ) +
+        '/>';
 
     const globalEnd =
         text.search(
-            /<\/Global\s*>/i
+            /<\/Global>/i
         );
 
-    if (
-        globalEnd !== -1
-    ) {
+    if (globalEnd !== -1) {
 
         return (
-            text.substring(
-                0,
-                globalEnd
-            ) +
-            newElement +
-            "\n" +
-            text.substring(
-                globalEnd
-            )
+            text.slice(0, globalEnd) +
+            varXml +
+            text.slice(globalEnd)
+        );
+    }
+
+    return text;
+}
+
+
+/*
+========================================
+Unlock All Avatars
+========================================
+*/
+
+function unlockAllAvatars(xml) {
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    let text =
+        xml.toString("utf8");
+
+    const avatarIds =
+        parseRanges(
+            AVATAR_IDS
         );
 
+    for (const id of avatarIds) {
+
+        text =
+            setAvatarVar(
+                text,
+                "Unlocked_ava" + id,
+                false
+            );
+    }
+
+    const migrateIds =
+        parseRanges(
+            MIGRATE_AVATAR_IDS
+        );
+
+    for (const id of migrateIds) {
+
+        text =
+            setAvatarVar(
+                text,
+                "MigrateUnlocked_ava" + id,
+                true
+            );
+    }
+
+    return Buffer.from(text, "utf8");
+}
+
+
+/*
+========================================
+Chat Emoji Parser
+نفس q0()
+========================================
+*/
+
+function parseChatEmojiList(value) {
+
+    const result = [];
+
+    const seen =
+        new Set();
+
+    if (
+        value === null ||
+        value === undefined
+    ) {
+        return result;
     }
 
     /*
-    ========================================
-    إذا لم يوجد Global:
-    أضفه قبل نهاية العنصر الجذر
-    ========================================
+    q0() يستخدم:
+    split("[,|]")
     */
 
-    const rootEnd =
-        text.lastIndexOf(
-            "</"
-        );
+    const parts =
+        String(value).split(/[,|]/);
 
-    if (
-        rootEnd !== -1
-    ) {
+    for (const part of parts) {
 
-        return (
-            text.substring(
-                0,
-                rootEnd
-            ) +
-            newElement +
-            "\n" +
-            text.substring(
-                rootEnd
-            )
-        );
+        const item =
+            part.trim();
 
+        if (!item) {
+            continue;
+        }
+
+        if (!seen.has(item)) {
+
+            seen.add(item);
+
+            result.push(item);
+        }
     }
 
-    /*
-    ========================================
-    كحل أخير
-    ========================================
-    */
+    return result;
+}
+
+
+/*
+========================================
+Chat Emoji Merge
+نفس C()
+========================================
+*/
+
+function mergeChatEmojiLists(
+    oldValue,
+    currentValue
+) {
+
+    const result = [];
+
+    const seen =
+        new Set();
+
+    const oldList =
+        parseChatEmojiList(
+            oldValue
+        );
+
+    const currentList =
+        parseChatEmojiList(
+            currentValue
+        );
+
+    for (const item of oldList) {
+
+        if (!seen.has(item)) {
+
+            seen.add(item);
+
+            result.push(item);
+        }
+    }
+
+    for (const item of currentList) {
+
+        if (!seen.has(item)) {
+
+            seen.add(item);
+
+            result.push(item);
+        }
+    }
+
+    return result.join(",");
+}
+
+
+/*
+========================================
+Chat Emoji Format
+نفس J()
+
+مثال:
+
+a,b,c
+
+تصبح:
+
+,a,,b,,c,
+========================================
+*/
+
+function formatChatEmojiValue(
+    value
+) {
+
+    if (
+        value === null ||
+        value === undefined
+    ) {
+        return "";
+    }
 
     return (
-        text +
-        "\n" +
-        newElement
+        "," +
+        String(value).replace(
+            /,/g,
+            ",,"
+        ) +
+        ","
     );
 }
 
 
 /*
 ========================================
-فتح جميع Avatars
+Get Var Value
 ========================================
 */
 
-function unlockAllAvatars(
-    xml
+function getVarValue(
+    text,
+    varName
+) {
+
+    const escapedName =
+        String(varName).replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+        );
+
+    const regex =
+        new RegExp(
+            '<Var\\b[^>]*\\bname="' +
+            escapedName +
+            '"[^>]*\\bv="([^"]*)"',
+            "i"
+        );
+
+    const match =
+        text.match(regex);
+
+    if (!match) {
+        return null;
+    }
+
+    return match[1];
+}
+
+
+/*
+========================================
+Set Chat Emoji Var
+========================================
+*/
+
+function setChatEmojiVar(
+    text,
+    name,
+    newValue
+) {
+
+    const escapedName =
+        String(name).replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+        );
+
+    const regex =
+        new RegExp(
+            '(<Var\\b[^>]*\\bname="' +
+            escapedName +
+            '"[^>]*\\bv=")[^"]*(")',
+            "i"
+        );
+
+    if (regex.test(text)) {
+
+        return text.replace(
+            regex,
+            "$1" +
+            escapeXml(newValue) +
+            "$2"
+        );
+    }
+
+    /*
+    إنشاء Var إذا لم يكن موجودًا
+    */
+
+    const varXml =
+        '<Var name="' +
+        escapeXml(name) +
+        '" v="' +
+        escapeXml(newValue) +
+        '"/>';
+
+    const globalEnd =
+        text.search(
+            /<\/Global>/i
+        );
+
+    if (globalEnd !== -1) {
+
+        return (
+            text.slice(0, globalEnd) +
+            varXml +
+            text.slice(globalEnd)
+        );
+    }
+
+    return text;
+}
+
+
+/*
+========================================
+Change Chat Emoji Var
+
+المنطق:
+
+old
+ +
+new
+ ↓
+C()
+ ↓
+J()
+========================================
+*/
+
+function changeChatEmojiVar(
+    xml,
+    varName,
+    newValue
+) {
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    let text =
+        xml.toString("utf8");
+
+    const oldValue =
+        getVarValue(
+            text,
+            varName
+        );
+
+    const merged =
+        mergeChatEmojiLists(
+            oldValue,
+            newValue
+        );
+
+    const formatted =
+        formatChatEmojiValue(
+            merged
+        );
+
+    text =
+        setChatEmojiVar(
+            text,
+            varName,
+            formatted
+        );
+
+    return Buffer.from(text, "utf8");
+}
+
+
+/*
+========================================
+Unlock All Chat Emojis / Stickers
+
+يعدل:
+
+NewChatEmoji
+UnlockedChatEmoji
+========================================
+*/
+
+function unlockChatEmojis(
+    xml,
+    value = ALL_CHAT_EMOJI_IDS
 ) {
 
     if (!Buffer.isBuffer(xml)) {
@@ -795,367 +846,184 @@ function unlockAllAvatars(
         xml.toString("utf8");
 
     /*
-    ========================================
-    تحويل قائمة Avatars
-    ========================================
+    NewChatEmoji
     */
 
-    const avatarIds =
-        parseRanges(
-            AVATAR_IDS
-        );
-
-    /*
-    ========================================
-    تحويل قائمة Migration
-    ========================================
-    */
-
-    const migrateIds =
-        parseRanges(
-            MIGRATE_AVATAR_IDS
-        );
-
-    /*
-    ========================================
-    إضافة Unlocked_ava
-    ========================================
-    */
-
-    for (
-        const id of avatarIds
-    ) {
-
-        text =
-            setAvatarVar(
-                text,
-                `Unlocked_ava${id}`,
-                false
-            );
-
-    }
-
-    /*
-    ========================================
-    إضافة MigrateUnlocked_ava
-    ========================================
-    */
-
-    for (
-        const id of migrateIds
-    ) {
-
-        text =
-            setAvatarVar(
-                text,
-                `MigrateUnlocked_ava${id}`,
-                true
-            );
-
-    }
-
-    const result =
-        Buffer.from(
+    const oldNew =
+        getVarValue(
             text,
-            "utf8"
+            "NewChatEmoji"
         );
 
+    const mergedNew =
+        mergeChatEmojiLists(
+            oldNew,
+            value
+        );
+
+    const formattedNew =
+        formatChatEmojiValue(
+            mergedNew
+        );
+
+    text =
+        setChatEmojiVar(
+            text,
+            "NewChatEmoji",
+            formattedNew
+        );
+
+
     /*
-    ========================================
-    معلومات إضافية للـ Server
-    ========================================
+    UnlockedChatEmoji
     */
 
-    result.avatarCount =
-        avatarIds.length;
+    const oldUnlocked =
+        getVarValue(
+            text,
+            "UnlockedChatEmoji"
+        );
 
-    result.migrateAvatarCount =
-        migrateIds.length;
+    const mergedUnlocked =
+        mergeChatEmojiLists(
+            oldUnlocked,
+            value
+        );
 
-    return result;
+    const formattedUnlocked =
+        formatChatEmojiValue(
+            mergedUnlocked
+        );
+
+    text =
+        setChatEmojiVar(
+            text,
+            "UnlockedChatEmoji",
+            formattedUnlocked
+        );
+
+
+    return Buffer.from(text, "utf8");
 }
 
 
 /*
 ========================================
-EDITORS
+Editors
 ========================================
 */
 
 const EDITORS = {
 
     /*
-    ========================================
-    Level
-    ========================================
+    Frames
     */
 
-    level: function(
-        xml,
-        value
-    ) {
-
-        return changeLevel(
-            xml,
-            value
-        );
-
-    },
+    unlockedFrames:
+        (xml) =>
+            changeVar(
+                xml,
+                "UnlockedFrames",
+                UNLOCKED_FRAMES_VALUE
+            ),
 
 
     /*
-    ========================================
-    Town Name
-    ========================================
+    Styles
     */
 
-    townName: function(
-        xml,
-        value
-    ) {
-
-        return changeVar(
-            xml,
-            "townName",
-            value
-        );
-
-    },
+    unlockedStyles:
+        (xml) =>
+            changeVar(
+                xml,
+                "UnlockedStyles",
+                UNLOCKED_STYLES_VALUE
+            ),
 
 
     /*
-    ========================================
-    Achievement Teamwork
-    ========================================
+    Experience ranks
     */
 
-    achievementTeamwork: function(
-        xml,
-        value
-    ) {
-
-        return changeVar(
-            xml,
-            "Achievement_Teamwork",
-            value
-        );
-
-    },
+    unlockedExpRanks:
+        (xml) =>
+            changeVar(
+                xml,
+                "UnlockedExpRanks",
+                UNLOCKED_EXP_RANKS_VALUE
+            ),
 
 
     /*
-    ========================================
-    First Attempt M3 Levels
-    ========================================
+    Cards
     */
 
-    firstAttemptM3Levels: function(
-        xml,
-        value
-    ) {
-
-        return changeVar(
-            xml,
-            "FirstAttemptM3Levels",
-            value
-        );
-
-    },
+    cards:
+        (xml) =>
+            unlockAllCards(xml),
 
 
     /*
-    ========================================
-    Full Card Collections
-    ========================================
+    Land
     */
 
-    fullCardCollections: function(
-        xml,
-        value
-    ) {
-
-        return changeVar(
-            xml,
-            "FullCardCollections",
-            value
-        );
-
-    },
+    land:
+        (xml) =>
+            unlockLandExpansions(xml),
 
 
     /*
-    ========================================
-    Lives Sent
-    ========================================
+    Avatars
     */
 
-    livesSent: function(
-        xml,
-        value
-    ) {
-
-        return changeVar(
-            xml,
-            "LivesSent",
-            value
-        );
-
-    },
+    avatars:
+        (xml) =>
+            unlockAllAvatars(xml),
 
 
     /*
-    ========================================
-    Match 3 Complete Levels
-    ========================================
+    جميع الـ Chat Emojis / Stickers
     */
 
-    m3CompLvls: function(
-        xml,
-        value
-    ) {
-
-        return changeVar(
-            xml,
-            "m3_comp_lvls",
-            value
-        );
-
-    },
+    chatEmojis:
+        (xml) =>
+            unlockChatEmojis(
+                xml,
+                ALL_CHAT_EMOJI_IDS
+            ),
 
 
     /*
-    ========================================
-    Regata Tasks Completed
-    ========================================
+    NewChatEmoji فقط
     */
 
-    regataTasksCompleted: function(
-        xml,
-        value
-    ) {
-
-        return changeVar(
-            xml,
-            "RegataTasksCompleted",
-            value
-        );
-
-    },
+    newChatEmoji:
+        (xml) =>
+            changeChatEmojiVar(
+                xml,
+                "NewChatEmoji",
+                ALL_CHAT_EMOJI_IDS
+            ),
 
 
     /*
-    ========================================
-    Unlocked Frames
-    ========================================
+    UnlockedChatEmoji فقط
     */
 
-    unlockedFrames: function(
-        xml
-    ) {
-
-        return changeDataElem(
-            xml,
-            "UnlockedFrames",
-            UNLOCKED_FRAMES_VALUE
-        );
-
-    },
-
-
-    /*
-    ========================================
-    Unlocked Styles
-    ========================================
-    */
-
-    unlockedStyles: function(
-        xml
-    ) {
-
-        return changeDataElem(
-            xml,
-            "UnlockedStyles",
-            UNLOCKED_STYLES_VALUE
-        );
-
-    },
-
-
-    /*
-    ========================================
-    Unlocked Experience Ranks
-    ========================================
-    */
-
-    unlockedExpRanks: function(
-        xml
-    ) {
-
-        return changeDataElem(
-            xml,
-            "UnlockedExpRanks",
-            UNLOCKED_EXP_RANKS_VALUE
-        );
-
-    },
-
-
-    /*
-    ========================================
-    فتح جميع الكروت
-    ========================================
-    */
-
-    unlockAllCards: function(
-        xml
-    ) {
-
-        return unlockAllCards(
-            xml
-        );
-
-    },
-
-
-    /*
-    ========================================
-    فتح جميع توسعات الأراضي
-    ========================================
-    */
-
-    unlockLandExpansions: function(
-        xml
-    ) {
-
-        return unlockLandExpansions(
-            xml
-        );
-
-    },
-
-
-    /*
-    ========================================
-    فتح جميع Avatars
-    ========================================
-    */
-
-    unlockAllAvatars: function(
-        xml
-    ) {
-
-        return unlockAllAvatars(
-            xml
-        );
-
-    }
+    unlockedChatEmoji:
+        (xml) =>
+            changeChatEmojiVar(
+                xml,
+                "UnlockedChatEmoji",
+                ALL_CHAT_EMOJI_IDS
+            )
 
 };
 
 
 /*
 ========================================
-APPLY EDITS
+Apply Edits
 ========================================
 */
 
@@ -1164,61 +1032,66 @@ function applyEdits(
     edits
 ) {
 
-    if (!Buffer.isBuffer(xml)) {
-        xml = Buffer.from(xml);
+    let result =
+        Buffer.isBuffer(xml)
+            ? xml
+            : Buffer.from(xml);
+
+    if (!edits) {
+        return result;
     }
 
-    let result =
-        xml;
+    /*
+    إذا كانت edits مصفوفة:
+    ["cards","avatars","chatEmojis"]
+    */
+
+    if (Array.isArray(edits)) {
+
+        for (const key of edits) {
+
+            if (
+                typeof EDITORS[key] ===
+                "function"
+            ) {
+
+                result =
+                    EDITORS[key](result);
+            }
+        }
+
+        return result;
+    }
+
+
+    /*
+    إذا كانت edits Object:
+    {
+        cards: true,
+        avatars: true,
+        chatEmojis: true
+    }
+    */
 
     if (
-        !edits ||
-        typeof edits !== "object" ||
-        Array.isArray(edits)
+        typeof edits === "object"
     ) {
 
-        throw new Error(
-            "صيغة التعديلات غير صحيحة"
-        );
-
-    }
-
-    for (
-        const editName in edits
-    ) {
-
-        if (
-            !Object.prototype.hasOwnProperty.call(
-                edits,
-                editName
-            )
+        for (
+            const [key, enabled]
+            of Object.entries(edits)
         ) {
 
-            continue;
+            if (
+                enabled &&
+                typeof EDITORS[key] ===
+                "function"
+            ) {
 
+                result =
+                    EDITORS[key](result);
+            }
         }
-
-        const editor =
-            EDITORS[
-                editName
-            ];
-
-        if (!editor) {
-
-            throw new Error(
-                `تعديل غير معروف: ${editName}`
-            );
-
-        }
-
-        result =
-            editor(
-                result,
-                edits[
-                    editName
-                ]
-            );
-
     }
 
     return result;
@@ -1227,13 +1100,11 @@ function applyEdits(
 
 /*
 ========================================
-EXPORT
+Exports
 ========================================
 */
 
 module.exports = {
-
-    applyEdits,
 
     changeVar,
 
@@ -1245,6 +1116,40 @@ module.exports = {
 
     unlockLandExpansions,
 
-    unlockAllAvatars
+    unlockAllAvatars,
+
+    parseRanges,
+
+    escapeXml,
+
+    parseChatEmojiList,
+
+    mergeChatEmojiLists,
+
+    formatChatEmojiValue,
+
+    getVarValue,
+
+    setChatEmojiVar,
+
+    changeChatEmojiVar,
+
+    unlockChatEmojis,
+
+    applyEdits,
+
+    EDITORS,
+
+    ALL_CHAT_EMOJI_IDS,
+
+    AVATAR_IDS,
+
+    MIGRATE_AVATAR_IDS,
+
+    UNLOCKED_FRAMES_VALUE,
+
+    UNLOCKED_STYLES_VALUE,
+
+    UNLOCKED_EXP_RANKS_VALUE
 
 };
