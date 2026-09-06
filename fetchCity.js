@@ -58,7 +58,7 @@ function u32le(buf, offset) {
 
     if (offset + 4 > buf.length) {
         throw new Error(
-            "u32le ط®ط§ط±ط¬ ط­ط¯ظˆط¯ ط§ظ„ط¨ظٹط§ظ†ط§طھ"
+            "u32le خارج حدود البيانات"
         );
     }
 
@@ -190,7 +190,7 @@ function xorDecode79(raw) {
     if (raw.length < 8) {
 
         throw new Error(
-            `ط¨ظٹط§ظ†ط§طھ 0x79 ظ‚طµظٹط±ط©: ${raw.length}`
+            `بيانات 0x79 قصيرة: ${raw.length}`
         );
     }
 
@@ -311,14 +311,14 @@ function decode54Layer(raw) {
     if (raw.length < 4) {
 
         throw new Error(
-            `ط¨ظٹط§ظ†ط§طھ 0x54 ظ‚طµظٹط±ط©: ${raw.length}`
+            `بيانات 0x54 قصيرة: ${raw.length}`
         );
     }
 
     if (raw[0] !== 0x54) {
 
         throw new Error(
-            `ط¨ظٹط§ظ†ط§طھ 0x54 ط؛ظٹط± طµط­ظٹط­ط©. Magic=${bufferMagic(raw)}`
+            `بيانات 0x54 غير صحيحة. Magic=${bufferMagic(raw)}`
         );
     }
 
@@ -425,7 +425,7 @@ function decodeTransport(raw) {
         default:
 
             throw new Error(
-                `ظ†ظˆط¹ FetchCity ط؛ظٹط± ظ…ط¯ط¹ظˆظ… ط­ط§ظ„ظٹط§ظ‹: 0x${type
+                `نوع FetchCity غير مدعوم حالياً: 0x${type
                     .toString(16)
                     .padStart(2, "0")}`
             );
@@ -474,7 +474,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: literal length ط®ط§ط±ط¬ ط§ظ„ط¨ظٹط§ظ†ط§طھ"
+                        "LZ4: literal length خارج حدود البيانات"
                     );
                 }
 
@@ -496,7 +496,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: literals ط®ط§ط±ط¬ ط§ظ„ط¨ظٹط§ظ†ط§طھ"
+                "LZ4: literals خارج حدود البيانات"
             );
         }
 
@@ -507,7 +507,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: output overflow ط£ط«ظ†ط§ط، literals"
+                "LZ4: output overflow أثناء literals"
             );
         }
 
@@ -538,7 +538,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: offset ظ†ط§ظ‚طµ"
+                "LZ4: offset ناقص"
             );
         }
 
@@ -566,7 +566,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                `LZ4: offset ط£ظƒط¨ط± ظ…ظ† output: ${offset} > ${dstPos}`
+                `LZ4: offset أكبر من output: ${offset} > ${dstPos}`
             );
         }
 
@@ -587,7 +587,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: match length ط®ط§ط±ط¬ ط§ظ„ط¨ظٹط§ظ†ط§طھ"
+                        "LZ4: match length خارج حدود البيانات"
                     );
                 }
 
@@ -611,7 +611,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: output overflow ط£ط«ظ†ط§ط، match"
+                "LZ4: output overflow أثناء match"
             );
         }
 
@@ -641,7 +641,7 @@ function lz4DecompressBlock(
     ) {
 
         throw new Error(
-            `LZ4: ط§ظ„ط­ط¬ظ… ط§ظ„ظ†ط§طھط¬ ط؛ظٹط± ظ…ط·ط§ط¨ظ‚. expected=${expectedSize}, actual=${dstPos}`
+            `LZ4: الحجم الناتج غير مطابق. expected=${expectedSize}, actual=${dstPos}`
         );
     }
 
@@ -655,7 +655,7 @@ function decodeLz4Container(raw) {
     ) {
 
         throw new Error(
-            `LZ4 magic ط؛ظٹط± طµط­ظٹط­: ${bufferMagic(raw)}`
+            `LZ4 magic غير صحيح: ${bufferMagic(raw)}`
         );
     }
 
@@ -664,7 +664,7 @@ function decodeLz4Container(raw) {
     ) {
 
         throw new Error(
-            "LZ4 container ظ‚طµظٹط±"
+            "LZ4 container قصير"
         );
     }
 
@@ -935,7 +935,7 @@ function decodeSaveCity(cityBytes) {
         }
 
         throw new Error(
-            `طھظ… ظپظƒ ط·ط¨ط‚ط§طھ FetchCity ظ„ظƒظ† ط§ظ„ظ…ط±ط­ظ„ط© ط§ظ„طھط§ظ„ظٹط© ط؛ظٹط± ظ…ط¹ط±ظˆظپط©. Magic=${bufferMagic(data)}`
+            `تم فك طبقات FetchCity لكن المرحلة التالية غير معروفة. Magic=${bufferMagic(data)}`
         );
     }
 
@@ -949,7 +949,7 @@ function decodeSaveCity(cityBytes) {
     }
 
     throw new Error(
-        `طھط¹ط°ط± ط§ظ„ظˆطµظˆظ„ ط¥ظ„ظ‰ XML. Magic=${bufferMagic(data)}`
+        `تعذر الوصول إلى XML. Magic=${bufferMagic(data)}`
     );
 }
 
@@ -1013,7 +1013,7 @@ function decryptResponse(
     if (!tsId) {
 
         throw new Error(
-            "ط§ط³طھط¬ط§ط¨ط© FetchCity ظ„ط§ طھط­طھظˆظٹ ts-id"
+            "استجابة FetchCity لا تحتوي ts-id"
         );
     }
 
@@ -1023,7 +1023,7 @@ function decryptResponse(
     ) {
 
         throw new Error(
-            `ts-id ط؛ظٹط± طµط§ظ„ط­: ${tsId}`
+            `ts-id غير صالح: ${tsId}`
         );
     }
 
@@ -1036,7 +1036,7 @@ function decryptResponse(
     ) {
 
         throw new Error(
-            `ts-id ظ‚طµطٹط±: ${tsId}`
+            `ts-id قصير: ${tsId}`
         );
     }
 
@@ -1177,7 +1177,7 @@ function decompressResponse(
     }
 
     throw new Error(
-        "طھط¹ط°ط± ظپظƒ ط¶ط؛ط· ط§ط³طھط¬ط§ط¨ط© FetchCity. " +
+        "تعذر فك ضغط استجابة FetchCity. " +
         `magic=${bufferMagic(decrypted)} ` +
         `size=${decrypted.length}`
     );
@@ -1358,7 +1358,7 @@ async function handleFetchCity(
             return res
                 .status(400)
                 .send(
-                    "cityId ظ…ط·ظ„ظˆط¨"
+                    "cityId مطلوب"
                 );
         }
 
@@ -1372,7 +1372,7 @@ async function handleFetchCity(
             return res
                 .status(400)
                 .send(
-                    "cityVer ط؛ظٹط± طµط§ظ„ط­"
+                    "cityVer غير صالح"
                 );
         }
 
@@ -1394,7 +1394,7 @@ async function handleFetchCity(
         ) {
 
             throw new Error(
-                "Upstream JSON ظ„ط§ ظٹط­طھظˆظٹ result.data"
+                "Upstream JSON لا يحتوي result.data"
             );
         }
 
@@ -1487,7 +1487,7 @@ function friendReadU32(data, pos) {
     if (pos + 4 > data.length) {
 
         throw new Error(
-            "ط¨ظٹط§ظ†ط§طھ ط؛ظٹط± ظƒط§ظپظٹط© ظ„ظ‚ط±ط§ط،ط© UInt32"
+            "بيانات غير كافية لقراءة UInt32"
         );
     }
 
@@ -1698,7 +1698,7 @@ function friendXorDecode(
     ) {
 
         throw new Error(
-            "ط§ظ„ظ…ظ„ظپ طµط؛ظٹط± ط¬ط¯ظ‹ط§"
+            "الملف صغير جداً"
         );
     }
 
@@ -1818,7 +1818,7 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            "LZ4: ط§ظ„ط¨ظٹط§ظ†ط§طھ طµط؛ظٹط±ط© ط¬ط¯ظ‹ط§"
+            "LZ4: البيانات صغيرة جداً"
         );
     }
 
@@ -1845,7 +1845,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: ظ†ظ‡ط§ظٹط© ط¨ظٹط§ظ†ط§طھ ط؛ظٹط± ظ…طھظˆظ‚ط¹ط©"
+                "LZ4: نهاية بيانات غير متوقعة"
             );
         }
 
@@ -1893,7 +1893,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: Literal ط®ط§ط±ط¬ ط§ظ„ظ†ط·ط§ظ‚"
+                "LZ4: Literal خارج النطاق"
             );
         }
 
@@ -1904,7 +1904,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: ط­ط¬ظ… Literal ط؛ظٹط± طµط­ظٹط­"
+                "LZ4: حجم Literal غير صحيح"
             );
         }
 
@@ -1936,7 +1936,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: ظ„ط§ ظٹظˆط¬ط¯ Offset"
+                "LZ4: لا يوجد Offset"
             );
         }
 
@@ -1952,7 +1952,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: Offset ط؛ظٹط± طµط§ظ„ط­"
+                "LZ4: Offset غير صالح"
             );
         }
 
@@ -1989,7 +1989,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: Offset ط®ط§ط±ط¬ ط§ظ„ظ†ط·ط§ظ‚"
+                "LZ4: Offset خارج النطاق"
             );
         }
 
@@ -2005,7 +2005,7 @@ function friendLz4Decompress(
             ) {
 
                 throw new Error(
-                    "LZ4: ط§ظ„ط­ط¬ظ… ط§ظ„ظ†ط§طھط¬ طھط¬ط§ظˆط² ط§ظ„ظ…طھظˆظ‚ط¹"
+                    "LZ4: الحجم الناتج تجاوز المتوقع"
                 );
             }
 
@@ -2025,7 +2025,7 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            "LZ4: ط§ظ„ط­ط¬ظ… ط§ظ„ظ†ط§طھط¬ ط؛ظٹط± طµط­ظٹط­\n" +
+            "LZ4: الحجم الناتج غير صحيح\n" +
             "Expected: " +
             size +
             "\nActual: " +
@@ -2101,7 +2101,7 @@ function decodeFriendFile(
     ) {
 
         throw new Error(
-            "ظ…ظ„ظپ ظپط§ط±ط؛"
+            "ملف فارغ"
         );
     }
 
@@ -2117,7 +2117,7 @@ function decodeFriendFile(
     ) {
 
         throw new Error(
-            "ظ†ظˆط¹ ط؛ظٹط± ظ…ط¯ط¹ظˆظ…\nMagic: 0x" +
+            "نوع غير مدعوم\nMagic: 0x" +
             data[0]
                 .toString(16)
                 .padStart(
@@ -2233,53 +2233,149 @@ function parseFriendVersion(
 }
 
 // ============================================================
-// ALL IDs
+// ALL CITY IDs + SAVE IDs
 // ============================================================
 
-function parseAllIds(
-    xml
-) {
+function parseAllIds(xml) {
 
-    const ids = [];
-    const seen = new Set();
+    const records = [];
 
-    function addId(
-        id,
-        type,
-        tag
+    /*
+     * كل record يمثل City ID / SaveId مع بياناته.
+     *
+     * المفتاح يمنع التكرار الكامل فقط.
+     */
+
+    const seen =
+        new Set();
+
+    function clean(value) {
+
+        return String(
+            value === undefined ||
+            value === null
+                ? ""
+                : value
+        ).trim();
+    }
+
+    function readAttr(
+        attrs,
+        names
     ) {
 
+        for (
+            const name of names
+        ) {
+
+            const regex =
+                new RegExp(
+                    "\\b" +
+                    name +
+                    "\\s*=\\s*([\"'])(.*?)\\1",
+                    "i"
+                );
+
+            const match =
+                regex.exec(
+                    attrs || ""
+                );
+
+            if (
+                match
+            ) {
+
+                return clean(
+                    match[2]
+                );
+            }
+        }
+
+        return "";
+    }
+
+    function addRecord(
+        record
+    ) {
+
+        const cityId =
+            clean(
+                record.city_id
+            );
+
+        const saveId =
+            clean(
+                record.save_id
+            );
+
+        const name =
+            clean(
+                record.name
+            );
+
+        const level =
+            clean(
+                record.level
+            );
+
+        const cityVer =
+            clean(
+                record.city_ver
+            );
+
         if (
-            id === undefined ||
-            id === null
+            !cityId &&
+            !saveId
         ) {
             return;
         }
 
-        id =
-            String(id).trim();
+        /*
+         * لا نريد إضافة خصائص عامة مثل id
+         * على كل عنصر إذا لم تكن City/Save مرتبطة.
+         *
+         * التسجيل يتم إذا وجد City ID أو SaveId.
+         */
 
-        if (!id) {
+        const key =
+            [
+                cityId,
+                saveId,
+                name,
+                level,
+                cityVer
+            ].join("|");
+
+        if (
+            seen.has(key)
+        ) {
             return;
         }
 
-        if (seen.has(id)) {
-            return;
-        }
+        seen.add(key);
 
-        seen.add(id);
+        records.push({
 
-        ids.push({
+            city_id:
+                cityId,
 
-            id: id,
+            save_id:
+                saveId,
 
-            type:
-                type || "",
+            name:
+                name,
 
-            tag:
-                tag || ""
+            level:
+                level,
+
+            city_ver:
+                cityVer
         });
     }
+
+    // ========================================================
+    // TAG SCAN
+    // ========================================================
 
     const tagRegex =
         /<([A-Za-z_][\w:.-]*)\b([^>]*)>/g;
@@ -2297,35 +2393,162 @@ function parseAllIds(
         const attrs =
             match[2] || "";
 
-        const attrRegex =
-            /\b([A-Za-z_][\w:.-]*)\s*=\s*(["'])(.*?)\2/g;
+        const cityId =
+            readAttr(
+                attrs,
+                [
+                    "city_id",
+                    "cityId",
+                    "cityID"
+                ]
+            );
 
-        let attr;
+        const saveId =
+            readAttr(
+                attrs,
+                [
+                    "saveId",
+                    "saveID",
+                    "save_id",
+                    "saveid"
+                ]
+            );
 
-        while (
-            (attr =
-                attrRegex.exec(attrs)) !== null
+        const name =
+            readAttr(
+                attrs,
+                [
+                    "name",
+                    "city_name",
+                    "cityName"
+                ]
+            );
+
+        const level =
+            readAttr(
+                attrs,
+                [
+                    "level",
+                    "Level"
+                ]
+            );
+
+        const cityVer =
+            readAttr(
+                attrs,
+                [
+                    "fetched_city_ver",
+                    "cityVer",
+                    "city_ver"
+                ]
+            );
+
+        /*
+         * saveId أو City ID.
+         */
+
+        if (
+            cityId ||
+            saveId
         ) {
 
-            const name =
-                attr[1];
+            addRecord({
 
-            const value =
-                attr[3];
+                city_id:
+                    cityId,
 
-            if (
-                /^(?:id|city_id|cityId|friend_id|friendId|player_id|playerId|user_id|userId|uid)$/i
-                    .test(name)
-            ) {
+                save_id:
+                    saveId,
 
-                addId(
-                    value,
+                name:
                     name,
-                    tagName
-                );
-            }
+
+                level:
+                    level,
+
+                city_ver:
+                    cityVer
+            });
         }
     }
+
+    // ========================================================
+    // FRIEND TAGS
+    // ========================================================
+
+    /*
+     * بعض ملفات Township تضع البيانات داخل friend
+     * بشكل مختلف، لذلك نقرأ friend بشكل صريح أيضاً.
+     */
+
+    const friendRegex =
+        /<friend\b([^>]*)>/gi;
+
+    while (
+        (match =
+            friendRegex.exec(xml)) !== null
+    ) {
+
+        const attrs =
+            match[1] || "";
+
+        addRecord({
+
+            city_id:
+                readAttr(
+                    attrs,
+                    [
+                        "city_id",
+                        "cityId",
+                        "cityID"
+                    ]
+                ),
+
+            save_id:
+                readAttr(
+                    attrs,
+                    [
+                        "saveId",
+                        "saveID",
+                        "save_id",
+                        "saveid"
+                    ]
+                ),
+
+            name:
+                readAttr(
+                    attrs,
+                    [
+                        "name",
+                        "city_name",
+                        "cityName"
+                    ]
+                ),
+
+            level:
+                readAttr(
+                    attrs,
+                    [
+                        "level",
+                        "Level"
+                    ]
+                ),
+
+            city_ver:
+                readAttr(
+                    attrs,
+                    [
+                        "fetched_city_ver",
+                        "cityVer",
+                        "city_ver"
+                    ]
+                )
+        });
+    }
+
+    // ========================================================
+    // VAR saveId
+    // ========================================================
 
     const varRegex =
         /<Var\b([^>]*)>/gi;
@@ -2338,40 +2561,168 @@ function parseAllIds(
         const attrs =
             match[1] || "";
 
-        const nameMatch =
-            /\bname\s*=\s*(["'])(.*?)\1/i
-                .exec(attrs);
+        const varName =
+            readAttr(
+                attrs,
+                [
+                    "name"
+                ]
+            );
 
-        const valueMatch =
-            /\bv\s*=\s*(["'])(.*?)\1/i
-                .exec(attrs);
+        const varValue =
+            readAttr(
+                attrs,
+                [
+                    "v"
+                ]
+            );
 
         if (
-            nameMatch &&
-            valueMatch
+            /^saveid$/i.test(
+                varName
+            )
         ) {
 
-            const name =
-                nameMatch[2];
+            addRecord({
 
-            const value =
-                valueMatch[2];
+                city_id:
+                    "",
 
-            if (
-                /(?:id|uid|city)/i
-                    .test(name)
-            ) {
+                save_id:
+                    varValue,
 
-                addId(
-                    value,
-                    name,
-                    "Var"
-                );
-            }
+                name:
+                    "",
+
+                level:
+                    "",
+
+                city_ver:
+                    ""
+            });
         }
     }
 
-    return ids;
+    // ========================================================
+    // GLOBAL saveId SCAN
+    // ========================================================
+
+    /*
+     * يضمن التقاط كل saveId الموجودة في XML
+     * حتى لو كانت في tag لم يتم التعرف عليه.
+     */
+
+    const saveIdRegex =
+        /\bsaveId\s*=\s*(["'])(.*?)\1/gi;
+
+    while (
+        (match =
+            saveIdRegex.exec(xml)) !== null
+    ) {
+
+        const saveId =
+            clean(
+                match[2]
+            );
+
+        if (!saveId) {
+            continue;
+        }
+
+        /*
+         * نأخذ التاغ الذي يحتوي saveId
+         * حتى نحصل على الاسم والمستوى والـCity ID
+         * من نفس التاغ فقط.
+         */
+
+        const before =
+            xml.lastIndexOf(
+                "<",
+                match.index
+            );
+
+        const after =
+            xml.indexOf(
+                ">",
+                match.index
+            );
+
+        if (
+            before === -1 ||
+            after === -1
+        ) {
+
+            addRecord({
+
+                city_id: "",
+                save_id: saveId,
+                name: "",
+                level: "",
+                city_ver: ""
+            });
+
+            continue;
+        }
+
+        const tag =
+            xml.slice(
+                before,
+                after + 1
+            );
+
+        const attrs =
+            tag.replace(
+                /^<[^ ]+/,
+                ""
+            );
+
+        addRecord({
+
+            city_id:
+                readAttr(
+                    attrs,
+                    [
+                        "city_id",
+                        "cityId",
+                        "cityID"
+                    ]
+                ),
+
+            save_id:
+                saveId,
+
+            name:
+                readAttr(
+                    attrs,
+                    [
+                        "name",
+                        "city_name",
+                        "cityName"
+                    ]
+                ),
+
+            level:
+                readAttr(
+                    attrs,
+                    [
+                        "level",
+                        "Level"
+                    ]
+                ),
+
+            city_ver:
+                readAttr(
+                    attrs,
+                    [
+                        "fetched_city_ver",
+                        "cityVer",
+                        "city_ver"
+                    ]
+                )
+        });
+    }
+
+    return records;
 }
 
 // ============================================================
@@ -2401,7 +2752,7 @@ async function handleDecodeFriends(
                     ok: false,
 
                     error:
-                        "ظٹط¬ط¨ ط¥ط±ط³ط§ظ„ ط§ظ„ظ…ظ„ظپ ط¨طµظٹط؛ط© application/octet-stream"
+                        "يجب إرسال الملف بصيغة application/octet-stream"
                 });
         }
 
@@ -2416,7 +2767,7 @@ async function handleDecodeFriends(
                     ok: false,
 
                     error:
-                        "ط§ظ„ظ…ظ„ظپ ظپط§ط±ط؛"
+                        "الملف فارغ"
                 });
         }
 
@@ -2427,6 +2778,10 @@ async function handleDecodeFriends(
         console.log(
             `[IDs] encrypted magic=${bufferMagic(encryptedFile)}`
         );
+
+        // ====================================================
+        // فك الملف الأول
+        // ====================================================
 
         const xmlBuffer =
             decodeFriendFile(
@@ -2451,18 +2806,38 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ط¨ط¹ط¯ ظپظƒ ط§ظ„ظ…ظ„ظپ ظ„ظ… ظٹطھظ… ط§ظ„ط­طµظˆظ„ ط¹ظ„ظ‰ XML"
+                "بعد فك الملف لم يتم الحصول على XML"
             );
         }
+
+        // ====================================================
+        // Version
+        // ====================================================
 
         const version =
             parseFriendVersion(
                 xml
             );
 
+        // ====================================================
+        // IDs + SaveIds
+        // ====================================================
+
         const ids =
             parseAllIds(
                 xml
+            );
+
+        const cityIds =
+            ids.filter(
+                item =>
+                    item.city_id !== ""
+            );
+
+        const saveIds =
+            ids.filter(
+                item =>
+                    item.save_id !== ""
             );
 
         console.log(
@@ -2474,8 +2849,20 @@ async function handleDecodeFriends(
         );
 
         console.log(
-            `[IDs] ids=${ids.length}`
+            `[IDs] records=${ids.length}`
         );
+
+        console.log(
+            `[IDs] cityIds=${cityIds.length}`
+        );
+
+        console.log(
+            `[IDs] saveIds=${saveIds.length}`
+        );
+
+        // ====================================================
+        // RESPONSE
+        // ====================================================
 
         return res
             .status(200)
