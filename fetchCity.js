@@ -26,7 +26,7 @@ const TIMEOUT_MS =
     Number(process.env.FETCHCITY_TIMEOUT_MS || 25000);
 
 // ============================================================
-// SAVECRYPTO CONSTANTS
+// SAVECRYPTO CONSTANTS - FETCHCITY
 // ============================================================
 
 const TABLE_SIZE = 0x2D7;
@@ -149,7 +149,7 @@ function looksLikeXml(buf) {
 }
 
 // ============================================================
-// 0x79 TABLE
+// FETCHCITY 0x79
 // ============================================================
 
 function build79Table(seed) {
@@ -180,10 +180,6 @@ function build79Table(seed) {
 
     return table;
 }
-
-// ============================================================
-// 0x79 DECODER
-// ============================================================
 
 function xorDecode79(raw) {
 
@@ -303,7 +299,7 @@ function xorDecode79(raw) {
 }
 
 // ============================================================
-// 0x54 DECODER
+// FETCHCITY 0x54
 // ============================================================
 
 function decode54Layer(raw) {
@@ -393,7 +389,7 @@ function decode54Layer(raw) {
 }
 
 // ============================================================
-// TRANSPORT DECODER
+// FETCHCITY TRANSPORT
 // ============================================================
 
 function decodeTransport(raw) {
@@ -437,7 +433,7 @@ function decodeTransport(raw) {
 }
 
 // ============================================================
-// LZ4 BLOCK
+// FETCHCITY LZ4
 // ============================================================
 
 function lz4DecompressBlock(
@@ -460,10 +456,6 @@ function lz4DecompressBlock(
 
         const token =
             src[srcPos++];
-
-        // --------------------------------
-        // Literal length
-        // --------------------------------
 
         let literalLength =
             token >>> 4;
@@ -533,20 +525,12 @@ function lz4DecompressBlock(
         dstPos +=
             literalLength;
 
-        // --------------------------------
-        // آخر sequence
-        // --------------------------------
-
         if (
             srcPos >=
             src.length
         ) {
             break;
         }
-
-        // --------------------------------
-        // Match offset
-        // --------------------------------
 
         if (
             srcPos + 2 >
@@ -585,10 +569,6 @@ function lz4DecompressBlock(
                 `LZ4: offset أكبر من output: ${offset} > ${dstPos}`
             );
         }
-
-        // --------------------------------
-        // Match length
-        // --------------------------------
 
         let matchLength =
             token & 0x0F;
@@ -668,10 +648,6 @@ function lz4DecompressBlock(
     return output;
 }
 
-// ============================================================
-// LZ4 CONTAINER
-// ============================================================
-
 function decodeLz4Container(raw) {
 
     if (
@@ -714,7 +690,7 @@ function decodeLz4Container(raw) {
 }
 
 // ============================================================
-// XML TRIM
+// FETCHCITY XML
 // ============================================================
 
 function trimXml(buf) {
@@ -779,10 +755,6 @@ function trimXml(buf) {
     );
 }
 
-// ============================================================
-// XML EDIT
-// ============================================================
-
 function editCityXml(xml) {
 
     if (!Buffer.isBuffer(xml)) {
@@ -798,10 +770,6 @@ function editCityXml(xml) {
         text.replace(
             /<Var\b[^>]*\/?>/gi,
             function(tag) {
-
-                // --------------------------------
-                // cityId -> empty
-                // --------------------------------
 
                 if (
                     /\bname\s*=\s*["']cityId["']/i
@@ -826,10 +794,6 @@ function editCityXml(xml) {
                         ' v=""/>'
                     );
                 }
-
-                // --------------------------------
-                // Device -> ASUS_Z01QD
-                // --------------------------------
 
                 if (
                     /\bname\s*=\s*["']Device["']/i
@@ -878,7 +842,7 @@ function editCityXml(xml) {
 }
 
 // ============================================================
-// COMPLETE SAVE DECODER
+// COMPLETE FETCHCITY SAVE DECODER
 // ============================================================
 
 function decodeSaveCity(cityBytes) {
@@ -901,10 +865,6 @@ function decodeSaveCity(cityBytes) {
 
         rounds++;
 
-        // --------------------------------
-        // XML
-        // --------------------------------
-
         if (
             looksLikeXml(data)
         ) {
@@ -917,10 +877,6 @@ function decodeSaveCity(cityBytes) {
                 data
             );
         }
-
-        // --------------------------------
-        // LZ4
-        // --------------------------------
 
         if (
             isLz4Magic(data)
@@ -938,10 +894,6 @@ function decodeSaveCity(cityBytes) {
             continue;
         }
 
-        // --------------------------------
-        // GZIP
-        // --------------------------------
-
         if (
             isGzip(data)
         ) {
@@ -957,10 +909,6 @@ function decodeSaveCity(cityBytes) {
 
             continue;
         }
-
-        // --------------------------------
-        // SaveCrypto
-        // --------------------------------
 
         const type =
             data[0];
@@ -1006,7 +954,7 @@ function decodeSaveCity(cityBytes) {
 }
 
 // ============================================================
-// ENCRYPT REQUEST
+// AES REQUEST
 // ============================================================
 
 function encryptRequest(
@@ -1042,11 +990,6 @@ function encryptRequest(
     const tag =
         cipher.getAuthTag();
 
-    /*
-     * body = ciphertext فقط
-     * tag داخل ts-id
-     */
-
     const tsId =
         "002" +
         iv.toString("hex") +
@@ -1059,7 +1002,7 @@ function encryptRequest(
 }
 
 // ============================================================
-// DECRYPT RESPONSE
+// AES RESPONSE
 // ============================================================
 
 function decryptResponse(
@@ -1141,7 +1084,7 @@ function decryptResponse(
 }
 
 // ============================================================
-// FLEXIBLE RESPONSE DECOMPRESSION
+// RESPONSE DECOMPRESSION
 // ============================================================
 
 function decompressResponse(
@@ -1155,10 +1098,6 @@ function decompressResponse(
     console.log(
         `[FetchCity] decrypted magic=${bufferMagic(decrypted)}`
     );
-
-    // --------------------------------
-    // GZIP
-    // --------------------------------
 
     try {
 
@@ -1180,10 +1119,6 @@ function decompressResponse(
         );
     }
 
-    // --------------------------------
-    // ZLIB
-    // --------------------------------
-
     try {
 
         const result =
@@ -1204,10 +1139,6 @@ function decompressResponse(
         );
     }
 
-    // --------------------------------
-    // RAW DEFLATE
-    // --------------------------------
-
     try {
 
         const result =
@@ -1227,10 +1158,6 @@ function decompressResponse(
             "[FetchCity] RAW DEFLATE failed"
         );
     }
-
-    // --------------------------------
-    // Plain JSON
-    // --------------------------------
 
     const text =
         decrypted
@@ -1257,7 +1184,7 @@ function decompressResponse(
 }
 
 // ============================================================
-// REQUEST FETCHCITY
+// REQUEST PLAYRIX
 // ============================================================
 
 async function requestFetchCity(
@@ -1337,10 +1264,6 @@ async function requestFetchCity(
                 await response.arrayBuffer()
             );
 
-        // --------------------------------
-        // Upstream error
-        // --------------------------------
-
         if (!response.ok) {
 
             const text =
@@ -1352,10 +1275,6 @@ async function requestFetchCity(
                 `Upstream HTTP ${response.status}: ${text}`
             );
         }
-
-        // --------------------------------
-        // Response ts-id
-        // --------------------------------
 
         const responseTsId =
             response.headers.get(
@@ -1373,28 +1292,16 @@ async function requestFetchCity(
             `[FetchCity] upstream status=${response.status}`
         );
 
-        // --------------------------------
-        // AES-GCM
-        // --------------------------------
-
         const decrypted =
             decryptResponse(
                 responseBody,
                 responseTsId
             );
 
-        // --------------------------------
-        // Compression
-        // --------------------------------
-
         const uncompressed =
             decompressResponse(
                 decrypted
             );
-
-        // --------------------------------
-        // JSON
-        // --------------------------------
 
         const text =
             uncompressed.toString(
@@ -1421,7 +1328,7 @@ async function requestFetchCity(
 }
 
 // ============================================================
-// HANDLE FETCHCITY
+// FETCHCITY API
 // ============================================================
 
 async function handleFetchCity(
@@ -1473,19 +1380,11 @@ async function handleFetchCity(
             `[FetchCity] incoming cityId=${cityId} cityVer=${cityVer}`
         );
 
-        // ================================================
-        // FetchCity
-        // ================================================
-
         const json =
             await requestFetchCity(
                 cityId,
                 cityVer
             );
-
-        // ================================================
-        // result.data
-        // ================================================
 
         if (
             !json ||
@@ -1506,10 +1405,6 @@ async function handleFetchCity(
             `[FetchCity] Base64 length=${base64.length}`
         );
 
-        // ================================================
-        // Base64
-        // ================================================
-
         const cityBytes =
             Buffer.from(
                 base64,
@@ -1520,10 +1415,6 @@ async function handleFetchCity(
             `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
         );
 
-        // ================================================
-        // SaveCrypto
-        // ================================================
-
         const xml =
             decodeSaveCity(
                 cityBytes
@@ -1533,10 +1424,6 @@ async function handleFetchCity(
             `[FetchCity] XML size=${xml.length}`
         );
 
-        // ================================================
-        // XML MODIFICATION
-        // ================================================
-
         const modifiedXml =
             editCityXml(
                 xml
@@ -1545,10 +1432,6 @@ async function handleFetchCity(
         console.log(
             `[FetchCity] Modified XML size=${modifiedXml.length}`
         );
-
-        // ================================================
-        // Return XML
-        // ================================================
 
         res.status(200);
 
@@ -1590,7 +1473,690 @@ async function handleFetchCity(
 }
 
 // ============================================================
-// FRIEND FILE ATTRIBUTE
+// ============================================================
+// FRIEND FILE DECODER - EXACT decodeFile.js
+// ============================================================
+// هذا الجزء خاص بـ .123.xml فقط
+// ولا يستخدم decodeSaveCity()
+// ============================================================
+
+const FRIEND_TABLE_SIZE = 0x2D7;
+
+function friendU32(v) {
+    return v >>> 0;
+}
+
+function friendReadU32(data, pos) {
+
+    if (pos + 4 > data.length) {
+
+        throw new Error(
+            "بيانات غير كافية لقراءة UInt32"
+        );
+    }
+
+    return (
+        data[pos] |
+        (data[pos + 1] << 8) |
+        (data[pos + 2] << 16) |
+        (data[pos + 3] << 24)
+    ) >>> 0;
+}
+
+function friendU32Bytes(v) {
+
+    v =
+        friendU32(v);
+
+    return Buffer.from([
+        v & 0xff,
+        (v >>> 8) & 0xff,
+        (v >>> 16) & 0xff,
+        (v >>> 24) & 0xff
+    ]);
+}
+
+function friendMmh2(
+    data,
+    seed
+) {
+
+    const m =
+        0x5bd1e995;
+
+    let h =
+        friendU32(
+            seed ^ data.length
+        );
+
+    let i = 0;
+    let length =
+        data.length;
+
+    while (
+        length >= 4
+    ) {
+
+        let k =
+            friendReadU32(
+                data,
+                i
+            );
+
+        k =
+            Math.imul(
+                k,
+                m
+            ) >>> 0;
+
+        k =
+            (
+                k ^
+                (k >>> 24)
+            ) >>> 0;
+
+        k =
+            Math.imul(
+                k,
+                m
+            ) >>> 0;
+
+        h =
+            Math.imul(
+                h,
+                m
+            ) >>> 0;
+
+        h =
+            (
+                h ^
+                k
+            ) >>> 0;
+
+        i += 4;
+        length -= 4;
+    }
+
+    if (
+        length === 3
+    ) {
+
+        h =
+            (
+                h ^
+                (data[i + 2] << 16)
+            ) >>> 0;
+    }
+
+    if (
+        length >= 2
+    ) {
+
+        h =
+            (
+                h ^
+                (data[i + 1] << 8)
+            ) >>> 0;
+    }
+
+    if (
+        length >= 1
+    ) {
+
+        h =
+            (
+                h ^
+                data[i]
+            ) >>> 0;
+
+        h =
+            Math.imul(
+                h,
+                m
+            ) >>> 0;
+    }
+
+    h =
+        (
+            h ^
+            (h >>> 13)
+        ) >>> 0;
+
+    h =
+        Math.imul(
+            h,
+            m
+        ) >>> 0;
+
+    h =
+        (
+            h ^
+            (h >>> 15)
+        ) >>> 0;
+
+    return h >>> 0;
+}
+
+function friendGetHashTable(
+    length,
+    seed
+) {
+
+    const table =
+        Buffer.alloc(
+            FRIEND_TABLE_SIZE
+        );
+
+    let h =
+        friendU32(seed);
+
+    let i = 0;
+
+    while (
+        i <
+        FRIEND_TABLE_SIZE
+    ) {
+
+        const v =
+            friendU32Bytes(
+                h
+            );
+
+        h =
+            friendMmh2(
+                v,
+                length
+            );
+
+        const hb =
+            friendU32Bytes(
+                h
+            );
+
+        for (
+            let j = 0;
+            j < 4 &&
+            i + j <
+            FRIEND_TABLE_SIZE;
+            j++
+        ) {
+
+            table[
+                i + j
+            ] =
+                hb[j];
+        }
+
+        i += 4;
+    }
+
+    return table;
+}
+
+function friendXorDecode(
+    data
+) {
+
+    if (
+        data.length < 8
+    ) {
+
+        throw new Error(
+            "الملف صغير جدًا"
+        );
+    }
+
+    const hl =
+        data[1] |
+        (data[2] << 8) |
+        (data[3] << 16);
+
+    const hs =
+        data[4] |
+        (data[5] << 8) |
+        (data[6] << 16) |
+        (data[7] << 24);
+
+    const srcSize =
+        data.length;
+
+    const table =
+        friendGetHashTable(
+            hl,
+            friendU32(
+                4 + hs
+            )
+        );
+
+    const sf =
+        friendU32(
+            (
+                hl -
+                friendU32(
+                    0xC5EED ^
+                    srcSize
+                )
+            ) ^
+            0x396A8
+        );
+
+    const actual =
+        Math.min(
+            sf,
+            srcSize - 8
+        );
+
+    const out =
+        Buffer.alloc(
+            actual
+        );
+
+    for (
+        let i = 0;
+        i < actual;
+        i++
+    ) {
+
+        out[i] =
+            data[8 + i];
+    }
+
+    let j = 0;
+
+    for (
+        let i = 0;
+        i < out.length;
+        i++
+    ) {
+
+        if (
+            i > 0
+        ) {
+
+            out[i] =
+                (
+                    out[i] -
+                    out[i - 1]
+                ) & 0xff;
+        }
+
+        out[i] =
+            (
+                out[i] ^
+                table[j]
+            ) & 0xff;
+
+        j++;
+
+        if (
+            j >=
+            FRIEND_TABLE_SIZE
+        ) {
+
+            j = 0;
+        }
+    }
+
+    return out;
+}
+
+function friendIsLz4(
+    data
+) {
+
+    return (
+        data.length >= 4 &&
+        data[0] === 0x04 &&
+        data[1] === 0x22 &&
+        data[2] === 0x4D &&
+        data[3] === 0x18
+    );
+}
+
+function friendLz4Decompress(
+    data
+) {
+
+    if (
+        data.length < 9
+    ) {
+
+        throw new Error(
+            "LZ4: البيانات صغيرة جدًا"
+        );
+    }
+
+    const size =
+        friendReadU32(
+            data,
+            4
+        );
+
+    let src = 8;
+
+    let output =
+        Buffer.alloc(
+            size
+        );
+
+    let outLen = 0;
+
+    function readByte() {
+
+        if (
+            src >=
+            data.length
+        ) {
+
+            throw new Error(
+                "LZ4: نهاية بيانات غير متوقعة"
+            );
+        }
+
+        return data[
+            src++
+        ];
+    }
+
+    while (
+        src <
+            data.length &&
+        outLen <
+            size
+    ) {
+
+        const token =
+            readByte();
+
+        let literalLen =
+            token >>> 4;
+
+        if (
+            literalLen === 15
+        ) {
+
+            let b;
+
+            do {
+
+                b =
+                    readByte();
+
+                literalLen +=
+                    b;
+
+            } while (
+                b === 255
+            );
+        }
+
+        if (
+            src +
+            literalLen >
+            data.length
+        ) {
+
+            throw new Error(
+                "LZ4: Literal خارج النطاق"
+            );
+        }
+
+        if (
+            outLen +
+            literalLen >
+            size
+        ) {
+
+            throw new Error(
+                "LZ4: حجم Literal غير صحيح"
+            );
+        }
+
+        for (
+            let i = 0;
+            i < literalLen;
+            i++
+        ) {
+
+            output[
+                outLen++
+            ] =
+                data[
+                    src++
+                ];
+        }
+
+        if (
+            outLen >=
+            size
+        ) {
+
+            break;
+        }
+
+        if (
+            src + 2 >
+            data.length
+        ) {
+
+            throw new Error(
+                "LZ4: لا يوجد Offset"
+            );
+        }
+
+        const offset =
+            readByte() |
+            (
+                readByte() <<
+                8
+            );
+
+        if (
+            offset === 0
+        ) {
+
+            throw new Error(
+                "LZ4: Offset غير صالح"
+            );
+        }
+
+        let matchLen =
+            token & 0x0F;
+
+        if (
+            matchLen === 15
+        ) {
+
+            let b;
+
+            do {
+
+                b =
+                    readByte();
+
+                matchLen +=
+                    b;
+
+            } while (
+                b === 255
+            );
+        }
+
+        matchLen += 4;
+
+        const start =
+            outLen -
+            offset;
+
+        if (
+            start < 0
+        ) {
+
+            throw new Error(
+                "LZ4: Offset خارج النطاق"
+            );
+        }
+
+        for (
+            let i = 0;
+            i < matchLen;
+            i++
+        ) {
+
+            if (
+                outLen >=
+                size
+            ) {
+
+                throw new Error(
+                    "LZ4: الحجم الناتج تجاوز المتوقع"
+                );
+            }
+
+            output[
+                outLen++
+            ] =
+                output[
+                    start +
+                    (i % offset)
+                ];
+        }
+    }
+
+    if (
+        outLen !==
+        size
+    ) {
+
+        throw new Error(
+            "LZ4: الحجم الناتج غير صحيح\n" +
+            "Expected: " +
+            size +
+            "\nActual: " +
+            outLen
+        );
+    }
+
+    return output;
+}
+
+function friendTrimXml(
+    data
+) {
+
+    const marker =
+        Buffer.from(
+            "</root>"
+        );
+
+    const pos =
+        data.lastIndexOf(
+            marker
+        );
+
+    if (
+        pos !== -1
+    ) {
+
+        return data.subarray(
+            0,
+            pos +
+            marker.length
+        );
+    }
+
+    let end =
+        data.length;
+
+    while (
+        end > 0 &&
+        data[end - 1] === 0
+    ) {
+
+        end--;
+    }
+
+    return data.subarray(
+        0,
+        end
+    );
+}
+
+// ============================================================
+// EXACT decodeFile()
+// ============================================================
+
+function decodeFriendFile(
+    data
+) {
+
+    if (
+        !Buffer.isBuffer(data)
+    ) {
+
+        data =
+            Buffer.from(
+                data
+            );
+    }
+
+    if (
+        data.length === 0
+    ) {
+
+        throw new Error(
+            "ملف فارغ"
+        );
+    }
+
+    // XML أصلاً
+    if (
+        data[0] === 0x3C
+    ) {
+
+        return data;
+    }
+
+    // يجب أن يبدأ بـ 0x79
+    if (
+        data[0] !== 0x79
+    ) {
+
+        throw new Error(
+            "نوع غير مدعوم\nMagic: 0x" +
+            data[0]
+                .toString(16)
+                .padStart(
+                    2,
+                    "0"
+                )
+        );
+    }
+
+    let payload =
+        friendXorDecode(
+            data
+        );
+
+    if (
+        friendIsLz4(
+            payload
+        )
+    ) {
+
+        payload =
+            friendLz4Decompress(
+                payload
+            );
+    }
+
+    return friendTrimXml(
+        payload
+    );
+}
+
+// ============================================================
+// FRIEND XML ATTRIBUTE
 // ============================================================
 
 function attrFromXmlTag(
@@ -1634,7 +2200,7 @@ function attrFromXmlTag(
 }
 
 // ============================================================
-// PARSE VERSION FROM FRIEND FILE
+// FRIEND VERSION
 // ============================================================
 
 function parseFriendVersion(
@@ -1673,7 +2239,7 @@ function parseFriendVersion(
 }
 
 // ============================================================
-// PARSE FRIENDS
+// FRIENDS
 // ============================================================
 
 function parseFriends(
@@ -1688,7 +2254,8 @@ function parseFriends(
     let match;
 
     while (
-        (match = regex.exec(xml)) !== null
+        (match =
+            regex.exec(xml)) !== null
     ) {
 
         const tag =
@@ -1703,6 +2270,7 @@ function parseFriends(
         if (
             !cityId
         ) {
+
             continue;
         }
 
@@ -1777,7 +2345,7 @@ function parseFriends(
 }
 
 // ============================================================
-// HANDLE DECODE FRIEND FILE
+// DECODE FRIEND FILE API
 // ============================================================
 
 async function handleDecodeFriends(
@@ -1789,10 +2357,6 @@ async function handleDecodeFriends(
 
         let encryptedFile =
             req.body;
-
-        // --------------------------------
-        // التأكد من Buffer
-        // --------------------------------
 
         if (
             !Buffer.isBuffer(
@@ -1807,7 +2371,7 @@ async function handleDecodeFriends(
                     ok: false,
 
                     error:
-                        "يجب إرسال ملف .123 بصيغة application/octet-stream"
+                        "يجب إرسال .123.xml بصيغة application/octet-stream"
                 });
         }
 
@@ -1834,12 +2398,14 @@ async function handleDecodeFriends(
             `[Friends] encrypted magic=${bufferMagic(encryptedFile)}`
         );
 
-        // --------------------------------
-        // فك الملف
-        // --------------------------------
+        // ====================================================
+        // مهم:
+        // هنا نستخدم decodeFile الحقيقي
+        // وليس decodeSaveCity
+        // ====================================================
 
         const xmlBuffer =
-            decodeSaveCity(
+            decodeFriendFile(
                 encryptedFile
             );
 
@@ -1856,31 +2422,37 @@ async function handleDecodeFriends(
             `[Friends] decoded XML size=${xml.length}`
         );
 
-        // --------------------------------
-        // التأكد من XML
-        // --------------------------------
-
         if (
             !xml.startsWith("<")
         ) {
 
             throw new Error(
-                "بعد فك الملف لم يتم الحصول على XML"
+                "بعد فك .123.xml لم يتم الحصول على XML"
             );
         }
-
-        // --------------------------------
-        // Version
-        // --------------------------------
 
         const version =
             parseFriendVersion(
                 xml
             );
 
-        // --------------------------------
-        // Friends
-        // --------------------------------
+        if (
+            !version.bver
+        ) {
+
+            throw new Error(
+                "لم يتم العثور على Version.version"
+            );
+        }
+
+        if (
+            !version.fver
+        ) {
+
+            throw new Error(
+                "لم يتم العثور على Version.FVer"
+            );
+        }
 
         const friends =
             parseFriends(
@@ -1888,12 +2460,16 @@ async function handleDecodeFriends(
             );
 
         console.log(
-            `[Friends] friends=${friends.length}`
+            `[Friends] bver=${version.bver}`
         );
 
-        // --------------------------------
-        // Return
-        // --------------------------------
+        console.log(
+            `[Friends] fver=${version.fver}`
+        );
+
+        console.log(
+            `[Friends] friends=${friends.length}`
+        );
 
         return res
             .status(200)
@@ -1942,22 +2518,6 @@ async function handleDecodeFriends(
 // ROUTES
 // ============================================================
 
-/*
- * مع:
- *
- * app.use("/api", fetchCity)
- *
- * يعمل:
- *
- * POST /api/
- * POST /api/fetch-city
- * POST /api/decode-friends
- */
-
-// --------------------------------
-// FetchCity
-// --------------------------------
-
 router.post(
     "/",
     handleFetchCity
@@ -1968,26 +2528,14 @@ router.post(
     handleFetchCity
 );
 
-// --------------------------------
-// فك .123.xml واستخراج الأصدقاء
-// --------------------------------
-
 router.post(
     "/decode-friends",
     express.raw({
-        type: [
-            "application/octet-stream",
-            "application/octetstream",
-            "application/octet-stream; charset=utf-8"
-        ],
+        type: "application/octet-stream",
         limit: "50mb"
     }),
     handleDecodeFriends
 );
-
-// ============================================================
-// EXPORT
-// ============================================================
 
 console.log(
     "[FetchCity] module loaded"
