@@ -84,6 +84,7 @@ const FETCH54_TABLE = Buffer.from(
 // ============================================================
 
 function u32le(buf, offset) {
+
     if (offset + 4 > buf.length) {
         throw new Error(
             "u32le خارج حدود البيانات"
@@ -117,6 +118,7 @@ function sub32(a, b) {
 
 
 function bufferMagic(buf) {
+
     if (!buf || buf.length < 4) {
         return "";
     }
@@ -132,6 +134,7 @@ function bufferMagic(buf) {
 
 
 function isLz4Magic(buf) {
+
     return (
         buf &&
         buf.length >= 4 &&
@@ -144,6 +147,7 @@ function isLz4Magic(buf) {
 
 
 function isGzip(buf) {
+
     return (
         buf &&
         buf.length >= 2 &&
@@ -154,6 +158,7 @@ function isGzip(buf) {
 
 
 function looksLikeXml(buf) {
+
     if (!buf || buf.length === 0) {
         return false;
     }
@@ -764,45 +769,141 @@ function editCityXml(xml) {
     let text =
         xml.toString("utf8");
 
-    // --------------------------------------------------------
+
+    // ========================================================
+    // تعديل Var عام
+    // يعمل مهما كان ترتيب الخصائص داخل <Var>
+    // ========================================================
+
+    function modifyVar(
+        varName,
+        newValue
+    ) {
+
+        const escapedName =
+            String(varName).replace(
+                /[.*+?^${}()|[\]\\]/g,
+                "\\$&"
+            );
+
+        /*
+         * نبحث عن كامل عنصر Var.
+         *
+         * أمثلة مدعومة:
+         *
+         * <Var name="cityId" v="123"/>
+         *
+         * <Var id="odfs71" name="cityId" v="123"/>
+         *
+         * <Var v="123" id="odfs71" name="cityId"/>
+         *
+         * <Var id="px577y" v="iPhone 11 Pro Max" name="Device"/>
+         */
+
+        const varRegex =
+            /<Var\b[^>]*\/?>/gi;
+
+        text =
+            text.replace(
+                varRegex,
+                function(tag) {
+
+                    // ----------------------------------------
+                    // هل هذا هو الـ Var المطلوب؟
+                    // ----------------------------------------
+
+                    const nameRegex =
+                        new RegExp(
+                            '\\bname\\s*=\\s*["\']' +
+                            escapedName +
+                            '["\']',
+                            "i"
+                        );
+
+                    if (
+                        !nameRegex.test(tag)
+                    ) {
+                        return tag;
+                    }
+
+
+                    // ----------------------------------------
+                    // تعديل v الموجود
+                    // ----------------------------------------
+
+                    const valueRegex =
+                        /(\bv\s*=\s*["'])[^"']*(["'])/i;
+
+                    if (
+                        valueRegex.test(tag)
+                    ) {
+
+                        return tag.replace(
+                            valueRegex,
+                            function(
+                                match,
+                                prefix,
+                                suffix
+                            ) {
+
+                                return (
+                                    prefix +
+                                    String(newValue) +
+                                    suffix
+                                );
+                            }
+                        );
+                    }
+
+
+                    // ----------------------------------------
+                    // إذا لم يوجد v
+                    // نضيفه
+                    // ----------------------------------------
+
+                    return tag.replace(
+                        /\/?>$/,
+                        ' v="' +
+                        String(newValue) +
+                        '"/>'
+                    );
+                }
+            );
+    }
+
+
+    // ========================================================
     // cityId
-    // أي:
-    //
-    // <Var name="cityId" v="iwnfGnr9SP"/>
-    //
-    // تصبح:
-    //
-    // <Var name="cityId" v=""/>
-    // --------------------------------------------------------
+    // ========================================================
 
-    text =
-        text.replace(
-            /(<Var\s+name=["']cityId["']\s+v=["'])[^"']*(["'])/g,
-            "$1$2"
-        );
+    modifyVar(
+        "cityId",
+        ""
+    );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // Device
-    // أي قيمة:
-    //
-    // <Var name="Device" v="Infinix X6812"/>
-    //
-    // تصبح دائماً:
-    //
-    // <Var name="Device" v="ASUS_Z01QD"/>
-    // --------------------------------------------------------
+    // ========================================================
 
-    text =
-        text.replace(
-            /(<Var\s+name=["']Device["']\s+v=["'])[^"']*(["'])/g,
-            "$1ASUS_Z01QD$2"
-        );
+    modifyVar(
+        "Device",
+        "ASUS_Z01QD"
+    );
 
 
     console.log(
-        "[FetchCity] XML modifications applied: cityId cleared, Device=ASUS_Z01QD"
+        "[FetchCity] XML modifications applied"
     );
+
+    console.log(
+        "[FetchCity] cityId = empty"
+    );
+
+    console.log(
+        "[FetchCity] Device = ASUS_Z01QD"
+    );
+
 
     return Buffer.from(
         text,
