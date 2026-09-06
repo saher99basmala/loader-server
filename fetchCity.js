@@ -3,25 +3,28 @@
 fetchCity.js
 ========================================
 
-- يحافظ على طلب FetchCity القديم
-- AES-128-GCM كما في النسخة العاملة
-- ts-gpid = new
-- نفس JSON القديم
-- نفس headers
-- نفس ts-id
-- body = ciphertext فقط
-- فك AES من ts-id الخاص بالاستجابة
-- محاولة GZIP / ZLIB / RAW DEFLATE
-- ثم استخراج result.data
-- Base64
-- SaveCrypto 0x79 / 0x54 / 0x1F
-- LZ4
-- تعديل XML بعد فك جميع الطبقات
-- إرجاع XML
+يحافظ على طلب FetchCity القديم
+
+AES-128-GCM كما في النسخة العاملة
+ts-gpid = new
+نفس JSON القديم
+نفس headers
+نفس ts-id
+body = ciphertext فقط
+فك AES من ts-id الخاص بالاستجابة
+محاولة GZIP / ZLIB / RAW DEFLATE
+ثم استخراج result.data
+Base64
+SaveCrypto 0x79 / 0x54 / 0x1F
+LZ4
+تعديل XML بعد فك جميع الطبقات
+إرجاع XML
 
 التعديلات:
-- Var cityId يصبح فارغاً
-- Var Device يصبح ASUS_Z01QD
+
+Var cityId يصبح فارغاً
+
+Var Device يصبح ASUS_Z01QD
 
 لا يغيّر بقية السيرفر.
 ========================================
@@ -33,7 +36,6 @@ const zlib = require("zlib");
 const fetch = require("node-fetch");
 
 const router = express.Router();
-
 
 // ============================================================
 // CONFIG
@@ -51,7 +53,6 @@ const ENDPOINT =
 const TIMEOUT_MS =
     Number(process.env.FETCHCITY_TIMEOUT_MS || 25000);
 
-
 // ============================================================
 // SAVECRYPTO CONSTANTS
 // ============================================================
@@ -68,7 +69,6 @@ const LZ4_MAGIC = Buffer.from([
     0x18
 ]);
 
-
 // ============================================================
 // FETCH54 TABLE
 // ============================================================
@@ -77,7 +77,6 @@ const FETCH54_TABLE = Buffer.from(
     "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlLZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82b5lbXzpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGJmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
     "base64"
 );
-
 
 // ============================================================
 // UTILS
@@ -101,21 +100,17 @@ function u32le(buf, offset) {
     );
 }
 
-
 function xor32(a, b) {
     return (a ^ b) >>> 0;
 }
-
 
 function add32(a, b) {
     return (a + b) >>> 0;
 }
 
-
 function sub32(a, b) {
     return (a - b) >>> 0;
 }
-
 
 function bufferMagic(buf) {
 
@@ -132,7 +127,6 @@ function bufferMagic(buf) {
         .join(" ");
 }
 
-
 function isLz4Magic(buf) {
 
     return (
@@ -145,7 +139,6 @@ function isLz4Magic(buf) {
     );
 }
 
-
 function isGzip(buf) {
 
     return (
@@ -155,7 +148,6 @@ function isGzip(buf) {
         buf[1] === 0x8B
     );
 }
-
 
 function looksLikeXml(buf) {
 
@@ -177,7 +169,6 @@ function looksLikeXml(buf) {
         text.startsWith("<?xml")
     );
 }
-
 
 // ============================================================
 // 0x79 TABLE
@@ -209,7 +200,6 @@ function build79Table(seed) {
 
     return table;
 }
-
 
 // ============================================================
 // 0x79 DECODER
@@ -323,7 +313,6 @@ function xorDecode79(raw) {
     return out;
 }
 
-
 // ============================================================
 // 0x54 DECODER
 // ============================================================
@@ -410,7 +399,6 @@ function decode54Layer(raw) {
     return out;
 }
 
-
 // ============================================================
 // TRANSPORT DECODER
 // ============================================================
@@ -454,7 +442,6 @@ function decodeTransport(raw) {
     }
 }
 
-
 // ============================================================
 // LZ4 BLOCK
 // ============================================================
@@ -477,10 +464,6 @@ function lz4DecompressBlock(
 
         const token =
             src[srcPos++];
-
-        // --------------------------------
-        // Literal length
-        // --------------------------------
 
         let literalLength =
             token >>> 4;
@@ -544,16 +527,11 @@ function lz4DecompressBlock(
         dstPos +=
             literalLength;
 
-        // آخر sequence
         if (
             srcPos >= src.length
         ) {
             break;
         }
-
-        // --------------------------------
-        // Match offset
-        // --------------------------------
 
         if (
             srcPos + 2 >
@@ -583,10 +561,6 @@ function lz4DecompressBlock(
                 `LZ4: offset أكبر من output: ${offset} > ${dstPos}`
             );
         }
-
-        // --------------------------------
-        // Match length
-        // --------------------------------
 
         let matchLength =
             token & 0x0F;
@@ -661,7 +635,6 @@ function lz4DecompressBlock(
     return output;
 }
 
-
 // ============================================================
 // LZ4 CONTAINER
 // ============================================================
@@ -698,7 +671,6 @@ function decodeLz4Container(raw) {
         expectedSize
     );
 }
-
 
 // ============================================================
 // XML TRIM
@@ -755,7 +727,6 @@ function trimXml(buf) {
     );
 }
 
-
 // ============================================================
 // XML EDITOR
 // ============================================================
@@ -769,128 +740,72 @@ function editCityXml(xml) {
     let text =
         xml.toString("utf8");
 
+    // --------------------------------------------------------
+    // البحث عن كل Var
+    // بغض النظر عن ترتيب الخصائص
+    // --------------------------------------------------------
 
-    // ========================================================
-    // تعديل Var عام
-    // يعمل مهما كان ترتيب الخصائص داخل <Var>
-    // ========================================================
+    text = text.replace(
+        /<Var\b[^>]*\/?>/gi,
+        function(tag) {
 
-    function modifyVar(
-        varName,
-        newValue
-    ) {
+            // ------------------------------------------------
+            // cityId
+            // ------------------------------------------------
 
-        const escapedName =
-            String(varName).replace(
-                /[.*+?^${}()|[\]\\]/g,
-                "\\$&"
-            );
+            if (
+                /\bname\s*=\s*["']cityId["']/i.test(tag)
+            ) {
 
-        /*
-         * نبحث عن كامل عنصر Var.
-         *
-         * أمثلة مدعومة:
-         *
-         * <Var name="cityId" v="123"/>
-         *
-         * <Var id="odfs71" name="cityId" v="123"/>
-         *
-         * <Var v="123" id="odfs71" name="cityId"/>
-         *
-         * <Var id="px577y" v="iPhone 11 Pro Max" name="Device"/>
-         */
+                const valueRegex =
+                    /(\bv\s*=\s*["'])[^"']*(["'])/i;
 
-        const varRegex =
-            /<Var\b[^>]*\/?>/gi;
-
-        text =
-            text.replace(
-                varRegex,
-                function(tag) {
-
-                    // ----------------------------------------
-                    // هل هذا هو الـ Var المطلوب؟
-                    // ----------------------------------------
-
-                    const nameRegex =
-                        new RegExp(
-                            '\\bname\\s*=\\s*["\']' +
-                            escapedName +
-                            '["\']',
-                            "i"
-                        );
-
-                    if (
-                        !nameRegex.test(tag)
-                    ) {
-                        return tag;
-                    }
-
-
-                    // ----------------------------------------
-                    // تعديل v الموجود
-                    // ----------------------------------------
-
-                    const valueRegex =
-                        /(\bv\s*=\s*["'])[^"']*(["'])/i;
-
-                    if (
-                        valueRegex.test(tag)
-                    ) {
-
-                        return tag.replace(
-                            valueRegex,
-                            function(
-                                match,
-                                prefix,
-                                suffix
-                            ) {
-
-                                return (
-                                    prefix +
-                                    String(newValue) +
-                                    suffix
-                                );
-                            }
-                        );
-                    }
-
-
-                    // ----------------------------------------
-                    // إذا لم يوجد v
-                    // نضيفه
-                    // ----------------------------------------
+                if (
+                    valueRegex.test(tag)
+                ) {
 
                     return tag.replace(
-                        /\/?>$/,
-                        ' v="' +
-                        String(newValue) +
-                        '"/>'
+                        valueRegex,
+                        "$1$2"
                     );
                 }
-            );
-    }
 
+                return tag.replace(
+                    /\/?>$/,
+                    ' v=""/>'
+                );
+            }
 
-    // ========================================================
-    // cityId
-    // ========================================================
+            // ------------------------------------------------
+            // Device
+            // ------------------------------------------------
 
-    modifyVar(
-        "cityId",
-        ""
+            if (
+                /\bname\s*=\s*["']Device["']/i.test(tag)
+            ) {
+
+                const valueRegex =
+                    /(\bv\s*=\s*["'])[^"']*(["'])/i;
+
+                if (
+                    valueRegex.test(tag)
+                ) {
+
+                    return tag.replace(
+                        valueRegex,
+                        "$1ASUS_Z01QD$2"
+                    );
+                }
+
+                return tag.replace(
+                    /\/?>$/,
+                    ' v="ASUS_Z01QD"/>'
+                );
+            }
+
+            return tag;
+        }
     );
-
-
-    // ========================================================
-    // Device
-    // ========================================================
-
-    modifyVar(
-        "Device",
-        "ASUS_Z01QD"
-    );
-
 
     console.log(
         "[FetchCity] XML modifications applied"
@@ -904,13 +819,11 @@ function editCityXml(xml) {
         "[FetchCity] Device = ASUS_Z01QD"
     );
 
-
     return Buffer.from(
         text,
         "utf8"
     );
 }
-
 
 // ============================================================
 // COMPLETE SAVE DECODER
@@ -934,10 +847,6 @@ function decodeSaveCity(cityBytes) {
 
         rounds++;
 
-        // --------------------------------
-        // XML
-        // --------------------------------
-
         if (looksLikeXml(data)) {
 
             console.log(
@@ -946,10 +855,6 @@ function decodeSaveCity(cityBytes) {
 
             return trimXml(data);
         }
-
-        // --------------------------------
-        // LZ4
-        // --------------------------------
 
         if (isLz4Magic(data)) {
 
@@ -965,10 +870,6 @@ function decodeSaveCity(cityBytes) {
             continue;
         }
 
-        // --------------------------------
-        // GZIP
-        // --------------------------------
-
         if (isGzip(data)) {
 
             console.log(
@@ -982,10 +883,6 @@ function decodeSaveCity(cityBytes) {
 
             continue;
         }
-
-        // --------------------------------
-        // SaveCrypto
-        // --------------------------------
 
         const type =
             data[0];
@@ -1025,7 +922,6 @@ function decodeSaveCity(cityBytes) {
     );
 }
 
-
 // ============================================================
 // ENCRYPT REQUEST
 // ============================================================
@@ -1059,12 +955,6 @@ function encryptRequest(requestJson) {
     const tag =
         cipher.getAuthTag();
 
-    /*
-     * مهم:
-     * body = ciphertext فقط
-     * tag داخل ts-id
-     */
-
     const tsId =
         "002" +
         iv.toString("hex") +
@@ -1075,7 +965,6 @@ function encryptRequest(requestJson) {
         tsId
     };
 }
-
 
 // ============================================================
 // DECRYPT RESPONSE
@@ -1154,7 +1043,6 @@ function decryptResponse(
     ]);
 }
 
-
 // ============================================================
 // FLEXIBLE RESPONSE DECOMPRESSION
 // ============================================================
@@ -1170,10 +1058,6 @@ function decompressResponse(
     console.log(
         `[FetchCity] decrypted magic=${bufferMagic(decrypted)}`
     );
-
-    // --------------------------------
-    // GZIP
-    // --------------------------------
 
     try {
 
@@ -1195,11 +1079,6 @@ function decompressResponse(
         );
     }
 
-
-    // --------------------------------
-    // ZLIB
-    // --------------------------------
-
     try {
 
         const result =
@@ -1219,11 +1098,6 @@ function decompressResponse(
             "[FetchCity] ZLIB failed"
         );
     }
-
-
-    // --------------------------------
-    // RAW DEFLATE
-    // --------------------------------
 
     try {
 
@@ -1245,11 +1119,6 @@ function decompressResponse(
         );
     }
 
-
-    // --------------------------------
-    // Plain JSON
-    // --------------------------------
-
     const text =
         decrypted
             .toString("utf8")
@@ -1267,14 +1136,12 @@ function decompressResponse(
         return decrypted;
     }
 
-
     throw new Error(
         "تعذر فك ضغط استجابة FetchCity. " +
         `magic=${bufferMagic(decrypted)} ` +
         `size=${decrypted.length}`
     );
 }
-
 
 // ============================================================
 // REQUEST FETCHCITY
@@ -1316,6 +1183,7 @@ async function requestFetchCity(
                     method: "POST",
 
                     headers: {
+
                         "Accept-Encoding":
                             "identity",
 
@@ -1334,9 +1202,6 @@ async function requestFetchCity(
                         "ts-fver":
                             "fver",
 
-                        /*
-                         * القيمة القديمة العاملة
-                         */
                         "ts-gpid":
                             "new",
 
@@ -1344,9 +1209,6 @@ async function requestFetchCity(
                             encrypted.tsId
                     },
 
-                    /*
-                     * لا نضيف GCM tag هنا
-                     */
                     body:
                         encrypted.body,
 
@@ -1360,10 +1222,6 @@ async function requestFetchCity(
                 await response.arrayBuffer()
             );
 
-        // --------------------------------
-        // Upstream error
-        // --------------------------------
-
         if (!response.ok) {
 
             const text =
@@ -1375,10 +1233,6 @@ async function requestFetchCity(
                 `Upstream HTTP ${response.status}: ${text}`
             );
         }
-
-        // --------------------------------
-        // Response ts-id
-        // --------------------------------
 
         const responseTsId =
             response.headers.get(
@@ -1396,28 +1250,16 @@ async function requestFetchCity(
             `[FetchCity] upstream status=${response.status}`
         );
 
-        // --------------------------------
-        // AES-GCM
-        // --------------------------------
-
         const decrypted =
             decryptResponse(
                 responseBody,
                 responseTsId
             );
 
-        // --------------------------------
-        // Compression
-        // --------------------------------
-
         const uncompressed =
             decompressResponse(
                 decrypted
             );
-
-        // --------------------------------
-        // JSON
-        // --------------------------------
 
         const text =
             uncompressed.toString(
@@ -1440,7 +1282,6 @@ async function requestFetchCity(
         clearTimeout(timer);
     }
 }
-
 
 // ============================================================
 // HANDLE FETCHCITY
@@ -1493,19 +1334,11 @@ async function handleFetchCity(
             `[FetchCity] incoming cityId=${cityId} cityVer=${cityVer}`
         );
 
-        // ================================================
-        // الطلب القديم
-        // ================================================
-
         const json =
             await requestFetchCity(
                 cityId,
                 cityVer
             );
-
-        // ================================================
-        // result.data
-        // ================================================
 
         if (
             !json ||
@@ -1525,10 +1358,6 @@ async function handleFetchCity(
             `[FetchCity] Base64 length=${base64.length}`
         );
 
-        // ================================================
-        // Base64
-        // ================================================
-
         const cityBytes =
             Buffer.from(
                 base64,
@@ -1539,10 +1368,6 @@ async function handleFetchCity(
             `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
         );
 
-        // ================================================
-        // SaveCrypto
-        // ================================================
-
         const xml =
             decodeSaveCity(
                 cityBytes
@@ -1552,10 +1377,6 @@ async function handleFetchCity(
             `[FetchCity] XML size=${xml.length}`
         );
 
-        // ================================================
-        // تعديل XML
-        // ================================================
-
         const modifiedXml =
             editCityXml(
                 xml
@@ -1564,10 +1385,6 @@ async function handleFetchCity(
         console.log(
             `[FetchCity] Modified XML size=${modifiedXml.length}`
         );
-
-        // ================================================
-        // Return XML
-        // ================================================
 
         res.status(200);
 
@@ -1608,21 +1425,9 @@ async function handleFetchCity(
     }
 }
 
-
 // ============================================================
 // ROUTES
 // ============================================================
-
-/*
- * مع:
- *
- * app.use("/api", fetchCity)
- *
- * يعمل:
- *
- * POST /api/
- * POST /api/fetch-city
- */
 
 router.post(
     "/",
@@ -1633,7 +1438,6 @@ router.post(
     "/fetch-city",
     handleFetchCity
 );
-
 
 // ============================================================
 // EXPORT
