@@ -86,12 +86,15 @@ function sub32(a, b) {
 
 function bufferMagic(buf) {
 
-    if (!buf || buf.length < 4) {
+    if (!buf || buf.length < 1) {
         return "";
     }
 
     return Array.from(
-        buf.subarray(0, 4)
+        buf.subarray(
+            0,
+            Math.min(8, buf.length)
+        )
     )
         .map(
             x =>
@@ -158,11 +161,6 @@ function trimJsonBuffer(buf) {
             .replace(/^\uFEFF/, "")
             .trim();
 
-    /*
-     * أحياناً تكون هناك بيانات زائدة بعد JSON.
-     * نحاول أخذ الجزء من أول { أو [ إلى آخر } أو ].
-     */
-
     const firstObject =
         text.indexOf("{");
 
@@ -175,18 +173,23 @@ function trimJsonBuffer(buf) {
         firstObject !== -1 &&
         firstArray !== -1
     ) {
+
         start =
             Math.min(
                 firstObject,
                 firstArray
             );
+
     } else if (
         firstObject !== -1
     ) {
+
         start = firstObject;
+
     } else if (
         firstArray !== -1
     ) {
+
         start = firstArray;
     }
 
@@ -207,6 +210,7 @@ function trimJsonBuffer(buf) {
         );
 
     if (end !== -1) {
+
         text =
             text.slice(
                 0,
@@ -601,6 +605,7 @@ function lz4DecompressBlock(
             srcPos >=
             src.length
         ) {
+
             break;
         }
 
@@ -1075,7 +1080,7 @@ function decryptResponse(
 
     if (
         hex.length <
-        24 + 32
+        56
     ) {
 
         throw new Error(
@@ -1378,9 +1383,11 @@ async function handleFetchCity(
             "no-store"
         );
 
-        return res.status(200).send(
-            modifiedXml
-        );
+        return res
+            .status(200)
+            .send(
+                modifiedXml
+            );
 
     } catch (err) {
 
@@ -1417,9 +1424,15 @@ function friendU32(v) {
     return v >>> 0;
 }
 
-function friendReadU32(data, pos) {
+function friendReadU32(
+    data,
+    pos
+) {
 
-    if (pos + 4 > data.length) {
+    if (
+        pos + 4 >
+        data.length
+    ) {
 
         throw new Error(
             "بيانات غير كافية لقراءة UInt32"
@@ -1457,10 +1470,12 @@ function friendMmh2(
 
     let h =
         friendU32(
-            seed ^ data.length
+            seed ^
+            data.length
         );
 
     let i = 0;
+
     let length =
         data.length;
 
@@ -1505,10 +1520,13 @@ function friendMmh2(
             ) >>> 0;
 
         i += 4;
+
         length -= 4;
     }
 
-    if (length === 3) {
+    if (
+        length === 3
+    ) {
 
         h =
             (
@@ -1517,7 +1535,9 @@ function friendMmh2(
             ) >>> 0;
     }
 
-    if (length >= 2) {
+    if (
+        length >= 2
+    ) {
 
         h =
             (
@@ -1526,7 +1546,9 @@ function friendMmh2(
             ) >>> 0;
     }
 
-    if (length >= 1) {
+    if (
+        length >= 1
+    ) {
 
         h =
             (
@@ -1631,19 +1653,34 @@ function friendXorDecode(
         );
     }
 
+    if (
+        data[0] !== 0x79
+    ) {
+
+        throw new Error(
+            `Magic الملف غير صحيح: ${bufferMagic(data)}`
+        );
+    }
+
     const hl =
         data[1] |
         (data[2] << 8) |
         (data[3] << 16);
 
     const hs =
-        data[4] |
-        (data[5] << 8) |
-        (data[6] << 16) |
-        (data[7] << 24);
+        (
+            data[4] |
+            (data[5] << 8) |
+            (data[6] << 16) |
+            (data[7] << 24)
+        ) >>> 0;
 
     const srcSize =
         data.length;
+
+    console.log(
+        `[IDs] 0x79 hl=${hl} hs=${hs} srcSize=${srcSize}`
+    );
 
     const table =
         friendGetHashTable(
@@ -1671,6 +1708,19 @@ function friendXorDecode(
             srcSize - 8
         );
 
+    console.log(
+        `[IDs] calculated sf=${sf} actual=${actual}`
+    );
+
+    if (
+        actual <= 0
+    ) {
+
+        throw new Error(
+            `حجم البيانات بعد فك 0x79 غير صالح: sf=${sf}, srcSize=${srcSize}`
+        );
+    }
+
     const out =
         Buffer.alloc(
             actual
@@ -1683,7 +1733,9 @@ function friendXorDecode(
     ) {
 
         out[i] =
-            data[8 + i];
+            data[
+                8 + i
+            ];
     }
 
     let j = 0;
@@ -1694,7 +1746,9 @@ function friendXorDecode(
         i++
     ) {
 
-        if (i > 0) {
+        if (
+            i > 0
+        ) {
 
             out[i] =
                 (
@@ -1723,11 +1777,16 @@ function friendXorDecode(
     return out;
 }
 
+// ============================================================
+// FRIEND LZ4
+// ============================================================
+
 function friendIsLz4(
     data
 ) {
 
     return (
+        data &&
         data.length >= 4 &&
         data[0] === 0x04 &&
         data[1] === 0x22 &&
@@ -1741,7 +1800,7 @@ function friendLz4Decompress(
 ) {
 
     if (
-        data.length < 9
+        data.length < 8
     ) {
 
         throw new Error(
@@ -1754,6 +1813,15 @@ function friendLz4Decompress(
             data,
             4
         );
+
+    if (
+        size <= 0
+    ) {
+
+        throw new Error(
+            `LZ4: الحجم غير صالح: ${size}`
+        );
+    }
 
     let src = 8;
 
@@ -1881,6 +1949,16 @@ function friendLz4Decompress(
             );
         }
 
+        if (
+            offset >
+            outLen
+        ) {
+
+            throw new Error(
+                `LZ4: Offset أكبر من البيانات الناتجة: ${offset} > ${outLen}`
+            );
+        }
+
         let matchLen =
             token & 0x0F;
 
@@ -1969,13 +2047,24 @@ function decodeFriendFile(
         data = Buffer.from(data);
     }
 
-    if (data.length === 0) {
-        throw new Error("ملف فارغ");
+    if (
+        data.length === 0
+    ) {
+
+        throw new Error(
+            "ملف فارغ"
+        );
     }
 
-    /*
-     * الملف قد يكون JSON مباشرة.
-     */
+    console.log(
+        `[IDs] decode input size=${data.length}`
+    );
+
+    console.log(
+        `[IDs] decode input magic=${bufferMagic(data)}`
+    );
+
+    // JSON مباشر
     if (
         looksLikeTextJson(data)
     ) {
@@ -1984,31 +2073,31 @@ function decodeFriendFile(
             "[IDs] JSON detected directly"
         );
 
-        return trimJsonBuffer(data);
+        return trimJsonBuffer(
+            data
+        );
     }
 
-    /*
-     * أو XML قديم.
-     */
+    // XML قديم
     if (
         data[0] === 0x3C
     ) {
 
+        console.log(
+            "[IDs] XML detected"
+        );
+
         return data;
     }
 
-    /*
-     * التشفير المعروف للملف الأول.
-     */
+    // الملف المشفر
     if (
         data[0] !== 0x79
     ) {
 
         throw new Error(
-            "نوع غير مدعوم. Magic=0x" +
-            data[0]
-                .toString(16)
-                .padStart(2, "0")
+            "نوع غير مدعوم. " +
+            `Magic=${bufferMagic(data)}`
         );
     }
 
@@ -2017,36 +2106,67 @@ function decodeFriendFile(
             data
         );
 
+    console.log(
+        `[IDs] after 0x79 size=${payload.length}`
+    );
+
+    console.log(
+        `[IDs] after 0x79 magic=${bufferMagic(payload)}`
+    );
+
     if (
         friendIsLz4(
             payload
         )
     ) {
 
+        console.log(
+            "[IDs] LZ4 detected after 0x79"
+        );
+
         payload =
             friendLz4Decompress(
                 payload
             );
+
+        console.log(
+            `[IDs] after LZ4 size=${payload.length}`
+        );
+
+        console.log(
+            `[IDs] after LZ4 magic=${bufferMagic(payload)}`
+        );
     }
 
     if (
         looksLikeTextJson(payload)
     ) {
 
+        console.log(
+            "[IDs] JSON detected after decode"
+        );
+
         return trimJsonBuffer(
             payload
         );
     }
 
-    /*
-     * بعض الملفات قد تحتوي JSON بعد طبقة ضغط.
-     */
-    if (isGzip(payload)) {
+    if (
+        isGzip(payload)
+    ) {
+
+        console.log(
+            "[IDs] GZIP detected after decode"
+        );
 
         payload =
             zlib.gunzipSync(
                 payload
             );
+
+        console.log(
+            `[IDs] after GZIP size=${payload.length}`
+        );
 
         return trimJsonBuffer(
             payload
@@ -2069,7 +2189,10 @@ function friendTrimData(
     const text =
         data
             .toString("utf8")
-            .replace(/^\uFEFF/, "")
+            .replace(
+                /^\uFEFF/,
+                ""
+            )
             .trim();
 
     if (
@@ -2095,6 +2218,7 @@ function cleanString(value) {
         value === undefined ||
         value === null
     ) {
+
         return "";
     }
 
@@ -2140,7 +2264,9 @@ function extractSaveRecords(
 ) {
 
     const records = [];
-    const seen = new Set();
+
+    const seen =
+        new Set();
 
     function visit(
         value,
@@ -2225,7 +2351,9 @@ function extractSaveRecords(
             inheritedLevel ||
             "";
 
-        if (saveId) {
+        if (
+            saveId
+        ) {
 
             const key =
                 [
@@ -2238,7 +2366,9 @@ function extractSaveRecords(
                 !seen.has(key)
             ) {
 
-                seen.add(key);
+                seen.add(
+                    key
+                );
 
                 records.push({
 
@@ -2285,10 +2415,6 @@ function extractSaveRecords(
             const child =
                 value[key];
 
-            /*
-             * لا نحتاج إعادة اعتبار الحقول النصية
-             * ككائنات.
-             */
             if (
                 child &&
                 typeof child === "object"
@@ -2313,7 +2439,7 @@ function extractSaveRecords(
 }
 
 // ============================================================
-// DECODE FRIENDS API
+// DECODE FRIENDS API - FULL DIAGNOSTIC
 // ============================================================
 
 async function handleDecodeFriends(
@@ -2349,7 +2475,8 @@ async function handleDecodeFriends(
                 .status(400)
                 .json({
                     ok: false,
-                    error: "الملف فارغ"
+                    error:
+                        "الملف فارغ"
                 });
         }
 
@@ -2361,20 +2488,132 @@ async function handleDecodeFriends(
             `[IDs] encrypted magic=${bufferMagic(encryptedFile)}`
         );
 
-        const decoded =
-            decodeFriendFile(
-                encryptedFile
+        let decoded;
+
+        try {
+
+            decoded =
+                decodeFriendFile(
+                    encryptedFile
+                );
+
+        } catch (
+            decodeError
+        ) {
+
+            console.error(
+                "[IDs] decodeFriendFile ERROR:",
+                decodeError &&
+                decodeError.stack
+                    ? decodeError.stack
+                    : decodeError
             );
+
+            return res
+                .status(500)
+                .json({
+
+                    ok: false,
+
+                    stage:
+                        "decode",
+
+                    error:
+                        String(
+                            decodeError &&
+                            decodeError.message
+                                ? decodeError.message
+                                : decodeError
+                        ),
+
+                    encryptedSize:
+                        encryptedFile.length,
+
+                    encryptedMagic:
+                        bufferMagic(
+                            encryptedFile
+                        )
+                });
+        }
+
+        if (
+            !Buffer.isBuffer(
+                decoded
+            )
+        ) {
+
+            decoded =
+                Buffer.from(
+                    decoded
+                );
+        }
+
+        const decodedSize =
+            decoded.length;
+
+        const decodedMagic =
+            bufferMagic(
+                decoded
+            );
+
+        const decodedHex =
+            decoded
+                .subarray(
+                    0,
+                    Math.min(
+                        decoded.length,
+                        512
+                    )
+                )
+                .toString(
+                    "hex"
+                );
+
+        const decodedText =
+            decoded
+                .subarray(
+                    0,
+                    Math.min(
+                        decoded.length,
+                        4000
+                    )
+                )
+                .toString(
+                    "utf8"
+                )
+                .replace(
+                    /[\x00-\x08\x0B\x0C\x0E-\x1F]/g,
+                    "."
+                );
+
+        console.log(
+            `[IDs] decoded size=${decodedSize}`
+        );
+
+        console.log(
+            `[IDs] decoded magic=${decodedMagic}`
+        );
+
+        console.log(
+            "[IDs] decoded first hex:",
+            decodedHex
+        );
+
+        console.log(
+            "[IDs] decoded first text:",
+            decodedText
+        );
 
         const text =
             decoded
-                .toString("utf8")
-                .replace(/^\uFEFF/, "")
+                .toString(
+                    "utf8"
+                )
+                .replace(
+                    /^\uFEFF/,
+                    ""
+                )
                 .trim();
-
-        console.log(
-            `[IDs] decoded size=${text.length}`
-        );
 
         let json;
 
@@ -2385,21 +2624,100 @@ async function handleDecodeFriends(
                     text
                 );
 
-        } catch (parseError) {
+        } catch (
+            parseError
+        ) {
 
             console.error(
                 "[IDs] JSON parse failed:",
                 parseError.message
             );
 
-            console.log(
-                "[IDs] first 1000 chars:",
-                text.slice(0, 1000)
+            const diagnostic =
+                [
+                    "JSON PARSE FAILED",
+
+                    "",
+
+                    "Parse error:",
+                    parseError.message,
+
+                    "",
+
+                    "Encrypted size:",
+                    String(
+                        encryptedFile.length
+                    ),
+
+                    "",
+
+                    "Encrypted magic:",
+                    bufferMagic(
+                        encryptedFile
+                    ),
+
+                    "",
+
+                    "Decoded size:",
+                    String(
+                        decodedSize
+                    ),
+
+                    "",
+
+                    "Decoded magic:",
+                    decodedMagic,
+
+                    "",
+
+                    "Decoded HEX:",
+                    decodedHex,
+
+                    "",
+
+                    "Decoded TEXT:",
+                    decodedText
+                ].join("\n");
+
+            console.error(
+                diagnostic
             );
 
-            throw new Error(
-                "بعد فك الملف لم يتم الحصول على JSON صالح"
-            );
+            return res
+                .status(500)
+                .json({
+
+                    ok: false,
+
+                    stage:
+                        "json_parse",
+
+                    error:
+                        "بعد فك الملف لم يتم الحصول على JSON صالح",
+
+                    parseError:
+                        parseError.message,
+
+                    encryptedSize:
+                        encryptedFile.length,
+
+                    encryptedMagic:
+                        bufferMagic(
+                            encryptedFile
+                        ),
+
+                    decodedSize:
+                        decodedSize,
+
+                    decodedMagic:
+                        decodedMagic,
+
+                    decodedHex:
+                        decodedHex,
+
+                    decodedText:
+                        decodedText
+                });
         }
 
         const records =
@@ -2411,21 +2729,46 @@ async function handleDecodeFriends(
             `[IDs] save records=${records.length}`
         );
 
+        if (
+            records.length === 0
+        ) {
+
+            return res
+                .status(200)
+                .json({
+
+                    ok: true,
+
+                    count: 0,
+
+                    ids: [],
+
+                    saveIds: [],
+
+                    warning:
+                        "تم الحصول على JSON صالح، لكن لم يتم العثور على أي saveId"
+                });
+        }
+
         return res
             .status(200)
             .json({
 
                 ok: true,
 
+                count:
+                    records.length,
+
                 ids:
                     records,
 
                 saveIds:
                     records
-
             });
 
-    } catch (err) {
+    } catch (
+        err
+    ) {
 
         console.error(
             "[IDs] DECODE ERROR:",
@@ -2440,6 +2783,9 @@ async function handleDecodeFriends(
             .json({
 
                 ok: false,
+
+                stage:
+                    "server",
 
                 error:
                     String(
@@ -2464,7 +2810,8 @@ async function handleSaveInfo(
     try {
 
         const body =
-            req.body || {};
+            req.body ||
+            {};
 
         const saveId =
             cleanString(
@@ -2484,13 +2831,16 @@ async function handleSaveInfo(
                 body.level
             );
 
-        if (!saveId) {
+        if (
+            !saveId
+        ) {
 
             return res
                 .status(400)
                 .json({
                     ok: false,
-                    error: "saveId مطلوب"
+                    error:
+                        "saveId مطلوب"
                 });
         }
 
@@ -2502,16 +2852,6 @@ async function handleSaveInfo(
                 level
             }
         );
-
-        /*
-         * هنا السيرفر استلم فعلياً:
-         *
-         * saveId
-         * cityname
-         * level
-         *
-         * ولا يتم تحويل saveId إلى cityId.
-         */
 
         return res
             .status(200)
@@ -2529,7 +2869,9 @@ async function handleSaveInfo(
                     level
             });
 
-    } catch (err) {
+    } catch (
+        err
+    ) {
 
         console.error(
             "[SaveInfo] ERROR:",
@@ -2539,11 +2881,15 @@ async function handleSaveInfo(
         return res
             .status(500)
             .json({
+
                 ok: false,
+
                 error:
                     String(
-                        err.message ||
-                        err
+                        err &&
+                        err.message
+                            ? err.message
+                            : err
                     )
             });
     }
@@ -2581,14 +2927,22 @@ router.post(
 router.post(
     "/decode-friends",
     express.raw({
-        type: "application/octet-stream",
-        limit: "50mb"
+        type:
+            "application/octet-stream",
+
+        limit:
+            "50mb"
     }),
     handleDecodeFriends
 );
+
+// ============================================================
+// MODULE
+// ============================================================
 
 console.log(
     "[FetchCity] module loaded"
 );
 
-module.exports = router;
+module.exports =
+    router;
