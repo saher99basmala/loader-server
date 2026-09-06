@@ -9,7 +9,6 @@ const fetch = require("node-fetch");
 
 const router = express.Router();
 
-
 // ============================================================
 // CONFIG
 // ============================================================
@@ -26,9 +25,8 @@ const ENDPOINT =
 const TIMEOUT_MS =
     Number(process.env.FETCHCITY_TIMEOUT_MS || 25000);
 
-
 // ============================================================
-// SAVECRYPTO CONSTANTS
+// SAVECRYPTO CONSTANTS - FETCHCITY
 // ============================================================
 
 const TABLE_SIZE = 0x2D7;
@@ -36,13 +34,16 @@ const PROCESS_XOR = 0x396A8;
 const TOTAL_XOR = 0xC5EED;
 const TABLE_MULTIPLIER = 0x5BD1E995;
 
+// ============================================================
+// LZ4 MAGIC
+// ============================================================
+
 const LZ4_MAGIC = Buffer.from([
     0x04,
     0x22,
     0x4D,
     0x18
 ]);
-
 
 // ============================================================
 // FETCH54 TABLE
@@ -53,16 +54,15 @@ const FETCH54_TABLE = Buffer.from(
     "base64"
 );
 
-
 // ============================================================
-// GENERAL UTILS
+// UTILS
 // ============================================================
 
 function u32le(buf, offset) {
 
     if (offset + 4 > buf.length) {
         throw new Error(
-            `u32le خارج حدود البيانات: offset=${offset}, size=${buf.length}`
+            "u32le خارج حدود البيانات"
         );
     }
 
@@ -76,33 +76,26 @@ function u32le(buf, offset) {
     );
 }
 
-
 function xor32(a, b) {
     return (a ^ b) >>> 0;
 }
-
 
 function add32(a, b) {
     return (a + b) >>> 0;
 }
 
-
 function sub32(a, b) {
     return (a - b) >>> 0;
 }
 
-
 function bufferMagic(buf) {
 
-    if (!buf || buf.length < 1) {
+    if (!buf || buf.length < 4) {
         return "";
     }
 
     return Array.from(
-        buf.subarray(
-            0,
-            Math.min(8, buf.length)
-        )
+        buf.subarray(0, 4)
     )
         .map(
             x =>
@@ -112,42 +105,18 @@ function bufferMagic(buf) {
         )
         .join(" ");
 }
-
-
-function bufferHex(buf, count = 32) {
-
-    if (!buf || !buf.length) {
-        return "";
-    }
-
-    return Array.from(
-        buf.subarray(
-            0,
-            Math.min(count, buf.length)
-        )
-    )
-        .map(
-            x =>
-                x
-                    .toString(16)
-                    .padStart(2, "0")
-        )
-        .join(" ");
-}
-
 
 function isLz4Magic(buf) {
 
     return (
         buf &&
         buf.length >= 4 &&
-        buf[0] === 0x04 &&
-        buf[1] === 0x22 &&
-        buf[2] === 0x4D &&
-        buf[3] === 0x18
+        buf[0] === LZ4_MAGIC[0] &&
+        buf[1] === LZ4_MAGIC[1] &&
+        buf[2] === LZ4_MAGIC[2] &&
+        buf[3] === LZ4_MAGIC[3]
     );
 }
-
 
 function isGzip(buf) {
 
@@ -159,30 +128,6 @@ function isGzip(buf) {
     );
 }
 
-
-function looksLikeTextJson(buf) {
-
-    if (!buf || buf.length === 0) {
-        return false;
-    }
-
-    const text =
-        buf
-            .subarray(
-                0,
-                Math.min(buf.length, 512)
-            )
-            .toString("utf8")
-            .replace(/^\uFEFF/, "")
-            .trimStart();
-
-    return (
-        text.startsWith("{") ||
-        text.startsWith("[")
-    );
-}
-
-
 function looksLikeXml(buf) {
 
     if (!buf || buf.length === 0) {
@@ -193,101 +138,23 @@ function looksLikeXml(buf) {
         buf
             .subarray(
                 0,
-                Math.min(buf.length, 512)
+                Math.min(
+                    buf.length,
+                    512
+                )
             )
             .toString("utf8")
             .replace(/^\uFEFF/, "")
             .trimStart();
 
     return (
-        text.startsWith("<root") ||
-        text.startsWith("<?xml") ||
-        text.startsWith("<")
+        text.startsWith("<") ||
+        text.startsWith("<?xml")
     );
 }
-
-
-function trimJsonBuffer(buf) {
-
-    if (!Buffer.isBuffer(buf)) {
-        buf = Buffer.from(buf);
-    }
-
-    let text =
-        buf
-            .toString("utf8")
-            .replace(/^\uFEFF/, "")
-            .trim();
-
-    const firstObject =
-        text.indexOf("{");
-
-    const firstArray =
-        text.indexOf("[");
-
-    let start = -1;
-
-    if (
-        firstObject !== -1 &&
-        firstArray !== -1
-    ) {
-
-        start =
-            Math.min(
-                firstObject,
-                firstArray
-            );
-
-    } else if (
-        firstObject !== -1
-    ) {
-
-        start = firstObject;
-
-    } else if (
-        firstArray !== -1
-    ) {
-
-        start = firstArray;
-    }
-
-    if (start > 0) {
-        text = text.slice(start);
-    }
-
-    const lastObject =
-        text.lastIndexOf("}");
-
-    const lastArray =
-        text.lastIndexOf("]");
-
-    const end =
-        Math.max(
-            lastObject,
-            lastArray
-        );
-
-    if (end !== -1) {
-
-        text =
-            text.slice(
-                0,
-                end + 1
-            );
-    }
-
-    return Buffer.from(
-        text.trim(),
-        "utf8"
-    );
-}
-
 
 // ============================================================
 // FETCHCITY 0x79
-// ============================================================
-// هذه الخوارزمية خاصة بملفات LocalInfo / IDs.
-// لا يتم افتراض أنها طبقة بعد 0x54 في FetchCity.
 // ============================================================
 
 function build79Table(seed) {
@@ -319,7 +186,6 @@ function build79Table(seed) {
     return table;
 }
 
-
 function xorDecode79(raw) {
 
     if (!Buffer.isBuffer(raw)) {
@@ -336,7 +202,7 @@ function xorDecode79(raw) {
     if (raw[0] !== 0x79) {
 
         throw new Error(
-            `Magic 0x79 غير صحيح: ${bufferMagic(raw)}`
+            `بيانات 0x79 غير صحيحة. Magic=${bufferMagic(raw)}`
         );
     }
 
@@ -396,10 +262,6 @@ function xorDecode79(raw) {
             seed
         );
 
-    console.log(
-        `[79] header=${headerValue} total=${total} processLen=${processLen} seed=${seed}`
-    );
-
     const out =
         Buffer.from(
             raw.subarray(
@@ -447,7 +309,6 @@ function xorDecode79(raw) {
 
     return out;
 }
-
 
 // ============================================================
 // FETCHCITY 0x54
@@ -536,44 +397,60 @@ function decode54Layer(raw) {
             ) & 0xFF;
     }
 
-    console.log(
-        `[54] processLen=${processLen} output=${out.length}`
-    );
-
-    console.log(
-        `[54] output magic=${bufferMagic(out)}`
-    );
-
-    console.log(
-        `[54] output first32=${bufferHex(out, 32)}`
-    );
-
     return out;
 }
 
+// ============================================================
+// FETCHCITY TRANSPORT
+// ============================================================
+
+function decodeTransport(raw) {
+
+    if (!Buffer.isBuffer(raw)) {
+        raw = Buffer.from(raw);
+    }
+
+    if (raw.length === 0) {
+        return raw;
+    }
+
+    const type =
+        raw[0];
+
+    console.log(
+        `[FetchCity] SaveCrypto type=0x${type
+            .toString(16)
+            .padStart(2, "0")}`
+    );
+
+    switch (type) {
+
+        case 0x79:
+            return xorDecode79(raw);
+
+        case 0x54:
+            return decode54Layer(raw);
+
+        case 0x1F:
+            return raw;
+
+        default:
+            throw new Error(
+                `نوع FetchCity غير مدعوم: 0x${type
+                    .toString(16)
+                    .padStart(2, "0")}`
+            );
+    }
+}
 
 // ============================================================
-// LZ4
+// FETCHCITY LZ4
 // ============================================================
 
 function lz4DecompressBlock(
     src,
     expectedSize
 ) {
-
-    if (!Buffer.isBuffer(src)) {
-        src = Buffer.from(src);
-    }
-
-    if (
-        expectedSize <= 0 ||
-        expectedSize > 1024 * 1024 * 512
-    ) {
-
-        throw new Error(
-            `LZ4 expectedSize غير صالح: ${expectedSize}`
-        );
-    }
 
     let srcPos = 0;
     let dstPos = 0;
@@ -608,7 +485,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: literal length خارج حدود البيانات"
+                        "LZ4: literal length خارج البيانات"
                     );
                 }
 
@@ -630,7 +507,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: literals خارج حدود البيانات"
+                "LZ4: literals خارج البيانات"
             );
         }
 
@@ -659,11 +536,9 @@ function lz4DecompressBlock(
         dstPos +=
             literalLength;
 
-        /*
-         * آخر sequence في LZ4 يمكن أن يكون literals فقط.
-         */
         if (
-            srcPos >= src.length
+            srcPos >=
+            src.length
         ) {
 
             break;
@@ -698,7 +573,8 @@ function lz4DecompressBlock(
         }
 
         if (
-            offset > dstPos
+            offset >
+            dstPos
         ) {
 
             throw new Error(
@@ -723,7 +599,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: match length خارج حدود البيانات"
+                        "LZ4: match length خارج البيانات"
                     );
                 }
 
@@ -751,11 +627,6 @@ function lz4DecompressBlock(
             );
         }
 
-        /*
-         * مهم:
-         * النسخ يتم byte-by-byte حتى يعمل overlap
-         * الصحيح الخاص بـ LZ4.
-         */
         for (
             let i = 0;
             i < matchLength;
@@ -789,7 +660,6 @@ function lz4DecompressBlock(
     return output;
 }
 
-
 function decodeLz4Container(raw) {
 
     if (
@@ -806,7 +676,7 @@ function decodeLz4Container(raw) {
     ) {
 
         throw new Error(
-            "LZ4 container قصير"
+            "LZ4 container قصيرة"
         );
     }
 
@@ -825,16 +695,11 @@ function decodeLz4Container(raw) {
         `[FetchCity] LZ4 expectedSize=${expectedSize}, compressed=${compressed.length}`
     );
 
-    console.log(
-        `[FetchCity] LZ4 compressed first32=${bufferHex(compressed, 32)}`
-    );
-
     return lz4DecompressBlock(
         compressed,
         expectedSize
     );
 }
-
 
 // ============================================================
 // FETCHCITY XML
@@ -901,7 +766,6 @@ function trimXml(buf) {
         end
     );
 }
-
 
 function editCityXml(xml) {
 
@@ -971,30 +835,26 @@ function editCityXml(xml) {
             }
         );
 
+    console.log(
+        "[FetchCity] XML modifications applied"
+    );
+
+    console.log(
+        "[FetchCity] cityId = empty"
+    );
+
+    console.log(
+        "[FetchCity] Device = ASUS_Z01QD"
+    );
+
     return Buffer.from(
         text,
         "utf8"
     );
 }
 
-
 // ============================================================
-// FETCHCITY SAVE DECODER
-// ============================================================
-//
-// المسار:
-//
-// FetchCity JSON
-//      ↓
-// base64
-//      ↓
-// 0x54
-//      ↓
-// LZ4 إذا كان magic فعلاً
-//      ↓
-// XML
-//
-// لا يتم تشغيل 0x79 تلقائياً هنا.
+// COMPLETE FETCHCITY SAVE DECODER
 // ============================================================
 
 function decodeSaveCity(cityBytes) {
@@ -1008,229 +868,131 @@ function decodeSaveCity(cityBytes) {
         `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
     );
 
-    console.log(
-        `[FetchCity] cityBytes first32=${bufferHex(data, 32)}`
-    );
+    let rounds = 0;
 
-
-    // --------------------------------------------------------
-    // Round 1
-    // --------------------------------------------------------
-
-    if (
-        looksLikeXml(data)
-    ) {
-
-        console.log(
-            "[FetchCity] XML already available"
-        );
-
-        return trimXml(
-            data
-        );
-    }
-
-
-    // --------------------------------------------------------
-    // gzip
-    // --------------------------------------------------------
-
-    if (
-        isGzip(data)
-    ) {
-
-        console.log(
-            "[FetchCity] gzip detected"
-        );
-
-        data =
-            zlib.gunzipSync(
-                data
-            );
-
-        console.log(
-            `[FetchCity] after gzip size=${data.length} magic=${bufferMagic(data)}`
-        );
-    }
-
-
-    // --------------------------------------------------------
-    // 0x54
-    // --------------------------------------------------------
-
-    if (
+    while (
         data.length > 0 &&
-        data[0] === 0x54
+        rounds < 8
     ) {
 
-        console.log(
-            "[FetchCity] 0x54 detected"
-        );
+        rounds++;
 
-        data =
-            decode54Layer(
-                data
-            );
-
-        console.log(
-            `[FetchCity] AFTER 0x54 size=${data.length} magic=${bufferMagic(data)}`
-        );
-
-        console.log(
-            `[FetchCity] AFTER 0x54 first32=${bufferHex(data, 32)}`
-        );
-    }
-
-
-    // --------------------------------------------------------
-    // XML بعد 0x54
-    // --------------------------------------------------------
-
-    if (
-        looksLikeXml(data)
-    ) {
-
-        console.log(
-            "[FetchCity] XML detected after 0x54"
-        );
-
-        return trimXml(
-            data
-        );
-    }
-
-
-    // --------------------------------------------------------
-    // LZ4 بعد 0x54
-    // --------------------------------------------------------
-
-    if (
-        isLz4Magic(data)
-    ) {
-
-        console.log(
-            "[FetchCity] LZ4 detected after 0x54"
-        );
-
-        data =
-            decodeLz4Container(
-                data
-            );
-
-        console.log(
-            `[FetchCity] AFTER LZ4 size=${data.length} magic=${bufferMagic(data)}`
-        );
-
-        console.log(
-            `[FetchCity] AFTER LZ4 first32=${bufferHex(data, 32)}`
-        );
-    }
-
-
-    // --------------------------------------------------------
-    // XML بعد LZ4
-    // --------------------------------------------------------
-
-    if (
-        looksLikeXml(data)
-    ) {
-
-        console.log(
-            "[FetchCity] XML detected after LZ4"
-        );
-
-        return trimXml(
-            data
-        );
-    }
-
-
-    // --------------------------------------------------------
-    // JSON
-    // --------------------------------------------------------
-
-    if (
-        looksLikeTextJson(data)
-    ) {
-
-        console.log(
-            "[FetchCity] JSON detected"
-        );
-
-        return trimJsonBuffer(
-            data
-        );
-    }
-
-
-    // --------------------------------------------------------
-    // إذا ظهر 0x79 هنا
-    // لا نفكه تلقائياً لأن 0x79 معروف حالياً
-    // كمسار LocalInfo.
-    // --------------------------------------------------------
-
-    if (
-        data.length > 0 &&
-        data[0] === 0x79
-    ) {
-
-        throw new Error(
-            "ظهر 0x79 بعد مسار FetchCity/0x54. " +
-            "هذا يحتاج تأكيد ترتيب الطبقات قبل تطبيق خوارزمية LocalInfo 0x79. " +
-            `magic=${bufferMagic(data)} size=${data.length} first32=${bufferHex(data, 32)}`
-        );
-    }
-
-
-    // --------------------------------------------------------
-    // gzip بعد أي طبقة
-    // --------------------------------------------------------
-
-    if (
-        isGzip(data)
-    ) {
-
-        console.log(
-            "[FetchCity] gzip detected in final stage"
-        );
-
-        data =
-            zlib.gunzipSync(
-                data
-            );
+        // ----------------------------------------------------
+        // XML
+        // ----------------------------------------------------
 
         if (
             looksLikeXml(data)
         ) {
+
+            console.log(
+                `[FetchCity] XML detected after ${rounds - 1} layer(s)`
+            );
 
             return trimXml(
                 data
             );
         }
 
+        // ----------------------------------------------------
+        // LZ4
+        // ----------------------------------------------------
+
         if (
-            looksLikeTextJson(data)
+            isLz4Magic(data)
         ) {
 
-            return trimJsonBuffer(
-                data
+            console.log(
+                `[FetchCity] LZ4 detected`
             );
+
+            const before =
+                data;
+
+            data =
+                decodeLz4Container(
+                    data
+                );
+
+            console.log(
+                `[FetchCity] LZ4: ${bufferMagic(before)} -> ${bufferMagic(data)}`
+            );
+
+            continue;
         }
+
+        // ----------------------------------------------------
+        // GZIP
+        // ----------------------------------------------------
+
+        if (
+            isGzip(data)
+        ) {
+
+            console.log(
+                `[FetchCity] GZIP detected`
+            );
+
+            const before =
+                data;
+
+            data =
+                zlib.gunzipSync(
+                    data
+                );
+
+            console.log(
+                `[FetchCity] GZIP: ${bufferMagic(before)} -> ${bufferMagic(data)}`
+            );
+
+            continue;
+        }
+
+        // ----------------------------------------------------
+        // 0x79 / 0x54
+        // ----------------------------------------------------
+
+        const type =
+            data[0];
+
+        if (
+            type === 0x79 ||
+            type === 0x54
+        ) {
+
+            const before =
+                data;
+
+            data =
+                decodeTransport(
+                    data
+                );
+
+            console.log(
+                `[FetchCity] layer ${rounds}: ${bufferMagic(before)} -> ${bufferMagic(data)}`
+            );
+
+            continue;
+        }
+
+        throw new Error(
+            `تعذر فك طبقات FetchCity. المرحلة التالية غير معروفة. Magic=${bufferMagic(data)} size=${data.length}`
+        );
     }
 
+    if (
+        looksLikeXml(data)
+    ) {
 
-    // --------------------------------------------------------
-    // غير معروف
-    // --------------------------------------------------------
+        return trimXml(
+            data
+        );
+    }
 
     throw new Error(
-        "تعذر الوصول إلى XML بعد فك FetchCity. " +
-        `size=${data.length} ` +
-        `magic=${bufferMagic(data)} ` +
-        `first32=${bufferHex(data, 32)}`
+        `تعذر الوصول إلى XML. Magic=${bufferMagic(data)} size=${data.length}`
     );
 }
-
 
 // ============================================================
 // AES REQUEST
@@ -1280,7 +1042,6 @@ function encryptRequest(
     };
 }
 
-
 // ============================================================
 // AES RESPONSE
 // ============================================================
@@ -1311,7 +1072,8 @@ function decryptResponse(
         tsId.slice(3);
 
     if (
-        hex.length < 56
+        hex.length <
+        24 + 32
     ) {
 
         throw new Error(
@@ -1319,15 +1081,27 @@ function decryptResponse(
         );
     }
 
+    const ivHex =
+        hex.slice(
+            0,
+            24
+        );
+
+    const tagHex =
+        hex.slice(
+            24,
+            24 + 32
+        );
+
     const iv =
         Buffer.from(
-            hex.slice(0, 24),
+            ivHex,
             "hex"
         );
 
     const tag =
         Buffer.from(
-            hex.slice(24, 56),
+            tagHex,
             "hex"
         );
 
@@ -1343,11 +1117,12 @@ function decryptResponse(
     );
 
     return Buffer.concat([
-        decipher.update(body),
+        decipher.update(
+            body
+        ),
         decipher.final()
     ]);
 }
-
 
 // ============================================================
 // RESPONSE DECOMPRESSION
@@ -1358,79 +1133,125 @@ function decompressResponse(
 ) {
 
     console.log(
-        `[FetchCity] decrypted size=${decrypted.length} magic=${bufferMagic(decrypted)}`
+        `[FetchCity] decrypted size=${decrypted.length}`
     );
 
     console.log(
-        `[FetchCity] decrypted first32=${bufferHex(decrypted, 32)}`
+        `[FetchCity] decrypted magic=${bufferMagic(decrypted)}`
     );
 
+    // --------------------------------------------------------
+    // GZIP
+    // --------------------------------------------------------
 
     try {
 
-        return zlib.gunzipSync(
-            decrypted
+        const result =
+            zlib.gunzipSync(
+                decrypted
+            );
+
+        console.log(
+            `[FetchCity] compression = GZIP`
         );
 
-    } catch (_) {}
+        console.log(
+            `[FetchCity] after compression magic=${bufferMagic(result)}`
+        );
 
+        return result;
+
+    } catch (gzipError) {
+
+        console.log(
+            `[FetchCity] GZIP failed: ${gzipError.message}`
+        );
+    }
+
+    // --------------------------------------------------------
+    // ZLIB
+    // --------------------------------------------------------
 
     try {
 
-        return zlib.inflateSync(
-            decrypted
+        const result =
+            zlib.inflateSync(
+                decrypted
+            );
+
+        console.log(
+            `[FetchCity] compression = ZLIB`
         );
 
-    } catch (_) {}
+        console.log(
+            `[FetchCity] after compression magic=${bufferMagic(result)}`
+        );
 
+        return result;
+
+    } catch (zlibError) {
+
+        console.log(
+            `[FetchCity] ZLIB failed: ${zlibError.message}`
+        );
+    }
+
+    // --------------------------------------------------------
+    // RAW DEFLATE
+    // --------------------------------------------------------
 
     try {
 
-        return zlib.inflateRawSync(
-            decrypted
+        const result =
+            zlib.inflateRawSync(
+                decrypted
+            );
+
+        console.log(
+            `[FetchCity] compression = RAW DEFLATE`
         );
 
-    } catch (_) {}
+        console.log(
+            `[FetchCity] after compression magic=${bufferMagic(result)}`
+        );
 
+        return result;
 
-    /*
-     * أحياناً يكون المحتوى JSON مباشرة.
-     */
+    } catch (rawError) {
+
+        console.log(
+            `[FetchCity] RAW DEFLATE failed: ${rawError.message}`
+        );
+    }
+
+    // --------------------------------------------------------
+    // Plain JSON
+    // --------------------------------------------------------
+
+    const text =
+        decrypted
+            .toString("utf8")
+            .replace(/^\uFEFF/, "")
+            .trim();
+
     if (
-        looksLikeTextJson(
-            decrypted
-        )
+        text.startsWith("{") ||
+        text.startsWith("[")
     ) {
+
+        console.log(
+            `[FetchCity] response = plain JSON`
+        );
 
         return decrypted;
     }
-
-
-    /*
-     * وأحياناً يمكن أن يكون binary SaveCrypto
-     * مباشرة بعد AES.
-     */
-    if (
-        decrypted.length > 0 &&
-        (
-            decrypted[0] === 0x54 ||
-            decrypted[0] === 0x79 ||
-            isLz4Magic(decrypted)
-        )
-    ) {
-
-        return decrypted;
-    }
-
 
     throw new Error(
         "تعذر فك ضغط استجابة FetchCity. " +
         `magic=${bufferMagic(decrypted)} ` +
-        `size=${decrypted.length} ` +
-        `first32=${bufferHex(decrypted, 32)}`
+        `size=${decrypted.length}`
     );
 }
-
 
 // ============================================================
 // REQUEST PLAYRIX
@@ -1446,6 +1267,10 @@ async function requestFetchCity(
 
     console.log(
         `[FetchCity] request cityId=${cityId} cityVer=${cityVer}`
+    );
+
+    console.log(
+        `[FetchCity] requestJson=${requestJson}`
     );
 
     const encrypted =
@@ -1467,7 +1292,9 @@ async function requestFetchCity(
         const response =
             await fetch(
                 ENDPOINT +
-                encodeURIComponent(cityId),
+                encodeURIComponent(
+                    cityId
+                ),
                 {
                     method: "POST",
 
@@ -1506,32 +1333,27 @@ async function requestFetchCity(
                 }
             );
 
-
         const responseBody =
             Buffer.from(
                 await response.arrayBuffer()
             );
 
-
-        console.log(
-            `[FetchCity] upstream HTTP=${response.status} size=${responseBody.length} magic=${bufferMagic(responseBody)}`
-        );
-
-
         if (!response.ok) {
 
+            const text =
+                responseBody.toString(
+                    "utf8"
+                );
+
             throw new Error(
-                `Upstream HTTP ${response.status}: ` +
-                responseBody.toString("utf8")
+                `Upstream HTTP ${response.status}: ${text}`
             );
         }
-
 
         const responseTsId =
             response.headers.get(
                 "ts-id"
             );
-
 
         if (!responseTsId) {
 
@@ -1540,6 +1362,13 @@ async function requestFetchCity(
             );
         }
 
+        console.log(
+            `[FetchCity] upstream status=${response.status}`
+        );
+
+        console.log(
+            `[FetchCity] encrypted response size=${responseBody.length}`
+        );
 
         const decrypted =
             decryptResponse(
@@ -1547,39 +1376,31 @@ async function requestFetchCity(
                 responseTsId
             );
 
+        console.log(
+            `[FetchCity] decrypted magic=${bufferMagic(decrypted)}`
+        );
 
         const uncompressed =
             decompressResponse(
                 decrypted
             );
 
-
-        console.log(
-            `[FetchCity] response data size=${uncompressed.length} magic=${bufferMagic(uncompressed)}`
-        );
-
-
         const text =
             uncompressed
                 .toString("utf8")
+                .replace(/^\uFEFF/, "")
                 .trim();
 
+        console.log(
+            `[FetchCity] response text size=${text.length}`
+        );
 
-        try {
-
-            return JSON.parse(
+        const json =
+            JSON.parse(
                 text
             );
 
-        } catch (error) {
-
-            throw new Error(
-                "FetchCity response بعد AES/decompression ليس JSON صالح. " +
-                `magic=${bufferMagic(uncompressed)} ` +
-                `size=${uncompressed.length} ` +
-                `first32=${bufferHex(uncompressed, 32)}`
-            );
-        }
+        return json;
 
     } finally {
 
@@ -1589,7 +1410,6 @@ async function requestFetchCity(
     }
 }
 
-
 // ============================================================
 // FETCHCITY API
 // ============================================================
@@ -1597,15 +1417,13 @@ async function requestFetchCity(
 // Lua يرسل فقط:
 //
 // {
-//     "city_id": "...",
-//     "city_name": "...",
-//     "level": 16
+//   city_id,
+//   city_name,
+//   level
 // }
 //
-// city_id = SaveId أو city_id حسب المصدر.
-// السيرفر يستخدم city_id كـ fetchCityId.
+// city_id = saveId أو city_id
 //
-// cityVer = 0 داخلياً.
 // ============================================================
 
 async function handleFetchCity(
@@ -1616,84 +1434,76 @@ async function handleFetchCity(
     try {
 
         const body =
-            req.body ||
-            {};
-
+            req.body || {};
 
         const cityId =
             String(
                 body.city_id || ""
             ).trim();
 
-
         const cityName =
             String(
                 body.city_name || ""
             ).trim();
 
-
         const level =
-            Number(
-                body.level || 0
-            );
-
+            String(
+                body.level || ""
+            ).trim();
 
         if (!cityId) {
 
             return res
                 .status(400)
                 .json({
-
                     ok: false,
-
                     error:
                         "city_id مطلوب"
                 });
         }
 
-
-        if (
-            !Number.isFinite(level) ||
-            level < 0
-        ) {
+        if (!cityName) {
 
             return res
                 .status(400)
                 .json({
-
                     ok: false,
-
                     error:
-                        "level غير صالح"
+                        "city_name مطلوب"
                 });
         }
 
+        if (!level) {
+
+            return res
+                .status(400)
+                .json({
+                    ok: false,
+                    error:
+                        "level مطلوب"
+                });
+        }
 
         console.log(
-            "[FetchCity] incoming:",
-            {
-                city_id: cityId,
-                city_name: cityName,
-                level: level
-            }
+            `[FetchCity] incoming city_id=${cityId} city_name=${cityName} level=${level}`
         );
 
-
-        const cityVer =
-            0;
-
+        // ----------------------------------------------------
+        // city_id هو نفسه FetchCityId
+        // cityVer لا يأتي من Lua
+        // ----------------------------------------------------
 
         const json =
             await requestFetchCity(
                 cityId,
-                cityVer
+                0
             );
-
 
         if (
             !json ||
             !json.result ||
-            typeof json.result.data !== "string"
+            typeof json.result.data !==
+                "string"
         ) {
 
             throw new Error(
@@ -1701,30 +1511,50 @@ async function handleFetchCity(
             );
         }
 
+        const base64 =
+            json.result.data;
+
+        console.log(
+            `[FetchCity] Base64 length=${base64.length}`
+        );
 
         const cityBytes =
             Buffer.from(
-                json.result.data,
+                base64,
                 "base64"
             );
 
-
         console.log(
-            `[FetchCity] result.data decoded size=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
+            `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
         );
 
+        // ----------------------------------------------------
+        // فك طبقات ملف المدينة
+        // ----------------------------------------------------
 
         const xml =
             decodeSaveCity(
                 cityBytes
             );
 
+        console.log(
+            `[FetchCity] XML size=${xml.length}`
+        );
+
+        // ----------------------------------------------------
+        // تعديل XML
+        // ----------------------------------------------------
 
         const modifiedXml =
             editCityXml(
                 xml
             );
 
+        console.log(
+            `[FetchCity] Modified XML size=${modifiedXml.length}`
+        );
+
+        res.status(200);
 
         res.set(
             "Content-Type",
@@ -1736,12 +1566,9 @@ async function handleFetchCity(
             "no-store"
         );
 
-
-        return res
-            .status(200)
-            .send(
-                modifiedXml
-            );
+        return res.send(
+            modifiedXml
+        );
 
     } catch (err) {
 
@@ -1753,13 +1580,10 @@ async function handleFetchCity(
                 : err
         );
 
-
         return res
             .status(500)
             .json({
-
                 ok: false,
-
                 error:
                     String(
                         err &&
@@ -1771,18 +1595,15 @@ async function handleFetchCity(
     }
 }
 
-
 // ============================================================
 // FRIEND FILE DECODER
 // ============================================================
 
 const FRIEND_TABLE_SIZE = 0x2D7;
 
-
 function friendU32(v) {
     return v >>> 0;
 }
-
 
 function friendReadU32(
     data,
@@ -1807,7 +1628,6 @@ function friendReadU32(
     ) >>> 0;
 }
 
-
 function friendU32Bytes(v) {
 
     v =
@@ -1820,7 +1640,6 @@ function friendU32Bytes(v) {
         (v >>> 24) & 0xff
     ]);
 }
-
 
 function friendMmh2(
     data,
@@ -1946,7 +1765,6 @@ function friendMmh2(
     return h >>> 0;
 }
 
-
 function friendGetHashTable(
     length,
     seed
@@ -2003,7 +1821,6 @@ function friendGetHashTable(
     return table;
 }
 
-
 function friendXorDecode(
     data
 ) {
@@ -2013,16 +1830,7 @@ function friendXorDecode(
     ) {
 
         throw new Error(
-            "الملف صغير جداً"
-        );
-    }
-
-    if (
-        data[0] !== 0x79
-    ) {
-
-        throw new Error(
-            `Magic الملف غير صحيح: ${bufferMagic(data)}`
+            "الملف صغير جدًا"
         );
     }
 
@@ -2032,19 +1840,13 @@ function friendXorDecode(
         (data[3] << 16);
 
     const hs =
-        (
-            data[4] |
-            (data[5] << 8) |
-            (data[6] << 16) |
-            (data[7] << 24)
-        ) >>> 0;
+        data[4] |
+        (data[5] << 8) |
+        (data[6] << 16) |
+        (data[7] << 24);
 
     const srcSize =
         data.length;
-
-    console.log(
-        `[IDs] 0x79 hl=${hl} hs=${hs} srcSize=${srcSize}`
-    );
 
     const table =
         friendGetHashTable(
@@ -2072,19 +1874,6 @@ function friendXorDecode(
             srcSize - 8
         );
 
-    console.log(
-        `[IDs] calculated sf=${sf} actual=${actual}`
-    );
-
-    if (
-        actual <= 0
-    ) {
-
-        throw new Error(
-            `حجم البيانات بعد فك 0x79 غير صالح: sf=${sf}, srcSize=${srcSize}`
-        );
-    }
-
     const out =
         Buffer.alloc(
             actual
@@ -2097,9 +1886,7 @@ function friendXorDecode(
     ) {
 
         out[i] =
-            data[
-                8 + i
-            ];
+            data[8 + i];
     }
 
     let j = 0;
@@ -2141,17 +1928,11 @@ function friendXorDecode(
     return out;
 }
 
-
-// ============================================================
-// FRIEND LZ4
-// ============================================================
-
 function friendIsLz4(
     data
 ) {
 
     return (
-        data &&
         data.length >= 4 &&
         data[0] === 0x04 &&
         data[1] === 0x22 &&
@@ -2160,17 +1941,16 @@ function friendIsLz4(
     );
 }
 
-
 function friendLz4Decompress(
     data
 ) {
 
     if (
-        data.length < 8
+        data.length < 9
     ) {
 
         throw new Error(
-            "LZ4: البيانات صغيرة جداً"
+            "LZ4: البيانات صغيرة جدًا"
         );
     }
 
@@ -2179,15 +1959,6 @@ function friendLz4Decompress(
             data,
             4
         );
-
-    if (
-        size <= 0
-    ) {
-
-        throw new Error(
-            `LZ4: الحجم غير صالح: ${size}`
-        );
-    }
 
     let src = 8;
 
@@ -2315,16 +2086,6 @@ function friendLz4Decompress(
             );
         }
 
-        if (
-            offset >
-            outLen
-        ) {
-
-            throw new Error(
-                `LZ4: Offset أكبر من البيانات الناتجة: ${offset} > ${outLen}`
-            );
-        }
-
         let matchLen =
             token & 0x0F;
 
@@ -2394,24 +2155,75 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            `LZ4: الحجم الناتج غير صحيح Expected=${size} Actual=${outLen}`
+            "LZ4: الحجم الناتج غير صحيح\n" +
+            "Expected: " +
+            size +
+            "\nActual: " +
+            outLen
         );
     }
 
     return output;
 }
 
+function friendTrimXml(
+    data
+) {
+
+    const marker =
+        Buffer.from(
+            "</root>"
+        );
+
+    const pos =
+        data.lastIndexOf(
+            marker
+        );
+
+    if (
+        pos !== -1
+    ) {
+
+        return data.subarray(
+            0,
+            pos +
+            marker.length
+        );
+    }
+
+    let end =
+        data.length;
+
+    while (
+        end > 0 &&
+        data[end - 1] === 0
+    ) {
+
+        end--;
+    }
+
+    return data.subarray(
+        0,
+        end
+    );
+}
 
 // ============================================================
-// FRIEND FILE -> DATA
+// EXACT FRIEND FILE DECODER
 // ============================================================
 
 function decodeFriendFile(
     data
 ) {
 
-    if (!Buffer.isBuffer(data)) {
-        data = Buffer.from(data);
+    if (
+        !Buffer.isBuffer(data)
+    ) {
+
+        data =
+            Buffer.from(
+                data
+            );
     }
 
     if (
@@ -2419,64 +2231,56 @@ function decodeFriendFile(
     ) {
 
         throw new Error(
-            "ملف فارغ"
+            "الملف فارغ"
         );
     }
 
-    console.log(
-        `[IDs] decode input size=${data.length}`
-    );
-
-    console.log(
-        `[IDs] decode input magic=${bufferMagic(data)}`
-    );
-
+    // --------------------------------------------------------
+    // XML مباشرة
+    // --------------------------------------------------------
 
     if (
-        looksLikeTextJson(data)
+        data[0] === 0x3C
     ) {
 
-        return trimJsonBuffer(
-            data
-        );
+        return data;
     }
 
-
-    if (
-        looksLikeXml(data)
-    ) {
-
-        return trimXml(
-            data
-        );
-    }
-
+    // --------------------------------------------------------
+    // يجب أن يبدأ 0x79
+    // --------------------------------------------------------
 
     if (
         data[0] !== 0x79
     ) {
 
         throw new Error(
-            "نوع غير مدعوم. " +
-            `Magic=${bufferMagic(data)}`
+            "نوع غير مدعوم\nMagic: 0x" +
+            data[0]
+                .toString(16)
+                .padStart(
+                    2,
+                    "0"
+                )
         );
     }
 
+    console.log(
+        `[Friends] 0x79 detected size=${data.length}`
+    );
 
     let payload =
         friendXorDecode(
             data
         );
 
-
     console.log(
-        `[IDs] after 0x79 size=${payload.length}`
+        `[Friends] after 0x79 size=${payload.length} magic=${bufferMagic(payload)}`
     );
 
-    console.log(
-        `[IDs] after 0x79 magic=${bufferMagic(payload)}`
-    );
-
+    // --------------------------------------------------------
+    // LZ4
+    // --------------------------------------------------------
 
     if (
         friendIsLz4(
@@ -2484,303 +2288,143 @@ function decodeFriendFile(
         )
     ) {
 
+        console.log(
+            "[Friends] LZ4 detected"
+        );
+
         payload =
             friendLz4Decompress(
                 payload
             );
 
         console.log(
-            `[IDs] after LZ4 size=${payload.length}`
+            `[Friends] after LZ4 size=${payload.length} magic=${bufferMagic(payload)}`
         );
     }
 
-
-    if (
-        looksLikeXml(payload)
-    ) {
-
-        return trimXml(
-            payload
-        );
-    }
-
-
-    if (
-        looksLikeTextJson(payload)
-    ) {
-
-        return trimJsonBuffer(
-            payload
-        );
-    }
-
-
-    if (
-        isGzip(payload)
-    ) {
-
-        payload =
-            zlib.gunzipSync(
-                payload
-            );
-
-        if (
-            looksLikeXml(payload)
-        ) {
-
-            return trimXml(
-                payload
-            );
-        }
-
-        return trimJsonBuffer(
-            payload
-        );
-    }
-
-
-    return friendTrimData(
+    return friendTrimXml(
         payload
     );
 }
 
+// ============================================================
+// XML ATTRIBUTE
+// ============================================================
 
-function friendTrimData(
-    data
+function attrFromXmlTag(
+    tag,
+    name
 ) {
 
-    if (!Buffer.isBuffer(data)) {
-        data = Buffer.from(data);
-    }
-
-    const text =
-        data
-            .toString("utf8")
-            .replace(
-                /^\uFEFF/,
-                ""
+    const doubleQuote =
+        tag.match(
+            new RegExp(
+                name +
+                '\\s*=\\s*"([^"]*)"',
+                "i"
             )
-            .trim();
+        );
 
     if (
-        text.startsWith("{") ||
-        text.startsWith("[")
+        doubleQuote
     ) {
 
-        return trimJsonBuffer(
-            data
-        );
+        return doubleQuote[1];
     }
+
+    const singleQuote =
+        tag.match(
+            new RegExp(
+                name +
+                "\\s*=\\s*'([^']*)'",
+                "i"
+            )
+        );
 
     if (
-        text.startsWith("<")
+        singleQuote
     ) {
 
-        return trimXml(
-            data
-        );
+        return singleQuote[1];
     }
 
-    return data;
+    return "";
 }
 
-
 // ============================================================
-// XML ATTRIBUTE HELPERS
+// FRIEND VERSION
 // ============================================================
 
-function parseXmlAttributes(
-    tagText
+function parseFriendVersion(
+    xml
 ) {
 
-    const attrs = {};
-
-    const regex =
-        /([A-Za-z_][A-Za-z0-9_.:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
-
-    let match;
-
-    while (
-        (match = regex.exec(tagText)) !== null
-    ) {
-
-        attrs[
-            match[1]
-        ] =
-            match[2] !== undefined
-                ? match[2]
-                : match[3];
-    }
-
-    return attrs;
-}
-
-
-// ============================================================
-// XML ENTITY DECODER
-// ============================================================
-
-function xmlDecodeEntities(
-    value
-) {
+    const versionTag =
+        xml.match(
+            /<Version\b[^>]*>/i
+        );
 
     if (
-        value === undefined ||
-        value === null
+        !versionTag
     ) {
 
-        return "";
+        return {
+            bver: "",
+            fver: ""
+        };
     }
 
-    let text =
-        String(value);
+    return {
 
-    text =
-        text.replace(
-            /&#x([0-9a-fA-F]+);/g,
-            function(_, hex) {
+        bver:
+            attrFromXmlTag(
+                versionTag[0],
+                "version"
+            ),
 
-                try {
-
-                    return String.fromCodePoint(
-                        parseInt(
-                            hex,
-                            16
-                        )
-                    );
-
-                } catch (_) {
-
-                    return _;
-                }
-            }
-        );
-
-    text =
-        text.replace(
-            /&#([0-9]+);/g,
-            function(_, dec) {
-
-                try {
-
-                    return String.fromCodePoint(
-                        parseInt(
-                            dec,
-                            10
-                        )
-                    );
-
-                } catch (_) {
-
-                    return _;
-                }
-            }
-        );
-
-    text =
-        text.replace(
-            /&quot;/g,
-            '"'
-        );
-
-    text =
-        text.replace(
-            /&apos;/g,
-            "'"
-        );
-
-    text =
-        text.replace(
-            /&lt;/g,
-            "<"
-        );
-
-    text =
-        text.replace(
-            /&gt;/g,
-            ">"
-        );
-
-    text =
-        text.replace(
-            /&amp;/g,
-            "&"
-        );
-
-    return text;
+        fver:
+            attrFromXmlTag(
+                versionTag[0],
+                "FVer"
+            )
+    };
 }
 
-
 // ============================================================
-// CLEAN STRING
-// ============================================================
-
-function cleanString(
-    value
-) {
-
-    if (
-        value === undefined ||
-        value === null
-    ) {
-
-        return "";
-    }
-
-    return String(
-        value
-    ).trim();
-}
-
-
-// ============================================================
-// EXTRACT FRIENDS FROM XML
+// FRIENDS
 // ============================================================
 
-function extractFriendsFromXml(
+function parseFriends(
     xml
 ) {
 
     const friends = [];
 
-    const seen =
-        new Set();
-
-    const friendOpenRegex =
-        /<friend\b([^>]*?)(?:\/>|>)/gi;
+    const regex =
+        /<friend\b[^>]*\/>/gi;
 
     let match;
 
     while (
-        (match = friendOpenRegex.exec(xml)) !== null
+        (match =
+            regex.exec(xml)) !== null
     ) {
 
-        const attrs =
-            parseXmlAttributes(
-                match[1]
-            );
+        const tag =
+            match[0];
 
         const cityId =
-            cleanString(
-                xmlDecodeEntities(
-                    attrs.city_id ||
-                    attrs.cityId ||
-                    ""
-                )
+            attrFromXmlTag(
+                tag,
+                "city_id"
             );
 
-        if (!cityId) {
-            continue;
-        }
-
         if (
-            seen.has(cityId)
+            !cityId
         ) {
 
             continue;
         }
-
-        seen.add(cityId);
 
         friends.push({
 
@@ -2788,32 +2432,63 @@ function extractFriendsFromXml(
                 cityId,
 
             city_name:
-                cleanString(
-                    xmlDecodeEntities(
-                        attrs.city_name ||
-                        attrs.cityName ||
-                        ""
-                    )
+                attrFromXmlTag(
+                    tag,
+                    "city_name"
                 ),
 
             name:
-                cleanString(
-                    xmlDecodeEntities(
-                        attrs.name ||
-                        ""
-                    )
+                attrFromXmlTag(
+                    tag,
+                    "name"
                 ),
 
             level:
-                cleanString(
-                    attrs.level ||
-                    ""
+                attrFromXmlTag(
+                    tag,
+                    "level"
+                ),
+
+            xp:
+                attrFromXmlTag(
+                    tag,
+                    "xp"
+                ),
+
+            likes:
+                attrFromXmlTag(
+                    tag,
+                    "likes"
+                ),
+
+            lang:
+                attrFromXmlTag(
+                    tag,
+                    "lang"
+                ),
+
+            flw:
+                attrFromXmlTag(
+                    tag,
+                    "flw"
+                ),
+
+            help:
+                attrFromXmlTag(
+                    tag,
+                    "help"
                 ),
 
             fetched_city_ver:
-                cleanString(
-                    attrs.fetched_city_ver ||
-                    "0"
+                attrFromXmlTag(
+                    tag,
+                    "fetched_city_ver"
+                ),
+
+            bc:
+                attrFromXmlTag(
+                    tag,
+                    "bc"
                 )
         });
     }
@@ -2821,126 +2496,55 @@ function extractFriendsFromXml(
     return friends;
 }
 
-
 // ============================================================
-// FIND XML TAG SAFELY
+// SAVE IDS FROM ProfilesCache
 // ============================================================
-
-function extractComponentTags(
-    xml
-) {
-
-    const tags = [];
-
-    const regex =
-        /<OtherPlayerProfilesLogicFeatureComponent\b[\s\S]*?\/?>/gi;
-
-    let match;
-
-    while (
-        (match = regex.exec(xml)) !== null
-    ) {
-
-        tags.push(
-            match[0]
-        );
-    }
-
-    return tags;
-}
-
-
-// ============================================================
-// GET ONE XML ATTRIBUTE
+//
+// الشكل داخل XML:
+//
+// <OtherPlayerProfilesLogicFeatureComponent
+//     ProfilesCache='[
+//       {"cityname":"Pippi","level":16,"saveId":"9HkilUfBjJ"},
+//       ...
+//     ]'/>
+//
+// النتيجة:
+//
+// saveIds: [
+//   {
+//     save_id: "9HkilUfBjJ",
+//     name: "Pippi",
+//     level: "16"
+//   }
+// ]
+//
 // ============================================================
 
-function getXmlAttribute(
-    tagText,
-    attributeName
-) {
-
-    const regex =
-        new RegExp(
-            "\\b" +
-            attributeName.replace(
-                /[.*+?^${}()|[\]\\]/g,
-                "\\$&"
-            ) +
-            "\\s*=\\s*(['\"])([\\s\\S]*?)\\1",
-            "i"
-        );
-
-    const match =
-        regex.exec(
-            tagText
-        );
-
-    if (!match) {
-        return null;
-    }
-
-    return match[2];
-}
-
-
-// ============================================================
-// EXTRACT ProfilesCache
-// ============================================================
-
-function extractProfilesCacheFromXml(
+function parseSaveIds(
     xml
 ) {
 
     const saveIds = [];
 
-    const seen =
-        new Set();
+    const componentRegex =
+        /<OtherPlayerProfilesLogicFeatureComponent\b[^>]*\bProfilesCache\s*=\s*(['"])([\s\S]*?)\1[^>]*\/?>/gi;
 
-    const componentTags =
-        extractComponentTags(
-            xml
-        );
+    let match;
 
-    console.log(
-        `[IDs] OtherPlayerProfilesLogicFeatureComponent tags=${componentTags.length}`
-    );
-
-
-    for (
-        const tag of componentTags
+    while (
+        (match =
+            componentRegex.exec(xml)) !== null
     ) {
 
-        let raw =
-            getXmlAttribute(
-                tag,
-                "ProfilesCache"
-            );
+        const profilesCache =
+            match[2];
 
         if (
-            raw === null
+            !profilesCache
         ) {
 
             continue;
         }
-
-
-        raw =
-            xmlDecodeEntities(
-                raw
-            );
-
-
-        raw =
-            raw.trim();
-
-
-        if (
-            !raw.startsWith("[")
-        ) {
-
-            continue;
-        }
-
 
         let profiles;
 
@@ -2948,21 +2552,18 @@ function extractProfilesCacheFromXml(
 
             profiles =
                 JSON.parse(
-                    raw
+                    profilesCache
                 );
 
-        } catch (
-            error
-        ) {
+        } catch (err) {
 
             console.error(
-                "[IDs] ProfilesCache JSON parse failed:",
-                error.message
+                "[Friends] ProfilesCache JSON parse failed:",
+                err.message
             );
 
             continue;
         }
-
 
         if (
             !Array.isArray(
@@ -2973,61 +2574,44 @@ function extractProfilesCacheFromXml(
             continue;
         }
 
-
         for (
             const profile of profiles
         ) {
 
             if (
                 !profile ||
-                typeof profile !== "object"
+                typeof profile !==
+                    "object"
             ) {
 
                 continue;
             }
-
 
             const saveId =
-                cleanString(
-                    profile.saveId
-                );
-
-
-            if (!saveId) {
-                continue;
-            }
-
+                String(
+                    profile.saveId ||
+                    ""
+                ).trim();
 
             if (
-                seen.has(
-                    saveId
-                )
+                !saveId
             ) {
 
                 continue;
             }
 
-
-            seen.add(
-                saveId
-            );
-
-
             const name =
-                cleanString(
-                    profile.cityname ??
-                    profile.cityName ??
-                    profile.name ??
+                String(
+                    profile.cityname ||
+                    profile.name ||
                     ""
-                );
-
+                ).trim();
 
             const level =
-                cleanString(
+                String(
                     profile.level ??
                     ""
-                );
-
+                ).trim();
 
             saveIds.push({
 
@@ -3043,278 +2627,44 @@ function extractProfilesCacheFromXml(
         }
     }
 
+    // --------------------------------------------------------
+    // إزالة التكرار حسب save_id
+    // --------------------------------------------------------
 
-    console.log(
-        `[IDs] extracted saveIds=${saveIds.length}`
-    );
-
-    return saveIds;
-}
-
-
-// ============================================================
-// EXTRACT BOTH XML LISTS
-// ============================================================
-
-function extractXmlLists(
-    xml
-) {
-
-    const friends =
-        extractFriendsFromXml(
-            xml
-        );
-
-    const saveIds =
-        extractProfilesCacheFromXml(
-            xml
-        );
-
-    return {
-        friends,
-        saveIds
-    };
-}
-
-
-// ============================================================
-// JSON HELPERS
-// ============================================================
-
-function firstValue(
-    object,
-    keys
-) {
+    const unique = [];
+    const seen = new Set();
 
     for (
-        const key of keys
+        const item of saveIds
     ) {
 
         if (
-            Object.prototype.hasOwnProperty.call(
-                object,
-                key
+            seen.has(
+                item.save_id
             )
         ) {
 
-            const value =
-                object[key];
-
-            if (
-                value !== undefined &&
-                value !== null
-            ) {
-
-                return value;
-            }
+            continue;
         }
+
+        seen.add(
+            item.save_id
+        );
+
+        unique.push(
+            item
+        );
     }
 
-    return "";
-}
-
-
-// ============================================================
-// JSON SAVE RECORDS
-// ============================================================
-
-function extractSaveRecords(
-    root
-) {
-
-    const records = [];
-
-    const seen =
-        new Set();
-
-
-    function visit(
-        value,
-        inheritedName,
-        inheritedLevel
-    ) {
-
-        if (
-            Array.isArray(value)
-        ) {
-
-            for (
-                const item of value
-            ) {
-
-                visit(
-                    item,
-                    inheritedName,
-                    inheritedLevel
-                );
-            }
-
-            return;
-        }
-
-
-        if (
-            !value ||
-            typeof value !== "object"
-        ) {
-
-            return;
-        }
-
-
-        const ownName =
-            cleanString(
-                firstValue(
-                    value,
-                    [
-                        "cityname",
-                        "cityName",
-                        "city_name",
-                        "name",
-                        "playerName",
-                        "player_name",
-                        "username",
-                        "nickname"
-                    ]
-                )
-            );
-
-
-        const ownLevel =
-            cleanString(
-                firstValue(
-                    value,
-                    [
-                        "level",
-                        "Level"
-                    ]
-                )
-            );
-
-
-        const saveId =
-            cleanString(
-                firstValue(
-                    value,
-                    [
-                        "saveId",
-                        "saveID",
-                        "save_id",
-                        "saveid"
-                    ]
-                )
-            );
-
-
-        const name =
-            ownName ||
-            inheritedName ||
-            "";
-
-
-        const level =
-            ownLevel ||
-            inheritedLevel ||
-            "";
-
-
-        if (
-            saveId
-        ) {
-
-            const key =
-                [
-                    saveId,
-                    name,
-                    level
-                ].join("|");
-
-
-            if (
-                !seen.has(
-                    key
-                )
-            ) {
-
-                seen.add(
-                    key
-                );
-
-
-                records.push({
-
-                    save_id:
-                        saveId,
-
-                    name:
-                        name,
-
-                    level:
-                        level,
-
-                    city_id:
-                        cleanString(
-                            firstValue(
-                                value,
-                                [
-                                    "cityId",
-                                    "cityID",
-                                    "city_id"
-                                ]
-                            )
-                        ),
-
-                    city_ver:
-                        cleanString(
-                            firstValue(
-                                value,
-                                [
-                                    "cityVer",
-                                    "city_ver",
-                                    "fetched_city_ver"
-                                ]
-                            )
-                        )
-                });
-            }
-        }
-
-
-        for (
-            const key of Object.keys(value)
-        ) {
-
-            const child =
-                value[key];
-
-            if (
-                child &&
-                typeof child === "object"
-            ) {
-
-                visit(
-                    child,
-                    name,
-                    level
-                );
-            }
-        }
-    }
-
-
-    visit(
-        root,
-        "",
-        ""
+    console.log(
+        `[Friends] saveIds=${unique.length}`
     );
 
-
-    return records;
+    return unique;
 }
 
-
 // ============================================================
-// DECODE FRIENDS API
+// DECODE FRIEND FILE API
 // ============================================================
 
 async function handleDecodeFriends(
@@ -3324,9 +2674,8 @@ async function handleDecodeFriends(
 
     try {
 
-        const encryptedFile =
+        let encryptedFile =
             req.body;
-
 
         if (
             !Buffer.isBuffer(
@@ -3345,7 +2694,6 @@ async function handleDecodeFriends(
                 });
         }
 
-
         if (
             encryptedFile.length === 0
         ) {
@@ -3361,183 +2709,111 @@ async function handleDecodeFriends(
                 });
         }
 
-
         console.log(
-            `[IDs] encrypted file size=${encryptedFile.length}`
+            `[Friends] encrypted file size=${encryptedFile.length}`
         );
 
+        console.log(
+            `[Friends] encrypted magic=${bufferMagic(encryptedFile)}`
+        );
 
-        let decoded;
+        // ----------------------------------------------------
+        // 0x79 → LZ4 → XML
+        // ----------------------------------------------------
 
-        try {
-
-            decoded =
-                decodeFriendFile(
-                    encryptedFile
-                );
-
-        } catch (
-            decodeError
-        ) {
-
-            console.error(
-                "[IDs] decodeFriendFile ERROR:",
-                decodeError &&
-                decodeError.stack
-                    ? decodeError.stack
-                    : decodeError
+        const xmlBuffer =
+            decodeFriendFile(
+                encryptedFile
             );
 
-            return res
-                .status(500)
-                .json({
-
-                    ok: false,
-
-                    stage:
-                        "decode",
-
-                    error:
-                        String(
-                            decodeError &&
-                            decodeError.message
-                                ? decodeError.message
-                                : decodeError
-                        )
-                });
-        }
-
-
-        if (
-            !Buffer.isBuffer(
-                decoded
-            )
-        ) {
-
-            decoded =
-                Buffer.from(
-                    decoded
-                );
-        }
-
-
-        // ====================================================
-        // XML
-        // ====================================================
-
-        if (
-            looksLikeXml(
-                decoded
-            )
-        ) {
-
-            const xml =
-                trimXml(
-                    decoded
-                );
-
-
-            const lists =
-                extractXmlLists(
-                    xml.toString("utf8")
-                );
-
-
-            console.log(
-                `[IDs] friends=${lists.friends.length}`
-            );
-
-            console.log(
-                `[IDs] saveIds=${lists.saveIds.length}`
-            );
-
-
-            return res
-                .status(200)
-                .json({
-
-                    ok: true,
-
-                    count:
-                        lists.friends.length,
-
-                    friends:
-                        lists.friends,
-
-                    saveIds:
-                        lists.saveIds
-                });
-        }
-
-
-        // ====================================================
-        // JSON
-        // ====================================================
-
-        const text =
-            decoded
-                .toString(
-                    "utf8"
-                )
+        const xml =
+            xmlBuffer
+                .toString("utf8")
                 .replace(
                     /^\uFEFF/,
                     ""
                 )
                 .trim();
 
+        console.log(
+            `[Friends] decoded XML size=${xml.length}`
+        );
 
-        let json;
-
-        try {
-
-            json =
-                JSON.parse(
-                    text
-                );
-
-        } catch (
-            parseError
+        if (
+            !xml.startsWith("<")
         ) {
 
-            return res
-                .status(500)
-                .json({
-
-                    ok: false,
-
-                    stage:
-                        "json_parse",
-
-                    error:
-                        "بعد فك الملف لم يتم الحصول على XML أو JSON صالح",
-
-                    parseError:
-                        parseError.message
-                });
+            throw new Error(
+                "بعد فك الملف لم يتم الحصول على XML"
+            );
         }
 
+        // ----------------------------------------------------
+        // Version
+        // ----------------------------------------------------
 
-        const records =
-            extractSaveRecords(
-                json
+        const version =
+            parseFriendVersion(
+                xml
             );
 
+        // لا نفشل إذا لم يوجد Version،
+        // لأن المطلوب الأساسي هو friends + saveIds.
+        if (
+            !version.bver
+        ) {
+
+            console.log(
+                "[Friends] Version.version غير موجود"
+            );
+        }
+
+        if (
+            !version.fver
+        ) {
+
+            console.log(
+                "[Friends] Version.FVer غير موجود"
+            );
+        }
+
+        // ----------------------------------------------------
+        // Friends
+        // ----------------------------------------------------
+
+        const friends =
+            parseFriends(
+                xml
+            );
+
+        // ----------------------------------------------------
+        // Save IDs
+        // ----------------------------------------------------
 
         const saveIds =
-            records.map(
-                record => ({
-
-                    save_id:
-                        record.save_id,
-
-                    name:
-                        record.name,
-
-                    level:
-                        record.level
-                })
+            parseSaveIds(
+                xml
             );
 
+        console.log(
+            `[Friends] bver=${version.bver}`
+        );
+
+        console.log(
+            `[Friends] fver=${version.fver}`
+        );
+
+        console.log(
+            `[Friends] friends=${friends.length}`
+        );
+
+        console.log(
+            `[Friends] saveIds=${saveIds.length}`
+        );
+
+        // ----------------------------------------------------
+        // النتيجة
+        // ----------------------------------------------------
 
         return res
             .status(200)
@@ -3545,29 +2821,29 @@ async function handleDecodeFriends(
 
                 ok: true,
 
-                count:
-                    records.length,
+                bver:
+                    version.bver,
 
-                ids:
-                    records,
+                fver:
+                    version.fver,
+
+                friends:
+                    friends,
 
                 saveIds:
                     saveIds
             });
 
-    } catch (
-        err
-    ) {
+    } catch (err) {
 
         console.error(
-            "[IDs] DECODE ERROR:",
+            "[Friends] DECODE ERROR:",
             err &&
             err.stack
                 ? err.stack
                 : err
         );
 
-
         return res
             .status(500)
             .json({
@@ -3584,156 +2860,44 @@ async function handleDecodeFriends(
             });
     }
 }
-
-
-// ============================================================
-// SAVE INFO
-// ============================================================
-
-async function handleSaveInfo(
-    req,
-    res
-) {
-
-    try {
-
-        const body =
-            req.body ||
-            {};
-
-
-        const saveId =
-            cleanString(
-                body.saveId ||
-                body.save_id
-            );
-
-
-        const cityname =
-            cleanString(
-                body.cityname ||
-                body.cityName ||
-                body.name
-            );
-
-
-        const level =
-            cleanString(
-                body.level
-            );
-
-
-        if (
-            !saveId
-        ) {
-
-            return res
-                .status(400)
-                .json({
-
-                    ok: false,
-
-                    error:
-                        "saveId مطلوب"
-                });
-        }
-
-
-        console.log(
-            "[SaveInfo]",
-            {
-                saveId,
-                cityname,
-                level
-            }
-        );
-
-
-        return res
-            .status(200)
-            .json({
-
-                ok: true,
-
-                saveId:
-                    saveId,
-
-                cityname:
-                    cityname,
-
-                level:
-                    level
-            });
-
-    } catch (
-        err
-    ) {
-
-        return res
-            .status(500)
-            .json({
-
-                ok: false,
-
-                error:
-                    String(
-                        err &&
-                        err.message
-                            ? err.message
-                            : err
-                    )
-            });
-    }
-}
-
-
-// ============================================================
-// BODY PARSERS
-// ============================================================
-
-router.use(
-    express.json({
-        limit: "5mb"
-    })
-);
-
 
 // ============================================================
 // ROUTES
 // ============================================================
+
+// ------------------------------------------------------------
+// POST /
+// ------------------------------------------------------------
 
 router.post(
     "/",
     handleFetchCity
 );
 
+// ------------------------------------------------------------
+// POST /fetch-city
+// ------------------------------------------------------------
 
 router.post(
     "/fetch-city",
     handleFetchCity
 );
 
-
-router.post(
-    "/save-info",
-    handleSaveInfo
-);
-
+// ------------------------------------------------------------
+// POST /decode-friends
+//
+// يجب أن يكون body = الملف نفسه
+// Content-Type = application/octet-stream
+// ------------------------------------------------------------
 
 router.post(
     "/decode-friends",
-
     express.raw({
-        type:
-            "application/octet-stream",
-
-        limit:
-            "50mb"
+        type: "application/octet-stream",
+        limit: "50mb"
     }),
-
     handleDecodeFriends
 );
-
 
 // ============================================================
 // MODULE
@@ -3743,6 +2907,4 @@ console.log(
     "[FetchCity] module loaded"
 );
 
-
-module.exports =
-    router;
+module.exports = router;
