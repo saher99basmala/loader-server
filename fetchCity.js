@@ -1343,6 +1343,17 @@ async function requestFetchCity(
 // ============================================================
 // FETCHCITY API
 // ============================================================
+// Lua يرسل فقط:
+//
+// {
+//     city_id: "...",
+//     city_name: "...",
+//     level: 16
+// }
+//
+// السيرفر يستخدم city_id فقط لجلب FetchCity.
+// city_name و level يتم استقبالهما وتسجيلهما فقط.
+// ============================================================
 
 async function handleFetchCity(
     req,
@@ -1354,46 +1365,90 @@ async function handleFetchCity(
         const body =
             req.body || {};
 
+
+        // ----------------------------------------------------
+        // IMPORTANT:
+        // نستقبل city_id فقط كمعرف الجلب
+        // ----------------------------------------------------
+
         const cityId =
             String(
-                body.cityId ||
-                body.fetchCityId ||
-                ""
+                body.city_id || ""
             ).trim();
 
-        const cityVer =
+
+        const cityName =
+            String(
+                body.city_name || ""
+            ).trim();
+
+
+        const level =
             Number(
-                body.cityVer || 0
+                body.level || 0
             );
+
+
+        // ----------------------------------------------------
+        // التحقق
+        // ----------------------------------------------------
 
         if (!cityId) {
 
             return res
                 .status(400)
                 .json({
+
                     ok: false,
-                    error: "cityId مطلوب"
+
+                    error:
+                        "city_id مطلوب"
                 });
         }
 
+
         if (
-            !Number.isFinite(cityVer) ||
-            cityVer < 0
+            !Number.isFinite(level) ||
+            level < 0
         ) {
 
             return res
                 .status(400)
                 .json({
+
                     ok: false,
-                    error: "cityVer غير صالح"
+
+                    error:
+                        "level غير صالح"
                 });
         }
+
+
+        console.log(
+            "[FetchCity] incoming:",
+            {
+                city_id: cityId,
+                city_name: cityName,
+                level: level
+            }
+        );
+
+
+        // ----------------------------------------------------
+        // FetchCity يستخدم city_id
+        //
+        // cityVer = 0 داخليًا
+        // ----------------------------------------------------
+
+        const cityVer = 0;
+
 
         const json =
             await requestFetchCity(
                 cityId,
                 cityVer
             );
+
 
         if (
             !json ||
@@ -1406,21 +1461,29 @@ async function handleFetchCity(
             );
         }
 
+
         const cityBytes =
             Buffer.from(
                 json.result.data,
                 "base64"
             );
 
+
         const xml =
             decodeSaveCity(
                 cityBytes
             );
 
+
         const modifiedXml =
             editCityXml(
                 xml
             );
+
+
+        // ----------------------------------------------------
+        // XML
+        // ----------------------------------------------------
 
         res.set(
             "Content-Type",
@@ -1431,6 +1494,7 @@ async function handleFetchCity(
             "Cache-Control",
             "no-store"
         );
+
 
         return res
             .status(200)
@@ -1448,10 +1512,13 @@ async function handleFetchCity(
                 : err
         );
 
+
         return res
             .status(500)
             .json({
+
                 ok: false,
+
                 error:
                     String(
                         err &&
@@ -2124,17 +2191,9 @@ function decodeFriendFile(
     );
 
 
-    // --------------------------------------------------------
-    // JSON مباشر
-    // --------------------------------------------------------
-
     if (
         looksLikeTextJson(data)
     ) {
-
-        console.log(
-            "[IDs] JSON detected directly"
-        );
 
         return trimJsonBuffer(
             data
@@ -2142,27 +2201,15 @@ function decodeFriendFile(
     }
 
 
-    // --------------------------------------------------------
-    // XML مباشر
-    // --------------------------------------------------------
-
     if (
         looksLikeXml(data)
     ) {
-
-        console.log(
-            "[IDs] XML detected directly"
-        );
 
         return trimXml(
             data
         );
     }
 
-
-    // --------------------------------------------------------
-    // الملف المشفر 0x79
-    // --------------------------------------------------------
 
     if (
         data[0] !== 0x79
@@ -2179,6 +2226,7 @@ function decodeFriendFile(
             data
         );
 
+
     console.log(
         `[IDs] after 0x79 size=${payload.length}`
     );
@@ -2188,19 +2236,11 @@ function decodeFriendFile(
     );
 
 
-    // --------------------------------------------------------
-    // بعد 0x79 قد يكون LZ4
-    // --------------------------------------------------------
-
     if (
         friendIsLz4(
             payload
         )
     ) {
-
-        console.log(
-            "[IDs] LZ4 detected after 0x79"
-        );
 
         payload =
             friendLz4Decompress(
@@ -2210,24 +2250,12 @@ function decodeFriendFile(
         console.log(
             `[IDs] after LZ4 size=${payload.length}`
         );
-
-        console.log(
-            `[IDs] after LZ4 magic=${bufferMagic(payload)}`
-        );
     }
 
-
-    // --------------------------------------------------------
-    // XML بعد الفك
-    // --------------------------------------------------------
 
     if (
         looksLikeXml(payload)
     ) {
-
-        console.log(
-            "[IDs] XML detected after decode"
-        );
 
         return trimXml(
             payload
@@ -2235,17 +2263,9 @@ function decodeFriendFile(
     }
 
 
-    // --------------------------------------------------------
-    // JSON بعد الفك
-    // --------------------------------------------------------
-
     if (
         looksLikeTextJson(payload)
     ) {
-
-        console.log(
-            "[IDs] JSON detected after decode"
-        );
 
         return trimJsonBuffer(
             payload
@@ -2253,26 +2273,14 @@ function decodeFriendFile(
     }
 
 
-    // --------------------------------------------------------
-    // GZIP
-    // --------------------------------------------------------
-
     if (
         isGzip(payload)
     ) {
-
-        console.log(
-            "[IDs] GZIP detected after decode"
-        );
 
         payload =
             zlib.gunzipSync(
                 payload
             );
-
-        console.log(
-            `[IDs] after GZIP size=${payload.length}`
-        );
 
         if (
             looksLikeXml(payload)
@@ -2287,6 +2295,7 @@ function decodeFriendFile(
             payload
         );
     }
+
 
     return friendTrimData(
         payload
@@ -2384,10 +2393,6 @@ function xmlDecodeEntities(
     let text =
         String(value);
 
-
-    // مهم:
-    // نفك amp أخيراً حتى لا نكسر
-    // &amp;quot; ونحوها
 
     text =
         text.replace(
@@ -2536,9 +2541,7 @@ function extractFriendsFromXml(
             continue;
         }
 
-        seen.add(
-            cityId
-        );
+        seen.add(cityId);
 
         friends.push({
 
@@ -2678,32 +2681,15 @@ function extractProfilesCacheFromXml(
             raw === null
         ) {
 
-            console.log(
-                "[IDs] ProfilesCache attribute not found in component"
-            );
-
             continue;
         }
 
-
-        console.log(
-            `[IDs] ProfilesCache raw length=${raw.length}`
-        );
-
-
-        // ----------------------------------------------------
-        // XML entities
-        // ----------------------------------------------------
 
         raw =
             xmlDecodeEntities(
                 raw
             );
 
-
-        // ----------------------------------------------------
-        // تنظيف بسيط
-        // ----------------------------------------------------
 
         raw =
             raw.trim();
@@ -2712,10 +2698,6 @@ function extractProfilesCacheFromXml(
         if (
             !raw.startsWith("[")
         ) {
-
-            console.log(
-                `[IDs] ProfilesCache does not start with [. first=${raw.slice(0, 80)}`
-            );
 
             continue;
         }
@@ -2739,14 +2721,6 @@ function extractProfilesCacheFromXml(
                 error.message
             );
 
-            console.error(
-                "[IDs] ProfilesCache first 500 chars:",
-                raw.slice(
-                    0,
-                    500
-                )
-            );
-
             continue;
         }
 
@@ -2757,22 +2731,9 @@ function extractProfilesCacheFromXml(
             )
         ) {
 
-            console.log(
-                "[IDs] ProfilesCache JSON is not an array"
-            );
-
             continue;
         }
 
-
-        console.log(
-            `[IDs] ProfilesCache profiles=${profiles.length}`
-        );
-
-
-        // ----------------------------------------------------
-        // استخراج saveId
-        // ----------------------------------------------------
 
         for (
             const profile of profiles
@@ -3128,10 +3089,6 @@ async function handleDecodeFriends(
             req.body;
 
 
-        // ----------------------------------------------------
-        // يجب أن يكون Buffer
-        // ----------------------------------------------------
-
         if (
             !Buffer.isBuffer(
                 encryptedFile
@@ -3170,14 +3127,6 @@ async function handleDecodeFriends(
             `[IDs] encrypted file size=${encryptedFile.length}`
         );
 
-        console.log(
-            `[IDs] encrypted magic=${bufferMagic(encryptedFile)}`
-        );
-
-
-        // ----------------------------------------------------
-        // فك الملف
-        // ----------------------------------------------------
 
         let decoded;
 
@@ -3215,14 +3164,6 @@ async function handleDecodeFriends(
                             decodeError.message
                                 ? decodeError.message
                                 : decodeError
-                        ),
-
-                    encryptedSize:
-                        encryptedFile.length,
-
-                    encryptedMagic:
-                        bufferMagic(
-                            encryptedFile
                         )
                 });
         }
@@ -3241,24 +3182,6 @@ async function handleDecodeFriends(
         }
 
 
-        const decodedSize =
-            decoded.length;
-
-        const decodedMagic =
-            bufferMagic(
-                decoded
-            );
-
-
-        console.log(
-            `[IDs] decoded size=${decodedSize}`
-        );
-
-        console.log(
-            `[IDs] decoded magic=${decodedMagic}`
-        );
-
-
         // ====================================================
         // XML
         // ====================================================
@@ -3268,11 +3191,6 @@ async function handleDecodeFriends(
                 decoded
             )
         ) {
-
-            console.log(
-                "[IDs] XML detected - extracting friends and saveIds"
-            );
-
 
             const xml =
                 trimXml(
@@ -3289,7 +3207,6 @@ async function handleDecodeFriends(
             console.log(
                 `[IDs] friends=${lists.friends.length}`
             );
-
 
             console.log(
                 `[IDs] saveIds=${lists.saveIds.length}`
@@ -3343,56 +3260,6 @@ async function handleDecodeFriends(
             parseError
         ) {
 
-            const decodedHex =
-                decoded
-                    .subarray(
-                        0,
-                        Math.min(
-                            decoded.length,
-                            512
-                        )
-                    )
-                    .toString(
-                        "hex"
-                    );
-
-
-            const decodedText =
-                decoded
-                    .subarray(
-                        0,
-                        Math.min(
-                            decoded.length,
-                            4000
-                        )
-                    )
-                    .toString(
-                        "utf8"
-                    )
-                    .replace(
-                        /[\x00-\x08\x0B\x0C\x0E-\x1F]/g,
-                        "."
-                    );
-
-
-            console.error(
-                "[IDs] JSON parse failed:",
-                parseError.message
-            );
-
-
-            console.error(
-                "[IDs] decoded HEX:",
-                decodedHex
-            );
-
-
-            console.error(
-                "[IDs] decoded TEXT:",
-                decodedText
-            );
-
-
             return res
                 .status(500)
                 .json({
@@ -3406,44 +3273,15 @@ async function handleDecodeFriends(
                         "بعد فك الملف لم يتم الحصول على XML أو JSON صالح",
 
                     parseError:
-                        parseError.message,
-
-                    encryptedSize:
-                        encryptedFile.length,
-
-                    encryptedMagic:
-                        bufferMagic(
-                            encryptedFile
-                        ),
-
-                    decodedSize:
-                        decodedSize,
-
-                    decodedMagic:
-                        decodedMagic,
-
-                    decodedHex:
-                        decodedHex,
-
-                    decodedText:
-                        decodedText
+                        parseError.message
                 });
         }
 
-
-        // ====================================================
-        // استخراج saveIds من JSON
-        // ====================================================
 
         const records =
             extractSaveRecords(
                 json
             );
-
-
-        console.log(
-            `[IDs] save records=${records.length}`
-        );
 
 
         const saveIds =
@@ -3497,9 +3335,6 @@ async function handleDecodeFriends(
 
                 ok: false,
 
-                stage:
-                    "server",
-
                 error:
                     String(
                         err &&
@@ -3513,7 +3348,7 @@ async function handleDecodeFriends(
 
 
 // ============================================================
-// RECEIVE SAVE INFO
+// SAVE INFO
 // ============================================================
 
 async function handleSaveInfo(
@@ -3594,12 +3429,6 @@ async function handleSaveInfo(
     } catch (
         err
     ) {
-
-        console.error(
-            "[SaveInfo] ERROR:",
-            err
-        );
-
 
         return res
             .status(500)
