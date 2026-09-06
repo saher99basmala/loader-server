@@ -2916,42 +2916,5 @@ app.use(
    START
    ============================================================ */
 
-app.listen(
-    PORT,
-    "0.0.0.0",
-    () => {
 
-        console.log(
-            `Server running on port ${PORT}`
-        );
-
-        console.log(
-            "Routes:"
-        );
-
-        console.log(
-            "  GET  /"
-        );
-
-        console.log(
-            "  GET  /health"
-        );
-
-        console.log(
-            "  POST /decode-friends"
-        );
-
-        console.log(
-            "  POST /decode-friends-json"
-        );
-
-        console.log(
-            "  POST /save-info"
-        );
-
-        console.log(
-            "  POST /fetch-city"
-        );
-    }
-);
 module.exports = app;
