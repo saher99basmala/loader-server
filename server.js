@@ -1,381 +1,541 @@
 const express = require("express");
 const fetch = require("node-fetch");
 const session = require("express-session");
-const fetchCity = require("./fetchCity");
+
 const app = express();
 
 const view = require("./view");
 const api = require("./api");
-const { supabase } = require("./supabase");
-const mGameInfoDecoder = require("./mGameInfoDecoder");
-const mGameInfoEditor = require("./mGameInfoEditor");
 
-const PORT = process.env.PORT || 3000;
+const {
+    supabase
+} = require("./supabase");
 
-const SECRET = "MY_SECRET_123";
+const mGameInfoDecoder =
+    require("./mGameInfoDecoder");
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+const mGameInfoEditor =
+    require("./mGameInfoEditor");
+
+const fetchCity =
+    require("./fetchCity");
+
+
+const PORT =
+    process.env.PORT || 3000;
+
+const SECRET =
+    process.env.SERVER_SECRET ||
+    "MY_SECRET_123";
+
+
+// ============================================================
+// Middleware
+// ============================================================
+
+app.use(
+    express.urlencoded({
+        extended: true
+    })
+);
+
+app.use(
+    express.json({
+        limit: "10mb"
+    })
+);
+
 
 app.use(
     session({
-        secret: "BS_ADMIN_SECRET",
+        secret:
+            process.env.SESSION_SECRET ||
+            "BS_ADMIN_SECRET",
+
         resave: false,
+
         saveUninitialized: false
     })
 );
 
-app.use("/", view);
-app.use("/api", api);
 
-// ==========================
-// FETCH CITY
-// ==========================
+// ============================================================
+// الواجهات
+// ============================================================
 
-app.use("/api/fetch-city", fetchCity);
+app.use(
+    "/",
+    view
+);
 
-
-// ==========================
-// DECODE
-// ==========================
-
-app.use("/api/decode", express.raw({
-    type: "application/octet-stream",
-    limit: "50mb"
-}));
-
-app.post("/api/decode", (req, res) => {
-
-    try {
-
-        const decoded =
-            mGameInfoDecoder.decodeFile(
-                req.body
-            );
-
-        res.set(
-            "Content-Type",
-            "application/octet-stream"
-        );
-
-        res.send(decoded);
-
-    } catch (e) {
-
-        console.error(
-            "Decode error:",
-            e
-        );
-
-        res.status(400).send(
-            "Decode error: " +
-            e.message
-        );
-    }
-});
+app.use(
+    "/api",
+    api
+);
 
 
-// ==========================
-// EDIT
-// ==========================
+// ============================================================
+// FetchCity Proxy
+// ============================================================
 
-app.use("/api/edit", express.raw({
-    type: "application/octet-stream",
-    limit: "50mb"
-}));
-
-app.post("/api/edit", (req, res) => {
-
-    try {
-
-        const editsText =
-            req.query.edits;
-
-        if (!editsText) {
-
-            return res.status(400).send(
-                "Missing edits"
-            );
-        }
+app.use(
+    "/api/fetch-city",
+    fetchCity
+);
 
 
-        let edits;
+// ============================================================
+// Decode
+// ============================================================
+
+app.use(
+    "/api/decode",
+
+    express.raw({
+        type:
+            "application/octet-stream",
+
+        limit:
+            "50mb"
+    })
+);
+
+
+app.post(
+    "/api/decode",
+
+    (req, res) => {
 
         try {
 
-            edits =
-                JSON.parse(
-                    editsText
+            const decoded =
+                mGameInfoDecoder.decodeFile(
+                    req.body
                 );
+
+
+            res.set(
+                "Content-Type",
+                "application/octet-stream"
+            );
+
+
+            return res.send(
+                decoded
+            );
+
 
         } catch (e) {
 
+            console.error(
+                "Decode error:",
+                e
+            );
+
+
             return res.status(400).send(
-                "Invalid edits JSON"
+                "Decode error: " +
+                e.message
             );
         }
+    }
+);
 
 
-        const decoded =
-            mGameInfoDecoder.decodeFile(
-                req.body
+// ============================================================
+// Edit
+// ============================================================
+
+app.use(
+    "/api/edit",
+
+    express.raw({
+        type:
+            "application/octet-stream",
+
+        limit:
+            "50mb"
+    })
+);
+
+
+app.post(
+    "/api/edit",
+
+    (req, res) => {
+
+        try {
+
+            const editsText =
+                req.query.edits;
+
+
+            if (!editsText) {
+
+                return res.status(400).send(
+                    "Missing edits"
+                );
+            }
+
+
+            let edits;
+
+            try {
+
+                edits =
+                    JSON.parse(
+                        editsText
+                    );
+
+            } catch (e) {
+
+                return res.status(400).send(
+                    "Invalid edits JSON"
+                );
+            }
+
+
+            const decoded =
+                mGameInfoDecoder.decodeFile(
+                    req.body
+                );
+
+
+            const edited =
+                mGameInfoEditor.applyEdits(
+                    decoded,
+                    edits
+                );
+
+
+            res.set(
+                "Content-Type",
+                "application/octet-stream"
             );
 
 
-        const edited =
-            mGameInfoEditor.applyEdits(
-                decoded,
-                edits
+            return res.send(
+                edited
             );
 
 
-        res.set(
-            "Content-Type",
-            "application/octet-stream"
-        );
+        } catch (e) {
 
-        res.send(
-            edited
-        );
+            console.error(
+                "Edit error:",
+                e
+            );
 
-    } catch (e) {
 
-        console.error(
-            "Edit error:",
-            e
-        );
-
-        res.status(400).send(
-            "Edit error: " +
-            e.message
-        );
+            return res.status(400).send(
+                "Edit error: " +
+                e.message
+            );
+        }
     }
-});
+);
 
 
-// ==========================
-// API CHECK KEY
-// ==========================
+// ============================================================
+// Check Key
+// ============================================================
 
-app.get("/api/check", async (req, res) => {
+app.get(
+    "/api/check",
 
-    const key =
-        req.query.key;
+    async (req, res) => {
 
-    const deviceid =
-        req.query.deviceid;
+        try {
 
+            const key =
+                req.query.key;
 
-    if (!key || !deviceid) {
-
-        return res.json({
-            status: "invalid"
-        });
-    }
+            const deviceid =
+                req.query.deviceid;
 
 
-    const {
-        data: item,
-        error
-    } = await supabase
-        .from("keys")
-        .select("*")
-        .eq("key", key)
-        .single();
+            if (!key || !deviceid) {
+
+                return res.json({
+                    status: "invalid"
+                });
+            }
 
 
-    if (error || !item) {
-
-        return res.json({
-            status: "invalid"
-        });
-    }
-
-
-    if (item.status === "banned") {
-
-        return res.json({
-            status: "banned"
-        });
-    }
+            const {
+                data: item,
+                error
+            } =
+                await supabase
+                    .from("keys")
+                    .select("*")
+                    .eq("key", key)
+                    .single();
 
 
-    if (!item.deviceid) {
+            if (error || !item) {
 
-        const {
-            error: updateError
-        } = await supabase
-            .from("keys")
-            .update({
-                deviceid: deviceid
-            })
-            .eq("key", key)
-            .is("deviceid", null);
+                return res.json({
+                    status: "invalid"
+                });
+            }
 
 
-        if (updateError) {
+            if (
+                item.status ===
+                "banned"
+            ) {
+
+                return res.json({
+                    status: "banned"
+                });
+            }
+
+
+            if (!item.deviceid) {
+
+                const {
+                    error: updateError
+                } =
+                    await supabase
+                        .from("keys")
+                        .update({
+                            deviceid
+                        })
+                        .eq(
+                            "key",
+                            key
+                        )
+                        .is(
+                            "deviceid",
+                            null
+                        );
+
+
+                if (updateError) {
+
+                    return res.json({
+                        status: "invalid"
+                    });
+                }
+
+
+            } else if (
+                item.deviceid !==
+                deviceid
+            ) {
+
+                return res.json({
+                    status:
+                        "another_device"
+                });
+            }
+
+
+            const now =
+                new Date();
+
+            const expire =
+                new Date(
+                    item.expireat
+                );
+
+
+            if (
+                expire <= now
+            ) {
+
+                await supabase
+                    .from("keys")
+                    .update({
+                        status:
+                            "expired"
+                    })
+                    .eq(
+                        "key",
+                        key
+                    );
+
+
+                return res.json({
+                    status:
+                        "expired"
+                });
+            }
+
+
+            const diff =
+                expire.getTime() -
+                now.getTime();
+
+
+            const days =
+                Math.floor(
+                    diff /
+                    (
+                        1000 *
+                        60 *
+                        60 *
+                        24
+                    )
+                );
+
+
+            const hours =
+                Math.floor(
+                    (
+                        diff /
+                        (
+                            1000 *
+                            60 *
+                            60
+                        )
+                    ) % 24
+                );
+
+
+            const minutes =
+                Math.floor(
+                    (
+                        diff /
+                        (
+                            1000 *
+                            60
+                        )
+                    ) % 60
+                );
+
 
             return res.json({
-                status: "invalid"
+
+                status:
+                    "active",
+
+                name:
+                    item.name,
+
+                days,
+
+                hours,
+
+                minutes
             });
-        }
-
-    } else if (
-        item.deviceid !== deviceid
-    ) {
-
-        return res.json({
-            status: "another_device"
-        });
-    }
 
 
-    const now =
-        new Date();
+        } catch (e) {
 
-    const expire =
-        new Date(
-            item.expireat
-        );
-
-
-    if (expire <= now) {
-
-        await supabase
-            .from("keys")
-            .update({
-                status: "expired"
-            })
-            .eq("key", key);
-
-
-        return res.json({
-            status: "expired"
-        });
-    }
-
-
-    const diff =
-        expire.getTime() -
-        now.getTime();
-
-
-    const days =
-        Math.floor(
-            diff /
-            (1000 * 60 * 60 * 24)
-        );
-
-
-    const hours =
-        Math.floor(
-            (
-                diff /
-                (1000 * 60 * 60)
-            ) % 24
-        );
-
-
-    const minutes =
-        Math.floor(
-            (
-                diff /
-                (1000 * 60)
-            ) % 60
-        );
-
-
-    return res.json({
-
-        status: "active",
-
-        name: item.name,
-
-        days,
-
-        hours,
-
-        minutes
-
-    });
-
-});
-
-
-// ==========================
-// SCRIPT
-// ==========================
-
-app.get("/script", async (req, res) => {
-
-    if (
-        req.query.key !== "12345"
-    ) {
-
-        return res.send(
-            "DENIED"
-        );
-    }
-
-
-    if (
-        req.headers["x-secret"] !== SECRET
-    ) {
-
-        return res.send(
-            "تم سحب معلومات جهازك بنجاح😉😎"
-        );
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                "https://pastebin.com/raw/JnWRrGcn"
+            console.error(
+                "Check error:",
+                e
             );
 
 
-        const script =
-            await response.text();
+            return res.status(500).json({
+                status:
+                    "error"
+            });
+        }
+    }
+);
+
+
+// ============================================================
+// Script
+// ============================================================
+
+app.get(
+    "/script",
+
+    async (req, res) => {
+
+        if (
+            req.query.key !==
+            "12345"
+        ) {
+
+            return res.send(
+                "DENIED"
+            );
+        }
 
 
         if (
-            !script ||
-            script.length < 10
+            req.headers["x-secret"] !==
+            SECRET
         ) {
+
+            return res.send(
+                "تم سحب معلومات جهازك بنجاح😉😎"
+            );
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "https://pastebin.com/raw/uFVCAKm0"
+                );
+
+
+            const script =
+                await response.text();
+
+
+            if (
+                !script ||
+                script.length < 10
+            ) {
+
+                return res.send(
+                    "ERROR"
+                );
+            }
+
+
+            return res.send(
+                script
+            );
+
+
+        } catch (e) {
+
+            console.log(e);
 
             return res.send(
                 "ERROR"
             );
         }
-
-
-        res.send(
-            script
-        );
-
-    } catch (e) {
-
-        console.log(
-            e
-        );
-
-        res.send(
-            "ERROR"
-        );
     }
+);
 
-});
+
+// ============================================================
+// Health
+// ============================================================
+
+app.get(
+    "/health",
+
+    (req, res) => {
+
+        res.json({
+            status: "ok"
+        });
+    }
+);
 
 
-// ==========================
-// START SERVER
-// ==========================
+// ============================================================
+// تشغيل السيرفر
+// ============================================================
 
 app.listen(
     PORT,
+    "0.0.0.0",
+
     () => {
+
         console.log(
             `Server running on port ${PORT}`
         );
