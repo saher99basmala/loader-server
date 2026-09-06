@@ -1,17 +1,17 @@
-/* ========================================
+/* ============================================================
    fetchCity.js
-======================================== */
+   COMPLETE SERVER
+   ============================================================ */
+
+"use strict";
 
 const express = require("express");
 const crypto = require("crypto");
 const zlib = require("zlib");
-const fetch = require("node-fetch");
 
-const router = express.Router();
+const app = express();
 
-// ============================================================
-// CONFIG
-// ============================================================
+const PORT = Number(process.env.PORT || 3000);
 
 const AES_KEY = Buffer.from(
     process.env.FETCHCITY_AES_KEY || "Wucai6oj0sheiX3p",
@@ -25,18 +25,31 @@ const ENDPOINT =
 const TIMEOUT_MS =
     Number(process.env.FETCHCITY_TIMEOUT_MS || 25000);
 
-// ============================================================
-// SAVECRYPTO CONSTANTS - FETCHCITY
-// ============================================================
+/* ============================================================
+   JSON
+   ============================================================ */
+
+app.use(
+    express.json({
+        limit: "50mb"
+    })
+);
+
+app.use(
+    express.urlencoded({
+        extended: true,
+        limit: "50mb"
+    })
+);
+
+/* ============================================================
+   SAVECRYPTO CONSTANTS
+   ============================================================ */
 
 const TABLE_SIZE = 0x2D7;
 const PROCESS_XOR = 0x396A8;
 const TOTAL_XOR = 0xC5EED;
 const TABLE_MULTIPLIER = 0x5BD1E995;
-
-// ============================================================
-// LZ4 MAGIC
-// ============================================================
 
 const LZ4_MAGIC = Buffer.from([
     0x04,
@@ -45,22 +58,40 @@ const LZ4_MAGIC = Buffer.from([
     0x18
 ]);
 
-// ============================================================
-// FETCH54 TABLE
-// ============================================================
+/* ============================================================
+   FETCH54 TABLE
+   ============================================================ */
 
 const FETCH54_TABLE = Buffer.from(
     "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlLZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82bG5bc1lkczpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGJmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
     "base64"
 );
 
-// ============================================================
-// UTILS
-// ============================================================
+/* ============================================================
+   FETCH IMPLEMENTATION
+   ============================================================ */
+
+let fetchImpl;
+
+try {
+    fetchImpl =
+        globalThis.fetch ||
+        require("node-fetch");
+} catch (e) {
+    fetchImpl = require("node-fetch");
+}
+
+/* ============================================================
+   BASIC UTILS
+   ============================================================ */
 
 function u32le(buf, offset) {
 
-    if (offset + 4 > buf.length) {
+    if (
+        !Buffer.isBuffer(buf) ||
+        offset < 0 ||
+        offset + 4 > buf.length
+    ) {
         throw new Error(
             "u32le خارج حدود البيانات"
         );
@@ -71,7 +102,7 @@ function u32le(buf, offset) {
             buf[offset] |
             (buf[offset + 1] << 8) |
             (buf[offset + 2] << 16) |
-            (buf[offset + 3] * 0x1000000)
+            (buf[offset + 3] << 24)
         ) >>> 0
     );
 }
@@ -90,7 +121,10 @@ function sub32(a, b) {
 
 function bufferMagic(buf) {
 
-    if (!buf || buf.length < 4) {
+    if (
+        !Buffer.isBuffer(buf) ||
+        buf.length < 4
+    ) {
         return "";
     }
 
@@ -106,22 +140,40 @@ function bufferMagic(buf) {
         .join(" ");
 }
 
+function u24le(buf, offset) {
+
+    if (
+        !Buffer.isBuffer(buf) ||
+        offset + 3 > buf.length
+    ) {
+        throw new Error(
+            "u24le خارج حدود البيانات"
+        );
+    }
+
+    return (
+        buf[offset] |
+        (buf[offset + 1] << 8) |
+        (buf[offset + 2] << 16)
+    ) >>> 0;
+}
+
 function isLz4Magic(buf) {
 
     return (
-        buf &&
+        Buffer.isBuffer(buf) &&
         buf.length >= 4 &&
-        buf[0] === LZ4_MAGIC[0] &&
-        buf[1] === LZ4_MAGIC[1] &&
-        buf[2] === LZ4_MAGIC[2] &&
-        buf[3] === LZ4_MAGIC[3]
+        buf[0] === 0x04 &&
+        buf[1] === 0x22 &&
+        buf[2] === 0x4D &&
+        buf[3] === 0x18
     );
 }
 
 function isGzip(buf) {
 
     return (
-        buf &&
+        Buffer.isBuffer(buf) &&
         buf.length >= 2 &&
         buf[0] === 0x1F &&
         buf[1] === 0x8B
@@ -130,7 +182,10 @@ function isGzip(buf) {
 
 function looksLikeXml(buf) {
 
-    if (!buf || buf.length === 0) {
+    if (
+        !Buffer.isBuffer(buf) ||
+        buf.length === 0
+    ) {
         return false;
     }
 
@@ -153,9 +208,37 @@ function looksLikeXml(buf) {
     );
 }
 
-// ============================================================
-// FETCHCITY 0x79
-// ============================================================
+function looksLikeJson(buf) {
+
+    if (
+        !Buffer.isBuffer(buf) ||
+        buf.length === 0
+    ) {
+        return false;
+    }
+
+    const text =
+        buf
+            .subarray(
+                0,
+                Math.min(
+                    buf.length,
+                    512
+                )
+            )
+            .toString("utf8")
+            .trimStart();
+
+    return (
+        text.startsWith("{") ||
+        text.startsWith("[")
+    );
+}
+
+/* ============================================================
+   0x79
+   OLD ALGORITHM
+   ============================================================ */
 
 function build79Table(seed) {
 
@@ -270,7 +353,9 @@ function xorDecode79(raw) {
             )
         );
 
-    if (out.length === 0) {
+    if (
+        out.length === 0
+    ) {
         return out;
     }
 
@@ -310,9 +395,10 @@ function xorDecode79(raw) {
     return out;
 }
 
-// ============================================================
-// FETCHCITY 0x54
-// ============================================================
+/* ============================================================
+   0x54
+   OLD ALGORITHM
+   ============================================================ */
 
 function decode54Layer(raw) {
 
@@ -356,7 +442,9 @@ function decode54Layer(raw) {
             raw.subarray(3)
         );
 
-    if (out.length === 0) {
+    if (
+        out.length === 0
+    ) {
         return out;
     }
 
@@ -400,9 +488,9 @@ function decode54Layer(raw) {
     return out;
 }
 
-// ============================================================
-// FETCHCITY TRANSPORT
-// ============================================================
+/* ============================================================
+   TRANSPORT
+   ============================================================ */
 
 function decodeTransport(raw) {
 
@@ -410,7 +498,9 @@ function decodeTransport(raw) {
         raw = Buffer.from(raw);
     }
 
-    if (raw.length === 0) {
+    if (
+        raw.length === 0
+    ) {
         return raw;
     }
 
@@ -443,9 +533,9 @@ function decodeTransport(raw) {
     }
 }
 
-// ============================================================
-// FETCHCITY LZ4
-// ============================================================
+/* ============================================================
+   LZ4 BLOCK
+   ============================================================ */
 
 function lz4DecompressBlock(
     src,
@@ -483,7 +573,6 @@ function lz4DecompressBlock(
                     srcPos >=
                     src.length
                 ) {
-
                     throw new Error(
                         "LZ4: literal length خارج البيانات"
                     );
@@ -505,7 +594,6 @@ function lz4DecompressBlock(
             literalLength >
             src.length
         ) {
-
             throw new Error(
                 "LZ4: literals خارج البيانات"
             );
@@ -516,7 +604,6 @@ function lz4DecompressBlock(
             literalLength >
             expectedSize
         ) {
-
             throw new Error(
                 "LZ4: output overflow أثناء literals"
             );
@@ -527,7 +614,7 @@ function lz4DecompressBlock(
             dstPos,
             srcPos,
             srcPos +
-                literalLength
+            literalLength
         );
 
         srcPos +=
@@ -540,7 +627,6 @@ function lz4DecompressBlock(
             srcPos >=
             src.length
         ) {
-
             break;
         }
 
@@ -548,7 +634,6 @@ function lz4DecompressBlock(
             srcPos + 2 >
             src.length
         ) {
-
             throw new Error(
                 "LZ4: offset ناقص"
             );
@@ -566,7 +651,6 @@ function lz4DecompressBlock(
         if (
             offset === 0
         ) {
-
             throw new Error(
                 "LZ4: offset = 0"
             );
@@ -576,7 +660,6 @@ function lz4DecompressBlock(
             offset >
             dstPos
         ) {
-
             throw new Error(
                 `LZ4: offset أكبر من output: ${offset} > ${dstPos}`
             );
@@ -597,7 +680,6 @@ function lz4DecompressBlock(
                     srcPos >=
                     src.length
                 ) {
-
                     throw new Error(
                         "LZ4: match length خارج البيانات"
                     );
@@ -621,7 +703,6 @@ function lz4DecompressBlock(
             matchLength >
             expectedSize
         ) {
-
             throw new Error(
                 "LZ4: output overflow أثناء match"
             );
@@ -651,9 +732,8 @@ function lz4DecompressBlock(
         dstPos !==
         expectedSize
     ) {
-
         throw new Error(
-            `LZ4: الحجم الناتج غير مطابق. expected=${expectedSize}, actual=${dstPos}`
+            `LZ4: الحجم غير مطابق. expected=${expectedSize}, actual=${dstPos}`
         );
     }
 
@@ -665,7 +745,6 @@ function decodeLz4Container(raw) {
     if (
         !isLz4Magic(raw)
     ) {
-
         throw new Error(
             `LZ4 magic غير صحيح: ${bufferMagic(raw)}`
         );
@@ -674,9 +753,8 @@ function decodeLz4Container(raw) {
     if (
         raw.length < 8
     ) {
-
         throw new Error(
-            "LZ4 container قصيرة"
+            "LZ4 container قصير"
         );
     }
 
@@ -687,9 +765,7 @@ function decodeLz4Container(raw) {
         );
 
     const compressed =
-        raw.subarray(
-            8
-        );
+        raw.subarray(8);
 
     console.log(
         `[FetchCity] LZ4 expectedSize=${expectedSize}, compressed=${compressed.length}`
@@ -701,9 +777,9 @@ function decodeLz4Container(raw) {
     );
 }
 
-// ============================================================
-// FETCHCITY XML
-// ============================================================
+/* ============================================================
+   XML
+   ============================================================ */
 
 function trimXml(buf) {
 
@@ -712,9 +788,7 @@ function trimXml(buf) {
     }
 
     const text =
-        buf.toString(
-            "utf8"
-        );
+        buf.toString("utf8");
 
     const rootEnd =
         text.lastIndexOf(
@@ -752,11 +826,8 @@ function trimXml(buf) {
             c === 0x0D ||
             c === 0x20
         ) {
-
             end--;
-
         } else {
-
             break;
         }
     }
@@ -774,9 +845,7 @@ function editCityXml(xml) {
     }
 
     let text =
-        xml.toString(
-            "utf8"
-        );
+        xml.toString("utf8");
 
     text =
         text.replace(
@@ -853,751 +922,9 @@ function editCityXml(xml) {
     );
 }
 
-// ============================================================
-// COMPLETE FETCHCITY SAVE DECODER
-// ============================================================
-
-function decodeSaveCity(cityBytes) {
-
-    let data =
-        Buffer.from(
-            cityBytes
-        );
-
-    console.log(
-        `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
-    );
-
-    let rounds = 0;
-
-    while (
-        data.length > 0 &&
-        rounds < 8
-    ) {
-
-        rounds++;
-
-        // ----------------------------------------------------
-        // XML
-        // ----------------------------------------------------
-
-        if (
-            looksLikeXml(data)
-        ) {
-
-            console.log(
-                `[FetchCity] XML detected after ${rounds - 1} layer(s)`
-            );
-
-            return trimXml(
-                data
-            );
-        }
-
-        // ----------------------------------------------------
-        // LZ4
-        // ----------------------------------------------------
-
-        if (
-            isLz4Magic(data)
-        ) {
-
-            console.log(
-                `[FetchCity] LZ4 detected`
-            );
-
-            const before =
-                data;
-
-            data =
-                decodeLz4Container(
-                    data
-                );
-
-            console.log(
-                `[FetchCity] LZ4: ${bufferMagic(before)} -> ${bufferMagic(data)}`
-            );
-
-            continue;
-        }
-
-        // ----------------------------------------------------
-        // GZIP
-        // ----------------------------------------------------
-
-        if (
-            isGzip(data)
-        ) {
-
-            console.log(
-                `[FetchCity] GZIP detected`
-            );
-
-            const before =
-                data;
-
-            data =
-                zlib.gunzipSync(
-                    data
-                );
-
-            console.log(
-                `[FetchCity] GZIP: ${bufferMagic(before)} -> ${bufferMagic(data)}`
-            );
-
-            continue;
-        }
-
-        // ----------------------------------------------------
-        // 0x79 / 0x54
-        // ----------------------------------------------------
-
-        const type =
-            data[0];
-
-        if (
-            type === 0x79 ||
-            type === 0x54
-        ) {
-
-            const before =
-                data;
-
-            data =
-                decodeTransport(
-                    data
-                );
-
-            console.log(
-                `[FetchCity] layer ${rounds}: ${bufferMagic(before)} -> ${bufferMagic(data)}`
-            );
-
-            continue;
-        }
-
-        throw new Error(
-            `تعذر فك طبقات FetchCity. المرحلة التالية غير معروفة. Magic=${bufferMagic(data)} size=${data.length}`
-        );
-    }
-
-    if (
-        looksLikeXml(data)
-    ) {
-
-        return trimXml(
-            data
-        );
-    }
-
-    throw new Error(
-        `تعذر الوصول إلى XML. Magic=${bufferMagic(data)} size=${data.length}`
-    );
-}
-
-// ============================================================
-// AES REQUEST
-// ============================================================
-
-function encryptRequest(
-    requestJson
-) {
-
-    const iv =
-        crypto.randomBytes(
-            12
-        );
-
-    const cipher =
-        crypto.createCipheriv(
-            "aes-128-gcm",
-            AES_KEY,
-            iv
-        );
-
-    const plaintext =
-        Buffer.from(
-            requestJson,
-            "utf8"
-        );
-
-    const ciphertext =
-        Buffer.concat([
-            cipher.update(
-                plaintext
-            ),
-            cipher.final()
-        ]);
-
-    const tag =
-        cipher.getAuthTag();
-
-    const tsId =
-        "002" +
-        iv.toString("hex") +
-        tag.toString("hex");
-
-    return {
-        body: ciphertext,
-        tsId
-    };
-}
-
-// ============================================================
-// AES RESPONSE
-// ============================================================
-
-function decryptResponse(
-    body,
-    tsId
-) {
-
-    if (!tsId) {
-
-        throw new Error(
-            "استجابة FetchCity لا تحتوي ts-id"
-        );
-    }
-
-    if (
-        typeof tsId !== "string" ||
-        !tsId.startsWith("002")
-    ) {
-
-        throw new Error(
-            `ts-id غير صالح: ${tsId}`
-        );
-    }
-
-    const hex =
-        tsId.slice(3);
-
-    if (
-        hex.length <
-        24 + 32
-    ) {
-
-        throw new Error(
-            `ts-id قصير: ${tsId}`
-        );
-    }
-
-    const ivHex =
-        hex.slice(
-            0,
-            24
-        );
-
-    const tagHex =
-        hex.slice(
-            24,
-            24 + 32
-        );
-
-    const iv =
-        Buffer.from(
-            ivHex,
-            "hex"
-        );
-
-    const tag =
-        Buffer.from(
-            tagHex,
-            "hex"
-        );
-
-    const decipher =
-        crypto.createDecipheriv(
-            "aes-128-gcm",
-            AES_KEY,
-            iv
-        );
-
-    decipher.setAuthTag(
-        tag
-    );
-
-    return Buffer.concat([
-        decipher.update(
-            body
-        ),
-        decipher.final()
-    ]);
-}
-
-// ============================================================
-// RESPONSE DECOMPRESSION
-// ============================================================
-
-function decompressResponse(
-    decrypted
-) {
-
-    console.log(
-        `[FetchCity] decrypted size=${decrypted.length}`
-    );
-
-    console.log(
-        `[FetchCity] decrypted magic=${bufferMagic(decrypted)}`
-    );
-
-    // --------------------------------------------------------
-    // GZIP
-    // --------------------------------------------------------
-
-    try {
-
-        const result =
-            zlib.gunzipSync(
-                decrypted
-            );
-
-        console.log(
-            `[FetchCity] compression = GZIP`
-        );
-
-        console.log(
-            `[FetchCity] after compression magic=${bufferMagic(result)}`
-        );
-
-        return result;
-
-    } catch (gzipError) {
-
-        console.log(
-            `[FetchCity] GZIP failed: ${gzipError.message}`
-        );
-    }
-
-    // --------------------------------------------------------
-    // ZLIB
-    // --------------------------------------------------------
-
-    try {
-
-        const result =
-            zlib.inflateSync(
-                decrypted
-            );
-
-        console.log(
-            `[FetchCity] compression = ZLIB`
-        );
-
-        console.log(
-            `[FetchCity] after compression magic=${bufferMagic(result)}`
-        );
-
-        return result;
-
-    } catch (zlibError) {
-
-        console.log(
-            `[FetchCity] ZLIB failed: ${zlibError.message}`
-        );
-    }
-
-    // --------------------------------------------------------
-    // RAW DEFLATE
-    // --------------------------------------------------------
-
-    try {
-
-        const result =
-            zlib.inflateRawSync(
-                decrypted
-            );
-
-        console.log(
-            `[FetchCity] compression = RAW DEFLATE`
-        );
-
-        console.log(
-            `[FetchCity] after compression magic=${bufferMagic(result)}`
-        );
-
-        return result;
-
-    } catch (rawError) {
-
-        console.log(
-            `[FetchCity] RAW DEFLATE failed: ${rawError.message}`
-        );
-    }
-
-    // --------------------------------------------------------
-    // Plain JSON
-    // --------------------------------------------------------
-
-    const text =
-        decrypted
-            .toString("utf8")
-            .replace(/^\uFEFF/, "")
-            .trim();
-
-    if (
-        text.startsWith("{") ||
-        text.startsWith("[")
-    ) {
-
-        console.log(
-            `[FetchCity] response = plain JSON`
-        );
-
-        return decrypted;
-    }
-
-    throw new Error(
-        "تعذر فك ضغط استجابة FetchCity. " +
-        `magic=${bufferMagic(decrypted)} ` +
-        `size=${decrypted.length}`
-    );
-}
-
-// ============================================================
-// REQUEST PLAYRIX
-// ============================================================
-
-async function requestFetchCity(
-    cityId,
-    cityVer
-) {
-
-    const requestJson =
-        `{"cityId":"","cityVer":${cityVer},"fetchCityId":"${cityId}","important":true}`;
-
-    console.log(
-        `[FetchCity] request cityId=${cityId} cityVer=${cityVer}`
-    );
-
-    console.log(
-        `[FetchCity] requestJson=${requestJson}`
-    );
-
-    const encrypted =
-        encryptRequest(
-            requestJson
-        );
-
-    const controller =
-        new AbortController();
-
-    const timer =
-        setTimeout(
-            () => controller.abort(),
-            TIMEOUT_MS
-        );
-
-    try {
-
-        const response =
-            await fetch(
-                ENDPOINT +
-                encodeURIComponent(
-                    cityId
-                ),
-                {
-                    method: "POST",
-
-                    headers: {
-
-                        "Accept-Encoding":
-                            "identity",
-
-                        "Content-Type":
-                            "application/octet-stream",
-
-                        "User-Agent":
-                            "okhttp/4.9.0",
-
-                        "ts-bp":
-                            "i",
-
-                        "ts-bver":
-                            "bver",
-
-                        "ts-fver":
-                            "fver",
-
-                        "ts-gpid":
-                            "new",
-
-                        "ts-id":
-                            encrypted.tsId
-                    },
-
-                    body:
-                        encrypted.body,
-
-                    signal:
-                        controller.signal
-                }
-            );
-
-        const responseBody =
-            Buffer.from(
-                await response.arrayBuffer()
-            );
-
-        if (!response.ok) {
-
-            const text =
-                responseBody.toString(
-                    "utf8"
-                );
-
-            throw new Error(
-                `Upstream HTTP ${response.status}: ${text}`
-            );
-        }
-
-        const responseTsId =
-            response.headers.get(
-                "ts-id"
-            );
-
-        if (!responseTsId) {
-
-            throw new Error(
-                "Upstream response missing ts-id"
-            );
-        }
-
-        console.log(
-            `[FetchCity] upstream status=${response.status}`
-        );
-
-        console.log(
-            `[FetchCity] encrypted response size=${responseBody.length}`
-        );
-
-        const decrypted =
-            decryptResponse(
-                responseBody,
-                responseTsId
-            );
-
-        console.log(
-            `[FetchCity] decrypted magic=${bufferMagic(decrypted)}`
-        );
-
-        const uncompressed =
-            decompressResponse(
-                decrypted
-            );
-
-        const text =
-            uncompressed
-                .toString("utf8")
-                .replace(/^\uFEFF/, "")
-                .trim();
-
-        console.log(
-            `[FetchCity] response text size=${text.length}`
-        );
-
-        const json =
-            JSON.parse(
-                text
-            );
-
-        return json;
-
-    } finally {
-
-        clearTimeout(
-            timer
-        );
-    }
-}
-
-// ============================================================
-// FETCHCITY API
-// ============================================================
-//
-// Lua يرسل فقط:
-//
-// {
-//   city_id,
-//   city_name,
-//   level
-// }
-//
-// city_id = saveId أو city_id
-//
-// ============================================================
-
-async function handleFetchCity(
-    req,
-    res
-) {
-
-    try {
-
-        const body =
-            req.body || {};
-
-        const cityId =
-            String(
-                body.city_id || ""
-            ).trim();
-
-        const cityName =
-            String(
-                body.city_name || ""
-            ).trim();
-
-        const level =
-            String(
-                body.level || ""
-            ).trim();
-
-        if (!cityId) {
-
-            return res
-                .status(400)
-                .json({
-                    ok: false,
-                    error:
-                        "city_id مطلوب"
-                });
-        }
-
-        if (!cityName) {
-
-            return res
-                .status(400)
-                .json({
-                    ok: false,
-                    error:
-                        "city_name مطلوب"
-                });
-        }
-
-        if (!level) {
-
-            return res
-                .status(400)
-                .json({
-                    ok: false,
-                    error:
-                        "level مطلوب"
-                });
-        }
-
-        console.log(
-            `[FetchCity] incoming city_id=${cityId} city_name=${cityName} level=${level}`
-        );
-
-        // ----------------------------------------------------
-        // city_id هو نفسه FetchCityId
-        // cityVer لا يأتي من Lua
-        // ----------------------------------------------------
-
-        const json =
-            await requestFetchCity(
-                cityId,
-                0
-            );
-
-        if (
-            !json ||
-            !json.result ||
-            typeof json.result.data !==
-                "string"
-        ) {
-
-            throw new Error(
-                "Upstream JSON لا يحتوي result.data"
-            );
-        }
-
-        const base64 =
-            json.result.data;
-
-        console.log(
-            `[FetchCity] Base64 length=${base64.length}`
-        );
-
-        const cityBytes =
-            Buffer.from(
-                base64,
-                "base64"
-            );
-
-        console.log(
-            `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
-        );
-
-        // ----------------------------------------------------
-        // فك طبقات ملف المدينة
-        // ----------------------------------------------------
-
-        const xml =
-            decodeSaveCity(
-                cityBytes
-            );
-
-        console.log(
-            `[FetchCity] XML size=${xml.length}`
-        );
-
-        // ----------------------------------------------------
-        // تعديل XML
-        // ----------------------------------------------------
-
-        const modifiedXml =
-            editCityXml(
-                xml
-            );
-
-        console.log(
-            `[FetchCity] Modified XML size=${modifiedXml.length}`
-        );
-
-        res.status(200);
-
-        res.set(
-            "Content-Type",
-            "application/xml; charset=utf-8"
-        );
-
-        res.set(
-            "Cache-Control",
-            "no-store"
-        );
-
-        return res.send(
-            modifiedXml
-        );
-
-    } catch (err) {
-
-        console.error(
-            "[FetchCity] ERROR:",
-            err &&
-            err.stack
-                ? err.stack
-                : err
-        );
-
-        return res
-            .status(500)
-            .json({
-                ok: false,
-                error:
-                    String(
-                        err &&
-                        err.message
-                            ? err.message
-                            : err
-                    )
-            });
-    }
-}
-
-// ============================================================
-// FRIEND FILE DECODER
-// ============================================================
+/* ============================================================
+   FRIEND DECODER - OLD EXACT ALGORITHM
+   ============================================================ */
 
 const FRIEND_TABLE_SIZE = 0x2D7;
 
@@ -1614,7 +941,6 @@ function friendReadU32(
         pos + 4 >
         data.length
     ) {
-
         throw new Error(
             "بيانات غير كافية لقراءة UInt32"
         );
@@ -1656,7 +982,6 @@ function friendMmh2(
         );
 
     let i = 0;
-
     let length =
         data.length;
 
@@ -1701,7 +1026,6 @@ function friendMmh2(
             ) >>> 0;
 
         i += 4;
-
         length -= 4;
     }
 
@@ -1828,9 +1152,8 @@ function friendXorDecode(
     if (
         data.length < 8
     ) {
-
         throw new Error(
-            "الملف صغير جدًا"
+            "الملف صغير جداً"
         );
     }
 
@@ -1920,7 +1243,6 @@ function friendXorDecode(
             j >=
             FRIEND_TABLE_SIZE
         ) {
-
             j = 0;
         }
     }
@@ -1948,9 +1270,8 @@ function friendLz4Decompress(
     if (
         data.length < 9
     ) {
-
         throw new Error(
-            "LZ4: البيانات صغيرة جدًا"
+            "LZ4: البيانات صغيرة جداً"
         );
     }
 
@@ -1975,7 +1296,6 @@ function friendLz4Decompress(
             src >=
             data.length
         ) {
-
             throw new Error(
                 "LZ4: نهاية بيانات غير متوقعة"
             );
@@ -1987,8 +1307,10 @@ function friendLz4Decompress(
     }
 
     while (
-        src < data.length &&
-        outLen < size
+        src <
+        data.length &&
+        outLen <
+        size
     ) {
 
         const token =
@@ -2021,7 +1343,6 @@ function friendLz4Decompress(
             literalLen >
             data.length
         ) {
-
             throw new Error(
                 "LZ4: Literal خارج النطاق"
             );
@@ -2032,7 +1353,6 @@ function friendLz4Decompress(
             literalLen >
             size
         ) {
-
             throw new Error(
                 "LZ4: حجم Literal غير صحيح"
             );
@@ -2056,7 +1376,6 @@ function friendLz4Decompress(
             outLen >=
             size
         ) {
-
             break;
         }
 
@@ -2064,7 +1383,6 @@ function friendLz4Decompress(
             src + 2 >
             data.length
         ) {
-
             throw new Error(
                 "LZ4: لا يوجد Offset"
             );
@@ -2073,14 +1391,12 @@ function friendLz4Decompress(
         const offset =
             readByte() |
             (
-                readByte() <<
-                8
+                readByte() << 8
             );
 
         if (
             offset === 0
         ) {
-
             throw new Error(
                 "LZ4: Offset غير صالح"
             );
@@ -2117,7 +1433,6 @@ function friendLz4Decompress(
         if (
             start < 0
         ) {
-
             throw new Error(
                 "LZ4: Offset خارج النطاق"
             );
@@ -2133,9 +1448,8 @@ function friendLz4Decompress(
                 outLen >=
                 size
             ) {
-
                 throw new Error(
-                    "LZ4: الحجم الناتج تجاوز المتوقع"
+                    "LZ4: الحجم تجاوز المتوقع"
                 );
             }
 
@@ -2153,7 +1467,6 @@ function friendLz4Decompress(
         outLen !==
         size
     ) {
-
         throw new Error(
             "LZ4: الحجم الناتج غير صحيح\n" +
             "Expected: " +
@@ -2166,51 +1479,9 @@ function friendLz4Decompress(
     return output;
 }
 
-function friendTrimXml(
-    data
-) {
-
-    const marker =
-        Buffer.from(
-            "</root>"
-        );
-
-    const pos =
-        data.lastIndexOf(
-            marker
-        );
-
-    if (
-        pos !== -1
-    ) {
-
-        return data.subarray(
-            0,
-            pos +
-            marker.length
-        );
-    }
-
-    let end =
-        data.length;
-
-    while (
-        end > 0 &&
-        data[end - 1] === 0
-    ) {
-
-        end--;
-    }
-
-    return data.subarray(
-        0,
-        end
-    );
-}
-
-// ============================================================
-// EXACT FRIEND FILE DECODER
-// ============================================================
+/* ============================================================
+   DECODE FRIEND FILE
+   ============================================================ */
 
 function decodeFriendFile(
     data
@@ -2219,68 +1490,39 @@ function decodeFriendFile(
     if (
         !Buffer.isBuffer(data)
     ) {
-
         data =
-            Buffer.from(
-                data
-            );
+            Buffer.from(data);
     }
 
     if (
         data.length === 0
     ) {
-
         throw new Error(
             "الملف فارغ"
         );
     }
 
-    // --------------------------------------------------------
-    // XML مباشرة
-    // --------------------------------------------------------
-
     if (
         data[0] === 0x3C
     ) {
-
         return data;
     }
-
-    // --------------------------------------------------------
-    // يجب أن يبدأ 0x79
-    // --------------------------------------------------------
 
     if (
         data[0] !== 0x79
     ) {
-
         throw new Error(
             "نوع غير مدعوم\nMagic: 0x" +
             data[0]
                 .toString(16)
-                .padStart(
-                    2,
-                    "0"
-                )
+                .padStart(2, "0")
         );
     }
-
-    console.log(
-        `[Friends] 0x79 detected size=${data.length}`
-    );
 
     let payload =
         friendXorDecode(
             data
         );
-
-    console.log(
-        `[Friends] after 0x79 size=${payload.length} magic=${bufferMagic(payload)}`
-    );
-
-    // --------------------------------------------------------
-    // LZ4
-    // --------------------------------------------------------
 
     if (
         friendIsLz4(
@@ -2288,35 +1530,56 @@ function decodeFriendFile(
         )
     ) {
 
-        console.log(
-            "[Friends] LZ4 detected"
-        );
-
         payload =
             friendLz4Decompress(
                 payload
             );
-
-        console.log(
-            `[Friends] after LZ4 size=${payload.length} magic=${bufferMagic(payload)}`
-        );
     }
 
-    return friendTrimXml(
+    return trimXml(
         payload
     );
 }
 
-// ============================================================
-// XML ATTRIBUTE
-// ============================================================
+/* ============================================================
+   XML ATTRIBUTE HELPERS
+   ============================================================ */
+
+function xmlDecodeEntities(
+    value
+) {
+
+    return String(
+        value || ""
+    )
+        .replace(
+            /&quot;/g,
+            '"'
+        )
+        .replace(
+            /&apos;/g,
+            "'"
+        )
+        .replace(
+            /&lt;/g,
+            "<"
+        )
+        .replace(
+            /&gt;/g,
+            ">"
+        )
+        .replace(
+            /&amp;/g,
+            "&"
+        );
+}
 
 function attrFromXmlTag(
     tag,
     name
 ) {
 
-    const doubleQuote =
+    const d =
         tag.match(
             new RegExp(
                 name +
@@ -2325,14 +1588,13 @@ function attrFromXmlTag(
             )
         );
 
-    if (
-        doubleQuote
-    ) {
-
-        return doubleQuote[1];
+    if (d) {
+        return xmlDecodeEntities(
+            d[1]
+        );
     }
 
-    const singleQuote =
+    const s =
         tag.match(
             new RegExp(
                 name +
@@ -2341,19 +1603,18 @@ function attrFromXmlTag(
             )
         );
 
-    if (
-        singleQuote
-    ) {
-
-        return singleQuote[1];
+    if (s) {
+        return xmlDecodeEntities(
+            s[1]
+        );
     }
 
     return "";
 }
 
-// ============================================================
-// FRIEND VERSION
-// ============================================================
+/* ============================================================
+   FRIEND VERSION
+   ============================================================ */
 
 function parseFriendVersion(
     xml
@@ -2367,7 +1628,6 @@ function parseFriendVersion(
     if (
         !versionTag
     ) {
-
         return {
             bver: "",
             fver: ""
@@ -2375,7 +1635,6 @@ function parseFriendVersion(
     }
 
     return {
-
         bver:
             attrFromXmlTag(
                 versionTag[0],
@@ -2390,9 +1649,9 @@ function parseFriendVersion(
     };
 }
 
-// ============================================================
-// FRIENDS
-// ============================================================
+/* ============================================================
+   FRIENDS
+   ============================================================ */
 
 function parseFriends(
     xml
@@ -2422,12 +1681,10 @@ function parseFriends(
         if (
             !cityId
         ) {
-
             continue;
         }
 
         friends.push({
-
             city_id:
                 cityId,
 
@@ -2493,179 +1750,774 @@ function parseFriends(
         });
     }
 
-    return friends;
+    return dedupeBy(
+        friends,
+        x => x.city_id
+    );
 }
 
-// ============================================================
-// SAVE IDS FROM ProfilesCache
-// ============================================================
-//
-// الشكل داخل XML:
-//
-// <OtherPlayerProfilesLogicFeatureComponent
-//     ProfilesCache='[
-//       {"cityname":"Pippi","level":16,"saveId":"9HkilUfBjJ"},
-//       ...
-//     ]'/>
-//
-// النتيجة:
-//
-// saveIds: [
-//   {
-//     save_id: "9HkilUfBjJ",
-//     name: "Pippi",
-//     level: "16"
-//   }
-// ]
-//
-// ============================================================
+/* ============================================================
+   ProfilesCache -> saveId
+   ============================================================ */
 
-function parseSaveIds(
+function extractSaveIdsFromProfilesCache(
     xml
 ) {
 
-    const saveIds = [];
+    const result = [];
 
-    const componentRegex =
-        /<OtherPlayerProfilesLogicFeatureComponent\b[^>]*\bProfilesCache\s*=\s*(['"])([\s\S]*?)\1[^>]*\/?>/gi;
+    const regex =
+        /<OtherPlayerProfilesLogicFeatureComponent\b[^>]*\bProfilesCache\s*=\s*(['"])([\s\S]*?)\1[^>]*\/?>/i;
 
-    let match;
+    const match =
+        regex.exec(xml);
 
-    while (
-        (match =
-            componentRegex.exec(xml)) !== null
+    if (
+        !match
+    ) {
+        return result;
+    }
+
+    const rawJson =
+        xmlDecodeEntities(
+            match[2]
+        );
+
+    let profiles;
+
+    try {
+
+        profiles =
+            JSON.parse(
+                rawJson
+            );
+
+    } catch (err) {
+
+        throw new Error(
+            "ProfilesCache JSON parse failed: " +
+            err.message
+        );
+    }
+
+    if (
+        !Array.isArray(
+            profiles
+        )
+    ) {
+        return result;
+    }
+
+    for (
+        const profile of profiles
     ) {
 
-        const profilesCache =
-            match[2];
+        if (
+            !profile ||
+            typeof profile !==
+            "object"
+        ) {
+            continue;
+        }
+
+        const saveId =
+            String(
+                profile.saveId ??
+                profile.save_id ??
+                ""
+            ).trim();
 
         if (
-            !profilesCache
+            !saveId
         ) {
+            continue;
+        }
+
+        const name =
+            String(
+                profile.cityname ??
+                profile.cityName ??
+                profile.name ??
+                ""
+            ).trim();
+
+        const level =
+            String(
+                profile.level ??
+                ""
+            ).trim();
+
+        result.push({
+            save_id:
+                saveId,
+
+            name:
+                name,
+
+            level:
+                level
+        });
+    }
+
+    return dedupeBy(
+        result,
+        x => x.save_id
+    );
+}
+
+/* ============================================================
+   GENERIC SAVE RECORDS
+   ============================================================ */
+
+function extractSaveRecords(
+    value
+) {
+
+    const records = [];
+
+    function walk(node) {
+
+        if (!node) {
+            return;
+        }
+
+        if (
+            Array.isArray(node)
+        ) {
+
+            for (
+                const item of node
+            ) {
+                walk(item);
+            }
+
+            return;
+        }
+
+        if (
+            typeof node !==
+            "object"
+        ) {
+            return;
+        }
+
+        const saveId =
+            node.saveId ??
+            node.save_id ??
+            node.saveID;
+
+        if (
+            saveId
+        ) {
+
+            records.push({
+                save_id:
+                    String(
+                        saveId
+                    ).trim(),
+
+                name:
+                    String(
+                        node.cityname ??
+                        node.cityName ??
+                        node.name ??
+                        ""
+                    ).trim(),
+
+                level:
+                    String(
+                        node.level ??
+                        ""
+                    ).trim()
+            });
+        }
+
+        for (
+            const key of Object.keys(node)
+        ) {
+            walk(node[key]);
+        }
+    }
+
+    walk(value);
+
+    return dedupeBy(
+        records,
+        x => x.save_id
+    );
+}
+
+function dedupeBy(
+    arr,
+    keyFn
+) {
+
+    const seen =
+        new Set();
+
+    const out = [];
+
+    for (
+        const item of arr
+    ) {
+
+        const key =
+            keyFn(item);
+
+        if (
+            !key ||
+            seen.has(key)
+        ) {
+            continue;
+        }
+
+        seen.add(key);
+        out.push(item);
+    }
+
+    return out;
+}
+
+/* ============================================================
+   DECODE CITY
+   ============================================================ */
+
+function decodeSaveCity(
+    cityBytes
+) {
+
+    let data =
+        Buffer.from(
+            cityBytes
+        );
+
+    console.log(
+        `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
+    );
+
+    let rounds = 0;
+
+    while (
+        data.length > 0 &&
+        rounds < 8
+    ) {
+
+        rounds++;
+
+        if (
+            looksLikeXml(data)
+        ) {
+
+            console.log(
+                `[FetchCity] XML detected after ${rounds - 1} layer(s)`
+            );
+
+            return trimXml(
+                data
+            );
+        }
+
+        if (
+            isLz4Magic(data)
+        ) {
+
+            console.log(
+                "[FetchCity] LZ4 container detected"
+            );
+
+            data =
+                decodeLz4Container(
+                    data
+                );
 
             continue;
         }
 
-        let profiles;
+        if (
+            isGzip(data)
+        ) {
 
-        try {
+            console.log(
+                "[FetchCity] GZIP detected"
+            );
 
-            profiles =
-                JSON.parse(
-                    profilesCache
+            data =
+                zlib.gunzipSync(
+                    data
                 );
 
-        } catch (err) {
+            continue;
+        }
 
-            console.error(
-                "[Friends] ProfilesCache JSON parse failed:",
-                err.message
+        const type =
+            data[0];
+
+        if (
+            type === 0x79 ||
+            type === 0x54 ||
+            type === 0x1F
+        ) {
+
+            const before =
+                data;
+
+            data =
+                decodeTransport(
+                    data
+                );
+
+            console.log(
+                `[FetchCity] layer ${rounds}: ${bufferMagic(before)} -> ${bufferMagic(data)}`
             );
 
             continue;
         }
 
-        if (
-            !Array.isArray(
-                profiles
-            )
-        ) {
-
-            continue;
-        }
-
-        for (
-            const profile of profiles
-        ) {
-
-            if (
-                !profile ||
-                typeof profile !==
-                    "object"
-            ) {
-
-                continue;
-            }
-
-            const saveId =
-                String(
-                    profile.saveId ||
-                    ""
-                ).trim();
-
-            if (
-                !saveId
-            ) {
-
-                continue;
-            }
-
-            const name =
-                String(
-                    profile.cityname ||
-                    profile.name ||
-                    ""
-                ).trim();
-
-            const level =
-                String(
-                    profile.level ??
-                    ""
-                ).trim();
-
-            saveIds.push({
-
-                save_id:
-                    saveId,
-
-                name:
-                    name,
-
-                level:
-                    level
-            });
-        }
+        throw new Error(
+            "تعذر فك طبقات FetchCity. " +
+            `Magic=${bufferMagic(data)}`
+        );
     }
 
-    // --------------------------------------------------------
-    // إزالة التكرار حسب save_id
-    // --------------------------------------------------------
-
-    const unique = [];
-    const seen = new Set();
-
-    for (
-        const item of saveIds
+    if (
+        looksLikeXml(data)
     ) {
-
-        if (
-            seen.has(
-                item.save_id
-            )
-        ) {
-
-            continue;
-        }
-
-        seen.add(
-            item.save_id
-        );
-
-        unique.push(
-            item
-        );
+        return trimXml(data);
     }
 
-    console.log(
-        `[Friends] saveIds=${unique.length}`
+    throw new Error(
+        "تعذر الوصول إلى XML. " +
+        `Magic=${bufferMagic(data)}`
     );
-
-    return unique;
 }
 
-// ============================================================
-// DECODE FRIEND FILE API
-// ============================================================
+/* ============================================================
+   AES REQUEST
+   ============================================================ */
+
+function encryptRequest(
+    requestJson
+) {
+
+    const iv =
+        crypto.randomBytes(
+            12
+        );
+
+    const cipher =
+        crypto.createCipheriv(
+            "aes-128-gcm",
+            AES_KEY,
+            iv
+        );
+
+    const plaintext =
+        Buffer.from(
+            requestJson,
+            "utf8"
+        );
+
+    const ciphertext =
+        Buffer.concat([
+            cipher.update(
+                plaintext
+            ),
+            cipher.final()
+        ]);
+
+    const tag =
+        cipher.getAuthTag();
+
+    const tsId =
+        "002" +
+        iv.toString("hex") +
+        tag.toString("hex");
+
+    return {
+        body:
+            ciphertext,
+
+        tsId:
+            tsId
+    };
+}
+
+/* ============================================================
+   AES RESPONSE
+   ============================================================ */
+
+function decryptResponse(
+    body,
+    tsId
+) {
+
+    if (
+        !tsId
+    ) {
+        throw new Error(
+            "استجابة FetchCity لا تحتوي ts-id"
+        );
+    }
+
+    if (
+        typeof tsId !== "string" ||
+        !tsId.startsWith("002")
+    ) {
+        throw new Error(
+            `ts-id غير صالح: ${tsId}`
+        );
+    }
+
+    const hex =
+        tsId.slice(3);
+
+    if (
+        hex.length <
+        24 + 32
+    ) {
+        throw new Error(
+            `ts-id قصير: ${tsId}`
+        );
+    }
+
+    const ivHex =
+        hex.slice(
+            0,
+            24
+        );
+
+    const tagHex =
+        hex.slice(
+            24,
+            24 + 32
+        );
+
+    const iv =
+        Buffer.from(
+            ivHex,
+            "hex"
+        );
+
+    const tag =
+        Buffer.from(
+            tagHex,
+            "hex"
+        );
+
+    const decipher =
+        crypto.createDecipheriv(
+            "aes-128-gcm",
+            AES_KEY,
+            iv
+        );
+
+    decipher.setAuthTag(
+        tag
+    );
+
+    return Buffer.concat([
+        decipher.update(
+            body
+        ),
+        decipher.final()
+    ]);
+}
+
+/* ============================================================
+   RESPONSE DECOMPRESSION
+   ============================================================ */
+
+function decompressResponse(
+    decrypted
+) {
+
+    console.log(
+        `[FetchCity] decrypted size=${decrypted.length}`
+    );
+
+    console.log(
+        `[FetchCity] decrypted magic=${bufferMagic(decrypted)}`
+    );
+
+    try {
+
+        const result =
+            zlib.gunzipSync(
+                decrypted
+            );
+
+        console.log(
+            "[FetchCity] compression = GZIP"
+        );
+
+        return result;
+
+    } catch (e) {
+
+        console.log(
+            "[FetchCity] GZIP failed:",
+            e.message
+        );
+    }
+
+    try {
+
+        const result =
+            zlib.inflateSync(
+                decrypted
+            );
+
+        console.log(
+            "[FetchCity] compression = ZLIB"
+        );
+
+        return result;
+
+    } catch (e) {
+
+        console.log(
+            "[FetchCity] ZLIB failed:",
+            e.message
+        );
+    }
+
+    try {
+
+        const result =
+            zlib.inflateRawSync(
+                decrypted
+            );
+
+        console.log(
+            "[FetchCity] compression = RAW DEFLATE"
+        );
+
+        return result;
+
+    } catch (e) {
+
+        console.log(
+            "[FetchCity] RAW DEFLATE failed:",
+            e.message
+        );
+    }
+
+    const text =
+        decrypted
+            .toString("utf8")
+            .trim();
+
+    if (
+        text.startsWith("{") ||
+        text.startsWith("[")
+    ) {
+
+        console.log(
+            "[FetchCity] response = plain JSON"
+        );
+
+        return decrypted;
+    }
+
+    throw new Error(
+        "تعذر فك ضغط استجابة FetchCity. " +
+        `magic=${bufferMagic(decrypted)} ` +
+        `size=${decrypted.length}`
+    );
+}
+
+/* ============================================================
+   REQUEST PLAYRIX
+   ============================================================ */
+
+async function requestFetchCity(
+    cityId,
+    cityVer
+) {
+
+    const requestJson =
+        `{"cityId":"","cityVer":${cityVer},"fetchCityId":"${cityId}","important":true}`;
+
+    console.log(
+        `[FetchCity] request cityId=${cityId} cityVer=${cityVer}`
+    );
+
+    const encrypted =
+        encryptRequest(
+            requestJson
+        );
+
+    const controller =
+        new AbortController();
+
+    const timer =
+        setTimeout(
+            () =>
+                controller.abort(),
+            TIMEOUT_MS
+        );
+
+    try {
+
+        const response =
+            await fetchImpl(
+                ENDPOINT +
+                encodeURIComponent(
+                    cityId
+                ),
+                {
+                    method:
+                        "POST",
+
+                    headers: {
+                        "Accept-Encoding":
+                            "identity",
+
+                        "Content-Type":
+                            "application/octet-stream",
+
+                        "User-Agent":
+                            "okhttp/4.9.0",
+
+                        "ts-bp":
+                            "i",
+
+                        "ts-bver":
+                            "bver",
+
+                        "ts-fver":
+                            "fver",
+
+                        "ts-gpid":
+                            "new",
+
+                        "ts-id":
+                            encrypted.tsId
+                    },
+
+                    body:
+                        encrypted.body,
+
+                    signal:
+                        controller.signal
+                }
+            );
+
+        const responseBody =
+            Buffer.from(
+                await response.arrayBuffer()
+            );
+
+        console.log(
+            `[FetchCity] upstream status=${response.status}`
+        );
+
+        if (
+            !response.ok
+        ) {
+
+            const text =
+                responseBody.toString(
+                    "utf8"
+                );
+
+            throw new Error(
+                `Upstream HTTP ${response.status}: ${text}`
+            );
+        }
+
+        const responseTsId =
+            response.headers.get(
+                "ts-id"
+            );
+
+        if (
+            !responseTsId
+        ) {
+            throw new Error(
+                "Upstream response missing ts-id"
+            );
+        }
+
+        const decrypted =
+            decryptResponse(
+                responseBody,
+                responseTsId
+            );
+
+        const uncompressed =
+            decompressResponse(
+                decrypted
+            );
+
+        const text =
+            uncompressed.toString(
+                "utf8"
+            );
+
+        console.log(
+            `[FetchCity] JSON size=${text.length}`
+        );
+
+        let json;
+
+        try {
+
+            json =
+                JSON.parse(
+                    text
+                );
+
+        } catch (e) {
+
+            throw new Error(
+                "Upstream response JSON parse failed: " +
+                e.message
+            );
+        }
+
+        return json;
+
+    } finally {
+
+        clearTimeout(
+            timer
+        );
+    }
+}
+
+/* ============================================================
+   ROOT / HEALTH
+   ============================================================ */
+
+app.get(
+    "/",
+    (req, res) => {
+
+        res.json({
+            ok: true,
+            service:
+                "fetchCity",
+            status:
+                "online"
+        });
+    }
+);
+
+app.get(
+    "/health",
+    (req, res) => {
+
+        res.json({
+            ok: true
+        });
+    }
+);
+
+/* ============================================================
+   /decode-friends
+   RAW APPLICATION/OCTET-STREAM
+   ============================================================ */
 
 async function handleDecodeFriends(
     req,
@@ -2686,9 +2538,7 @@ async function handleDecodeFriends(
             return res
                 .status(400)
                 .json({
-
                     ok: false,
-
                     error:
                         "يجب إرسال الملف بصيغة application/octet-stream"
                 });
@@ -2701,9 +2551,7 @@ async function handleDecodeFriends(
             return res
                 .status(400)
                 .json({
-
                     ok: false,
-
                     error:
                         "الملف فارغ"
                 });
@@ -2716,10 +2564,6 @@ async function handleDecodeFriends(
         console.log(
             `[Friends] encrypted magic=${bufferMagic(encryptedFile)}`
         );
-
-        // ----------------------------------------------------
-        // 0x79 → LZ4 → XML
-        // ----------------------------------------------------
 
         const xmlBuffer =
             decodeFriendFile(
@@ -2748,50 +2592,18 @@ async function handleDecodeFriends(
             );
         }
 
-        // ----------------------------------------------------
-        // Version
-        // ----------------------------------------------------
-
         const version =
             parseFriendVersion(
                 xml
             );
-
-        // لا نفشل إذا لم يوجد Version،
-        // لأن المطلوب الأساسي هو friends + saveIds.
-        if (
-            !version.bver
-        ) {
-
-            console.log(
-                "[Friends] Version.version غير موجود"
-            );
-        }
-
-        if (
-            !version.fver
-        ) {
-
-            console.log(
-                "[Friends] Version.FVer غير موجود"
-            );
-        }
-
-        // ----------------------------------------------------
-        // Friends
-        // ----------------------------------------------------
 
         const friends =
             parseFriends(
                 xml
             );
 
-        // ----------------------------------------------------
-        // Save IDs
-        // ----------------------------------------------------
-
         const saveIds =
-            parseSaveIds(
+            extractSaveIdsFromProfilesCache(
                 xml
             );
 
@@ -2810,10 +2622,6 @@ async function handleDecodeFriends(
         console.log(
             `[Friends] saveIds=${saveIds.length}`
         );
-
-        // ----------------------------------------------------
-        // النتيجة
-        // ----------------------------------------------------
 
         return res
             .status(200)
@@ -2851,60 +2659,541 @@ async function handleDecodeFriends(
                 ok: false,
 
                 error:
-                    String(
-                        err &&
-                        err.message
-                            ? err.message
-                            : err
-                    )
+                    err &&
+                    err.message
+                        ? err.message
+                        : String(err)
             });
     }
 }
 
-// ============================================================
-// ROUTES
-// ============================================================
-
-// ------------------------------------------------------------
-// POST /
-// ------------------------------------------------------------
-
-router.post(
-    "/",
-    handleFetchCity
-);
-
-// ------------------------------------------------------------
-// POST /fetch-city
-// ------------------------------------------------------------
-
-router.post(
-    "/fetch-city",
-    handleFetchCity
-);
-
-// ------------------------------------------------------------
-// POST /decode-friends
-//
-// يجب أن يكون body = الملف نفسه
-// Content-Type = application/octet-stream
-// ------------------------------------------------------------
-
-router.post(
+app.post(
     "/decode-friends",
     express.raw({
-        type: "application/octet-stream",
-        limit: "50mb"
+        type:
+            "application/octet-stream",
+
+        limit:
+            "50mb"
     }),
     handleDecodeFriends
 );
 
-// ============================================================
-// MODULE
-// ============================================================
+/* ============================================================
+   /decode-friends-json
+   ============================================================ */
 
-console.log(
-    "[FetchCity] module loaded"
+app.post(
+    "/decode-friends-json",
+    async (req, res) => {
+
+        try {
+
+            let inputBuffer =
+                null;
+
+            if (
+                req.body &&
+                req.body.base64
+            ) {
+
+                inputBuffer =
+                    Buffer.from(
+                        String(
+                            req.body.base64
+                        )
+                            .replace(
+                                /^data:[^,]+,/,
+                                ""
+                            ),
+                        "base64"
+                    );
+            }
+
+            if (
+                !inputBuffer &&
+                req.body &&
+                req.body.data
+            ) {
+
+                inputBuffer =
+                    Buffer.from(
+                        String(
+                            req.body.data
+                        )
+                            .replace(
+                                /^data:[^,]+,/,
+                                ""
+                            ),
+                        "base64"
+                    );
+            }
+
+            if (
+                !inputBuffer
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        ok: false,
+
+                        error:
+                            "Missing base64/data"
+                    });
+            }
+
+            const decoded =
+                decodeFriendFile(
+                    inputBuffer
+                );
+
+            const text =
+                decoded
+                    .toString("utf8")
+                    .trim();
+
+            let friends = [];
+            let saveIds = [];
+
+            if (
+                looksLikeXml(
+                    decoded
+                )
+            ) {
+
+                friends =
+                    parseFriends(
+                        text
+                    );
+
+                saveIds =
+                    extractSaveIdsFromProfilesCache(
+                        text
+                    );
+
+            } else if (
+                looksLikeJson(
+                    decoded
+                )
+            ) {
+
+                const json =
+                    JSON.parse(
+                        text
+                    );
+
+                saveIds =
+                    extractSaveRecords(
+                        json
+                    );
+            }
+
+            return res
+                .status(200)
+                .json({
+
+                    ok: true,
+
+                    friends:
+                        friends,
+
+                    saveIds:
+                        saveIds,
+
+                    xml:
+                        looksLikeXml(
+                            decoded
+                        )
+                            ? text
+                            : null
+                });
+
+        } catch (err) {
+
+            console.error(
+                "[decode-friends-json] ERROR:",
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+
+                    ok: false,
+
+                    error:
+                        err.message ||
+                        String(err)
+                });
+        }
+    }
 );
 
-module.exports = router;
+/* ============================================================
+   /save-info
+   ============================================================ */
+
+app.post(
+    "/save-info",
+    async (req, res) => {
+
+        try {
+
+            const body =
+                req.body ||
+                {};
+
+            const saveId =
+                String(
+                    body.saveId ??
+                    body.save_id ??
+                    ""
+                ).trim();
+
+            const cityname =
+                String(
+                    body.cityname ??
+                    body.cityName ??
+                    body.name ??
+                    ""
+                ).trim();
+
+            const level =
+                String(
+                    body.level ??
+                    ""
+                ).trim();
+
+            if (
+                !saveId
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        ok: false,
+
+                        error:
+                            "saveId is required"
+                    });
+            }
+
+            console.log(
+                "[save-info]",
+                {
+                    saveId,
+                    cityname,
+                    level
+                }
+            );
+
+            return res
+                .status(200)
+                .json({
+
+                    ok: true,
+
+                    saveId,
+
+                    cityname,
+
+                    level
+                });
+
+        } catch (err) {
+
+            console.error(
+                "[save-info] ERROR:",
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+
+                    ok: false,
+
+                    error:
+                        err.message ||
+                        String(err)
+                });
+        }
+    }
+);
+
+/* ============================================================
+   /fetch-city
+   LUA SENDS ONLY:
+   {
+      city_id,
+      city_name,
+      level
+   }
+   ============================================================ */
+
+app.post(
+    "/fetch-city",
+    async (req, res) => {
+
+        try {
+
+            const body =
+                req.body ||
+                {};
+
+            /*
+             * مهم:
+             * لا نستقبل cityId
+             * لا نستقبل fetchCityId
+             * لا نستقبل cityVer
+             *
+             * Lua يرسل فقط:
+             * city_id
+             * city_name
+             * level
+             */
+
+            const cityId =
+                String(
+                    body.city_id ??
+                    ""
+                ).trim();
+
+            const cityName =
+                String(
+                    body.city_name ??
+                    ""
+                ).trim();
+
+            const level =
+                String(
+                    body.level ??
+                    ""
+                ).trim();
+
+            if (
+                !cityId
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        ok: false,
+
+                        error:
+                            "city_id is required"
+                    });
+            }
+
+            /*
+             * داخلي فقط.
+             * Lua لا يرسله.
+             */
+
+            const cityVer =
+                0;
+
+            console.log(
+                "[fetch-city] incoming:",
+                {
+                    city_id:
+                        cityId,
+
+                    city_name:
+                        cityName,
+
+                    level:
+                        level,
+
+                    cityVer:
+                        cityVer
+                }
+            );
+
+            /*
+             * هنا:
+             *
+             * saveId
+             *     ↓
+             * city_id
+             *     ↓
+             * FetchCity cityId
+             */
+
+            const json =
+                await requestFetchCity(
+                    cityId,
+                    cityVer
+                );
+
+            if (
+                !json ||
+                !json.result ||
+                typeof json.result.data !==
+                "string"
+            ) {
+
+                throw new Error(
+                    "Upstream JSON لا يحتوي result.data"
+                );
+            }
+
+            const base64 =
+                json.result.data;
+
+            console.log(
+                `[FetchCity] Base64 length=${base64.length}`
+            );
+
+            const cityBytes =
+                Buffer.from(
+                    base64,
+                    "base64"
+                );
+
+            console.log(
+                `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
+            );
+
+            const xml =
+                decodeSaveCity(
+                    cityBytes
+                );
+
+            console.log(
+                `[FetchCity] XML size=${xml.length}`
+            );
+
+            const modifiedXml =
+                editCityXml(
+                    xml
+                );
+
+            console.log(
+                `[FetchCity] Modified XML size=${modifiedXml.length}`
+            );
+
+            res.setHeader(
+                "Content-Type",
+                "application/xml; charset=utf-8"
+            );
+
+            res.setHeader(
+                "Cache-Control",
+                "no-store"
+            );
+
+            return res
+                .status(200)
+                .send(
+                    modifiedXml
+                );
+
+        } catch (err) {
+
+            console.error(
+                "[FetchCity] ERROR:",
+                err &&
+                err.stack
+                    ? err.stack
+                    : err
+            );
+
+            return res
+                .status(500)
+                .json({
+
+                    ok: false,
+
+                    error:
+                        err &&
+                        err.message
+                            ? err.message
+                            : String(err)
+                });
+        }
+    }
+);
+
+/* ============================================================
+   ERROR HANDLER
+   ============================================================ */
+
+app.use(
+    (
+        err,
+        req,
+        res,
+        next
+    ) => {
+
+        console.error(
+            "[server] unhandled error:",
+            err
+        );
+
+        if (
+            res.headersSent
+        ) {
+            return next(err);
+        }
+
+        return res
+            .status(500)
+            .json({
+
+                ok: false,
+
+                error:
+                    err.message ||
+                    String(err)
+            });
+    }
+);
+
+/* ============================================================
+   START
+   ============================================================ */
+
+app.listen(
+    PORT,
+    "0.0.0.0",
+    () => {
+
+        console.log(
+            `Server running on port ${PORT}`
+        );
+
+        console.log(
+            "Routes:"
+        );
+
+        console.log(
+            "  GET  /"
+        );
+
+        console.log(
+            "  GET  /health"
+        );
+
+        console.log(
+            "  POST /decode-friends"
+        );
+
+        console.log(
+            "  POST /decode-friends-json"
+        );
+
+        console.log(
+            "  POST /save-info"
+        );
+
+        console.log(
+            "  POST /fetch-city"
+        );
+    }
+);
