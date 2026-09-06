@@ -166,12 +166,9 @@ function looksLikeXml(buf) {
             .trimStart();
 
     return (
-        text.startsWith("<") &&
-        (
-            text.startsWith("<root") ||
-            text.startsWith("<?xml") ||
-            text.startsWith("<root ")
-        )
+        text.startsWith("<root") ||
+        text.startsWith("<?xml") ||
+        text.startsWith("<")
     );
 }
 
@@ -2062,10 +2059,243 @@ function friendLz4Decompress(
 }
 
 // ============================================================
-// XML HELPERS
+// FRIEND FILE -> DATA
 // ============================================================
 
-function parseXmlAttributes(tagText) {
+function decodeFriendFile(
+    data
+) {
+
+    if (!Buffer.isBuffer(data)) {
+        data = Buffer.from(data);
+    }
+
+    if (
+        data.length === 0
+    ) {
+
+        throw new Error(
+            "ملف فارغ"
+        );
+    }
+
+    console.log(
+        `[IDs] decode input size=${data.length}`
+    );
+
+    console.log(
+        `[IDs] decode input magic=${bufferMagic(data)}`
+    );
+
+    // --------------------------------------------------------
+    // JSON مباشر
+    // --------------------------------------------------------
+
+    if (
+        looksLikeTextJson(data)
+    ) {
+
+        console.log(
+            "[IDs] JSON detected directly"
+        );
+
+        return trimJsonBuffer(
+            data
+        );
+    }
+
+    // --------------------------------------------------------
+    // XML مباشر
+    // --------------------------------------------------------
+
+    if (
+        looksLikeXml(data)
+    ) {
+
+        console.log(
+            "[IDs] XML detected directly"
+        );
+
+        return trimXml(
+            data
+        );
+    }
+
+    // --------------------------------------------------------
+    // الملف المشفر 0x79
+    // --------------------------------------------------------
+
+    if (
+        data[0] !== 0x79
+    ) {
+
+        throw new Error(
+            "نوع غير مدعوم. " +
+            `Magic=${bufferMagic(data)}`
+        );
+    }
+
+    let payload =
+        friendXorDecode(
+            data
+        );
+
+    console.log(
+        `[IDs] after 0x79 size=${payload.length}`
+    );
+
+    console.log(
+        `[IDs] after 0x79 magic=${bufferMagic(payload)}`
+    );
+
+    // --------------------------------------------------------
+    // بعد 0x79 قد يكون LZ4
+    // --------------------------------------------------------
+
+    if (
+        friendIsLz4(
+            payload
+        )
+    ) {
+
+        console.log(
+            "[IDs] LZ4 detected after 0x79"
+        );
+
+        payload =
+            friendLz4Decompress(
+                payload
+            );
+
+        console.log(
+            `[IDs] after LZ4 size=${payload.length}`
+        );
+
+        console.log(
+            `[IDs] after LZ4 magic=${bufferMagic(payload)}`
+        );
+    }
+
+    // --------------------------------------------------------
+    // XML بعد الفك
+    // --------------------------------------------------------
+
+    if (
+        looksLikeXml(payload)
+    ) {
+
+        console.log(
+            "[IDs] XML detected after decode"
+        );
+
+        return trimXml(
+            payload
+        );
+    }
+
+    // --------------------------------------------------------
+    // JSON بعد الفك
+    // --------------------------------------------------------
+
+    if (
+        looksLikeTextJson(payload)
+    ) {
+
+        console.log(
+            "[IDs] JSON detected after decode"
+        );
+
+        return trimJsonBuffer(
+            payload
+        );
+    }
+
+    // --------------------------------------------------------
+    // GZIP
+    // --------------------------------------------------------
+
+    if (
+        isGzip(payload)
+    ) {
+
+        console.log(
+            "[IDs] GZIP detected after decode"
+        );
+
+        payload =
+            zlib.gunzipSync(
+                payload
+            );
+
+        console.log(
+            `[IDs] after GZIP size=${payload.length}`
+        );
+
+        if (
+            looksLikeXml(payload)
+        ) {
+
+            return trimXml(
+                payload
+            );
+        }
+
+        return trimJsonBuffer(
+            payload
+        );
+    }
+
+    return friendTrimData(
+        payload
+    );
+}
+
+function friendTrimData(
+    data
+) {
+
+    if (!Buffer.isBuffer(data)) {
+        data = Buffer.from(data);
+    }
+
+    const text =
+        data
+            .toString("utf8")
+            .replace(
+                /^\uFEFF/,
+                ""
+            )
+            .trim();
+
+    if (
+        text.startsWith("{") ||
+        text.startsWith("[")
+    ) {
+
+        return trimJsonBuffer(
+            data
+        );
+    }
+
+    if (
+        text.startsWith("<")
+    ) {
+
+        return trimXml(
+            data
+        );
+    }
+
+    return data;
+}
+
+// ============================================================
+// XML ATTRIBUTE HELPERS
+// ============================================================
+
+function parseXmlAttributes(
+    tagText
+) {
 
     const attrs = {};
 
@@ -2078,7 +2308,9 @@ function parseXmlAttributes(tagText) {
         (match = regex.exec(tagText)) !== null
     ) {
 
-        attrs[match[1]] =
+        attrs[
+            match[1]
+        ] =
             match[2] !== undefined
                 ? match[2]
                 : match[3];
@@ -2087,9 +2319,13 @@ function parseXmlAttributes(tagText) {
     return attrs;
 }
 
-function xmlDecodeEntities(value) {
+function xmlDecodeEntities(
+    value
+) {
 
-    return String(value || "")
+    return String(
+        value || ""
+    )
         .replace(
             /&quot;/g,
             '"'
@@ -2113,7 +2349,7 @@ function xmlDecodeEntities(value) {
 }
 
 // ============================================================
-// EXTRACT <friend>
+// EXTRACT FRIENDS FROM XML
 // ============================================================
 
 function extractFriendsFromXml(
@@ -2131,8 +2367,7 @@ function extractFriendsFromXml(
     let match;
 
     while (
-        (match =
-            friendOpenRegex.exec(xml)) !== null
+        (match = friendOpenRegex.exec(xml)) !== null
     ) {
 
         const attrs =
@@ -2203,7 +2438,7 @@ function extractFriendsFromXml(
 }
 
 // ============================================================
-// EXTRACT ProfilesCache
+// EXTRACT ProfilesCache / saveId FROM XML
 // ============================================================
 
 function extractProfilesCacheFromXml(
@@ -2221,8 +2456,7 @@ function extractProfilesCacheFromXml(
     let match;
 
     while (
-        (match =
-            componentRegex.exec(xml)) !== null
+        (match = componentRegex.exec(xml)) !== null
     ) {
 
         let raw =
@@ -2255,7 +2489,9 @@ function extractProfilesCacheFromXml(
         }
 
         if (
-            !Array.isArray(profiles)
+            !Array.isArray(
+                profiles
+            )
         ) {
 
             continue;
@@ -2319,7 +2555,7 @@ function extractProfilesCacheFromXml(
 }
 
 // ============================================================
-// EXTRACT BOTH LISTS FROM XML
+// EXTRACT BOTH XML LISTS
 // ============================================================
 
 function extractXmlLists(
@@ -2586,6 +2822,10 @@ async function handleDecodeFriends(
         const encryptedFile =
             req.body;
 
+        // ----------------------------------------------------
+        // تأكد أن Lua أرسل الملف كـ octet-stream
+        // ----------------------------------------------------
+
         if (
             !Buffer.isBuffer(
                 encryptedFile
@@ -2595,7 +2835,9 @@ async function handleDecodeFriends(
             return res
                 .status(400)
                 .json({
+
                     ok: false,
+
                     error:
                         "يجب إرسال الملف بصيغة application/octet-stream"
                 });
@@ -2608,7 +2850,9 @@ async function handleDecodeFriends(
             return res
                 .status(400)
                 .json({
+
                     ok: false,
+
                     error:
                         "الملف فارغ"
                 });
@@ -2621,6 +2865,10 @@ async function handleDecodeFriends(
         console.log(
             `[IDs] encrypted magic=${bufferMagic(encryptedFile)}`
         );
+
+        // ----------------------------------------------------
+        // فك الملف
+        // ----------------------------------------------------
 
         let decoded;
 
@@ -2698,9 +2946,9 @@ async function handleDecodeFriends(
             `[IDs] decoded magic=${decodedMagic}`
         );
 
-        // ====================================================
+        // ----------------------------------------------------
         // XML
-        // ====================================================
+        // ----------------------------------------------------
 
         if (
             looksLikeXml(
@@ -2708,18 +2956,26 @@ async function handleDecodeFriends(
             )
         ) {
 
+            console.log(
+                "[IDs] XML detected - extracting friends and saveIds"
+            );
+
             const xml =
-                decoded.toString(
-                    "utf8"
+                trimXml(
+                    decoded
                 );
 
             const lists =
                 extractXmlLists(
-                    xml
+                    xml.toString("utf8")
                 );
 
             console.log(
-                `[IDs] XML friends=${lists.friends.length} saveIds=${lists.saveIds.length}`
+                `[IDs] friends=${lists.friends.length}`
+            );
+
+            console.log(
+                `[IDs] saveIds=${lists.saveIds.length}`
             );
 
             return res
@@ -2739,9 +2995,9 @@ async function handleDecodeFriends(
                 });
         }
 
-        // ====================================================
+        // ----------------------------------------------------
         // JSON
-        // ====================================================
+        // ----------------------------------------------------
 
         const text =
             decoded
@@ -2802,6 +3058,16 @@ async function handleDecodeFriends(
                 parseError.message
             );
 
+            console.error(
+                "[IDs] decoded HEX:",
+                decodedHex
+            );
+
+            console.error(
+                "[IDs] decoded TEXT:",
+                decodedText
+            );
+
             return res
                 .status(500)
                 .json({
@@ -2812,7 +3078,7 @@ async function handleDecodeFriends(
                         "json_parse",
 
                     error:
-                        "بعد فك الملف لم يتم الحصول على JSON أو XML صالح",
+                        "بعد فك الملف لم يتم الحصول على XML أو JSON صالح",
 
                     parseError:
                         parseError.message,
@@ -2839,6 +3105,10 @@ async function handleDecodeFriends(
                 });
         }
 
+        // ----------------------------------------------------
+        // استخراج saveIds من JSON
+        // ----------------------------------------------------
+
         const records =
             extractSaveRecords(
                 json
@@ -2847,6 +3117,20 @@ async function handleDecodeFriends(
         console.log(
             `[IDs] save records=${records.length}`
         );
+
+        const saveIds =
+            records.map(
+                record => ({
+                    save_id:
+                        record.save_id,
+
+                    name:
+                        record.name,
+
+                    level:
+                        record.level
+                })
+            );
 
         return res
             .status(200)
@@ -2861,7 +3145,7 @@ async function handleDecodeFriends(
                     records,
 
                 saveIds:
-                    records
+                    saveIds
             });
 
     } catch (
@@ -2936,7 +3220,9 @@ async function handleSaveInfo(
             return res
                 .status(400)
                 .json({
+
                     ok: false,
+
                     error:
                         "saveId مطلوب"
                 });
@@ -2994,7 +3280,7 @@ async function handleSaveInfo(
 }
 
 // ============================================================
-// JSON PARSER FOR NORMAL REQUESTS
+// BODY PARSERS
 // ============================================================
 
 router.use(
