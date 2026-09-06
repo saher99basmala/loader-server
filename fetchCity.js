@@ -6,13 +6,19 @@ fetchCity.js
 - يحافظ على طلب FetchCity القديم
 - AES-128-GCM كما في النسخة العاملة
 - ts-gpid = new
-- فك استجابة Playrix بالطريقة القديمة
-- بعد Base64:
-    0x79 -> SaveCrypto
-    0x54 -> SaveCrypto
-    0x1F -> raw
-- محاولة فك LZ4 إذا ظهرت بصيغة SaveCrypto
-- لا يغيّر أي جزء من بقية السيرفر
+- نفس JSON القديم
+- نفس headers
+- نفس ts-id
+- body = ciphertext فقط
+- فك AES من ts-id الخاص بالاستجابة
+- محاولة GZIP / ZLIB / RAW DEFLATE
+- ثم استخراج result.data
+- Base64
+- SaveCrypto 0x79 / 0x54 / 0x1F
+- LZ4
+- إرجاع XML
+
+لا يغيّر بقية السيرفر.
 ========================================
 */
 
@@ -45,13 +51,16 @@ const TIMEOUT_MS =
 // SAVECRYPTO CONSTANTS
 // ============================================================
 
-const TABLE_SIZE = 0x2D7;       // 727
+const TABLE_SIZE = 0x2D7;
 const PROCESS_XOR = 0x396A8;
 const TOTAL_XOR = 0xC5EED;
 const TABLE_MULTIPLIER = 0x5BD1E995;
 
 const LZ4_MAGIC = Buffer.from([
-    0x04, 0x22, 0x4D, 0x18
+    0x04,
+    0x22,
+    0x4D,
+    0x18
 ]);
 
 
@@ -71,23 +80,19 @@ const FETCH54_TABLE = Buffer.from(
 
 function u32le(buf, offset) {
     if (offset + 4 > buf.length) {
-        throw new Error("u32le خارج حدود البيانات");
+        throw new Error(
+            "u32le خارج حدود البيانات"
+        );
     }
 
     return (
-        (buf[offset] |
+        (
+            buf[offset] |
             (buf[offset + 1] << 8) |
             (buf[offset + 2] << 16) |
-            (buf[offset + 3] * 0x1000000)) >>> 0
+            (buf[offset + 3] * 0x1000000)
+        ) >>> 0
     );
-}
-
-
-function readUInt16LE(buf, offset) {
-    return (
-        buf[offset] |
-        (buf[offset + 1] << 8)
-    ) >>> 0;
 }
 
 
@@ -106,18 +111,17 @@ function sub32(a, b) {
 }
 
 
-function min(a, b) {
-    return a < b ? a : b;
-}
-
-
 function bufferMagic(buf) {
     if (!buf || buf.length < 4) {
         return "";
     }
 
-    return Array.from(buf.subarray(0, 4))
-        .map(x => x.toString(16).padStart(2, "0"))
+    return Array.from(
+        buf.subarray(0, 4)
+    )
+        .map(
+            x => x.toString(16).padStart(2, "0")
+        )
         .join(" ");
 }
 
@@ -149,9 +153,14 @@ function looksLikeXml(buf) {
         return false;
     }
 
-    const text = buf.subarray(0, Math.min(buf.length, 512))
-        .toString("utf8")
-        .trimStart();
+    const text =
+        buf
+            .subarray(
+                0,
+                Math.min(buf.length, 512)
+            )
+            .toString("utf8")
+            .trimStart();
 
     return (
         text.startsWith("<") ||
@@ -165,12 +174,24 @@ function looksLikeXml(buf) {
 // ============================================================
 
 function build79Table(seed) {
-    const table = Buffer.alloc(TABLE_SIZE);
 
-    let state = seed >>> 0;
+    const table =
+        Buffer.alloc(TABLE_SIZE);
 
-    for (let i = 0; i < TABLE_SIZE; i++) {
-        state = Math.imul(state, TABLE_MULTIPLIER) >>> 0;
+    let state =
+        seed >>> 0;
+
+    for (
+        let i = 0;
+        i < TABLE_SIZE;
+        i++
+    ) {
+
+        state =
+            Math.imul(
+                state,
+                TABLE_MULTIPLIER
+            ) >>> 0;
 
         table[i] =
             (state >>> 24) & 0xFF;
@@ -185,6 +206,7 @@ function build79Table(seed) {
 // ============================================================
 
 function xorDecode79(raw) {
+
     if (!Buffer.isBuffer(raw)) {
         raw = Buffer.from(raw);
     }
@@ -195,21 +217,35 @@ function xorDecode79(raw) {
         );
     }
 
-    const headerValue = u32le(raw, 1);
+    const headerValue =
+        u32le(raw, 1);
 
-    const total = raw.length >>> 0;
+    const total =
+        raw.length >>> 0;
 
     const derived =
-        xor32(TOTAL_XOR, total);
+        xor32(
+            TOTAL_XOR,
+            total
+        );
 
     let processLenU32 =
-        sub32(headerValue, derived);
+        sub32(
+            headerValue,
+            derived
+        );
 
     processLenU32 =
-        xor32(processLenU32, PROCESS_XOR);
+        xor32(
+            processLenU32,
+            PROCESS_XOR
+        );
 
     const maxProcessLen =
-        Math.max(0, total - 8);
+        Math.max(
+            0,
+            total - 8
+        );
 
     const processLen =
         Math.min(
@@ -221,7 +257,10 @@ function xorDecode79(raw) {
         u32le(raw, 4);
 
     const seed =
-        add32(rawSeed, 4);
+        add32(
+            rawSeed,
+            4
+        );
 
     const table =
         build79Table(seed);
@@ -238,20 +277,18 @@ function xorDecode79(raw) {
         return out;
     }
 
-    /*
-     * Smali:
-     *
-     * out[0] ^= table[0]
-     *
-     * i >= 1:
-     * delta = current - previousDecoded
-     * out[i] = delta ^ table[i % 727]
-     */
-
     out[0] =
-        (out[0] ^ table[0]) & 0xFF;
+        (
+            out[0] ^
+            table[0]
+        ) & 0xFF;
 
-    for (let i = 1; i < out.length; i++) {
+    for (
+        let i = 1;
+        i < out.length;
+        i++
+    ) {
+
         const current =
             out[i];
 
@@ -259,11 +296,18 @@ function xorDecode79(raw) {
             out[i - 1];
 
         const delta =
-            (current - previousDecoded) & 0xFF;
+            (
+                current -
+                previousDecoded
+            ) & 0xFF;
 
         out[i] =
-            (delta ^
-                table[i % TABLE_SIZE]) & 0xFF;
+            (
+                delta ^
+                table[
+                    i % TABLE_SIZE
+                ]
+            ) & 0xFF;
     }
 
     return out;
@@ -275,6 +319,7 @@ function xorDecode79(raw) {
 // ============================================================
 
 function decode54Layer(raw) {
+
     if (!Buffer.isBuffer(raw)) {
         raw = Buffer.from(raw);
     }
@@ -291,20 +336,15 @@ function decode54Layer(raw) {
         );
     }
 
-    /*
-     * Smali:
-     *
-     * processLen =
-     *   ((raw[1] & 255) XOR TABLE[0])
-     *   |
-     *   ((raw[2] & 255) << 8)
-     */
-
     let processLen =
         (
-            ((raw[1] & 0xFF) ^
-                FETCH54_TABLE[0]) |
-            ((raw[2] & 0xFF) << 8)
+            (
+                (raw[1] & 0xFF) ^
+                FETCH54_TABLE[0]
+            ) |
+            (
+                (raw[2] & 0xFF) << 8
+            )
         ) >>> 0;
 
     processLen =
@@ -322,20 +362,11 @@ function decode54Layer(raw) {
         return out;
     }
 
-    /*
-     * Smali:
-     *
-     * out[0] = out[0] - 0x54
-     *
-     * for i:
-     *   if i > 0:
-     *      out[i] = out[i] - out[i-1]
-     *
-     *   out[i] ^= TABLE[i % TABLE.length]
-     */
-
     out[0] =
-        (out[0] - 0x54) & 0xFF;
+        (
+            out[0] -
+            0x54
+        ) & 0xFF;
 
     const count =
         Math.min(
@@ -343,18 +374,27 @@ function decode54Layer(raw) {
             out.length
         );
 
-    for (let i = 0; i < count; i++) {
+    for (
+        let i = 0;
+        i < count;
+        i++
+    ) {
 
         if (i > 0) {
             out[i] =
-                (out[i] - out[i - 1]) & 0xFF;
+                (
+                    out[i] -
+                    out[i - 1]
+                ) & 0xFF;
         }
 
         out[i] =
-            (out[i] ^
+            (
+                out[i] ^
                 FETCH54_TABLE[
                     i % FETCH54_TABLE.length
-                ]) & 0xFF;
+                ]
+            ) & 0xFF;
     }
 
     return out;
@@ -366,6 +406,7 @@ function decode54Layer(raw) {
 // ============================================================
 
 function decodeTransport(raw) {
+
     if (!Buffer.isBuffer(raw)) {
         raw = Buffer.from(raw);
     }
@@ -405,29 +446,19 @@ function decodeTransport(raw) {
 
 
 // ============================================================
-// LZ4 DECOMPRESSOR
+// LZ4 BLOCK
 // ============================================================
 
-/*
- * لا نعتمد على مكتبة خارجية حتى لا نغيّر إعدادات السيرفر.
- *
- * SaveCrypto:
- *
- * 04 22 4D 18
- * [4 bytes original XML size]
- * [compressed data]
- *
- * هنا نستخدم LZ4 block decompression.
- */
-
-function lz4DecompressBlock(src, expectedSize) {
+function lz4DecompressBlock(
+    src,
+    expectedSize
+) {
 
     let srcPos = 0;
+    let dstPos = 0;
 
     const output =
         Buffer.alloc(expectedSize);
-
-    let dstPos = 0;
 
     while (
         srcPos < src.length &&
@@ -437,9 +468,9 @@ function lz4DecompressBlock(src, expectedSize) {
         const token =
             src[srcPos++];
 
-        // -------------------------
+        // --------------------------------
         // Literal length
-        // -------------------------
+        // --------------------------------
 
         let literalLength =
             token >>> 4;
@@ -449,7 +480,11 @@ function lz4DecompressBlock(src, expectedSize) {
             let value;
 
             do {
-                if (srcPos >= src.length) {
+
+                if (
+                    srcPos >=
+                    src.length
+                ) {
                     throw new Error(
                         "LZ4: literal length خارج البيانات"
                     );
@@ -458,13 +493,17 @@ function lz4DecompressBlock(src, expectedSize) {
                 value =
                     src[srcPos++];
 
-                literalLength += value;
+                literalLength +=
+                    value;
 
-            } while (value === 255);
+            } while (
+                value === 255
+            );
         }
 
         if (
-            srcPos + literalLength >
+            srcPos +
+            literalLength >
             src.length
         ) {
             throw new Error(
@@ -473,7 +512,8 @@ function lz4DecompressBlock(src, expectedSize) {
         }
 
         if (
-            dstPos + literalLength >
+            dstPos +
+            literalLength >
             expectedSize
         ) {
             throw new Error(
@@ -488,23 +528,27 @@ function lz4DecompressBlock(src, expectedSize) {
             srcPos + literalLength
         );
 
-        srcPos += literalLength;
-        dstPos += literalLength;
+        srcPos +=
+            literalLength;
 
-        /*
-         * إذا انتهت البيانات بعد الـ literals
-         * فهذا هو آخر sequence.
-         */
+        dstPos +=
+            literalLength;
 
-        if (srcPos >= src.length) {
+        // آخر sequence
+        if (
+            srcPos >= src.length
+        ) {
             break;
         }
 
-        // -------------------------
+        // --------------------------------
         // Match offset
-        // -------------------------
+        // --------------------------------
 
-        if (srcPos + 2 > src.length) {
+        if (
+            srcPos + 2 >
+            src.length
+        ) {
             throw new Error(
                 "LZ4: offset ناقص"
             );
@@ -512,7 +556,9 @@ function lz4DecompressBlock(src, expectedSize) {
 
         const offset =
             src[srcPos] |
-            (src[srcPos + 1] << 8);
+            (
+                src[srcPos + 1] << 8
+            );
 
         srcPos += 2;
 
@@ -528,9 +574,9 @@ function lz4DecompressBlock(src, expectedSize) {
             );
         }
 
-        // -------------------------
+        // --------------------------------
         // Match length
-        // -------------------------
+        // --------------------------------
 
         let matchLength =
             token & 0x0F;
@@ -540,7 +586,11 @@ function lz4DecompressBlock(src, expectedSize) {
             let value;
 
             do {
-                if (srcPos >= src.length) {
+
+                if (
+                    srcPos >=
+                    src.length
+                ) {
                     throw new Error(
                         "LZ4: match length خارج البيانات"
                     );
@@ -549,15 +599,19 @@ function lz4DecompressBlock(src, expectedSize) {
                 value =
                     src[srcPos++];
 
-                matchLength += value;
+                matchLength +=
+                    value;
 
-            } while (value === 255);
+            } while (
+                value === 255
+            );
         }
 
         matchLength += 4;
 
         if (
-            dstPos + matchLength >
+            dstPos +
+            matchLength >
             expectedSize
         ) {
             throw new Error(
@@ -565,21 +619,30 @@ function lz4DecompressBlock(src, expectedSize) {
             );
         }
 
-        /*
-         * Copy مع overlap.
-         */
+        for (
+            let i = 0;
+            i < matchLength;
+            i++
+        ) {
 
-        for (let i = 0; i < matchLength; i++) {
-            output[dstPos + i] =
+            output[
+                dstPos + i
+            ] =
                 output[
-                    dstPos - offset + i
+                    dstPos -
+                    offset +
+                    i
                 ];
         }
 
-        dstPos += matchLength;
+        dstPos +=
+            matchLength;
     }
 
-    if (dstPos !== expectedSize) {
+    if (
+        dstPos !==
+        expectedSize
+    ) {
         throw new Error(
             `LZ4: الحجم الناتج غير متطابق. expected=${expectedSize}, actual=${dstPos}`
         );
@@ -590,7 +653,7 @@ function lz4DecompressBlock(src, expectedSize) {
 
 
 // ============================================================
-// SAVECRYPTO LZ4
+// LZ4 CONTAINER
 // ============================================================
 
 function decodeLz4Container(raw) {
@@ -608,7 +671,10 @@ function decodeLz4Container(raw) {
     }
 
     const expectedSize =
-        u32le(raw, 4);
+        u32le(
+            raw,
+            4
+        );
 
     const compressed =
         raw.subarray(8);
@@ -625,7 +691,7 @@ function decodeLz4Container(raw) {
 
 
 // ============================================================
-// TRIM XML
+// XML TRIM
 // ============================================================
 
 function trimXml(buf) {
@@ -645,16 +711,12 @@ function trimXml(buf) {
         return Buffer.from(
             text.slice(
                 0,
-                rootEnd + "</root>".length
+                rootEnd +
+                "</root>".length
             ),
             "utf8"
         );
     }
-
-    /*
-     * إذا لم نجد </root>
-     * نزيل فقط الصفر والمسافات من النهاية.
-     */
 
     let end =
         buf.length;
@@ -677,12 +739,15 @@ function trimXml(buf) {
         }
     }
 
-    return buf.subarray(0, end);
+    return buf.subarray(
+        0,
+        end
+    );
 }
 
 
 // ============================================================
-// COMPLETE SAVE DECODE
+// COMPLETE SAVE DECODER
 // ============================================================
 
 function decodeSaveCity(cityBytes) {
@@ -694,13 +759,6 @@ function decodeSaveCity(cityBytes) {
         `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
     );
 
-    /*
-     * قد تأتي أكثر من طبقة.
-     *
-     * لا نفترض عددًا معينًا.
-     * نمرر فقط الأنواع التي أكدناها من Smali.
-     */
-
     let rounds = 0;
 
     while (
@@ -710,14 +768,12 @@ function decodeSaveCity(cityBytes) {
 
         rounds++;
 
-        const type =
-            data[0];
-
-        /*
-         * XML مباشر
-         */
+        // --------------------------------
+        // XML
+        // --------------------------------
 
         if (looksLikeXml(data)) {
+
             console.log(
                 `[FetchCity] XML detected after ${rounds - 1} layer(s)`
             );
@@ -725,9 +781,9 @@ function decodeSaveCity(cityBytes) {
             return trimXml(data);
         }
 
-        /*
-         * LZ4 container
-         */
+        // --------------------------------
+        // LZ4
+        // --------------------------------
 
         if (isLz4Magic(data)) {
 
@@ -736,14 +792,16 @@ function decodeSaveCity(cityBytes) {
             );
 
             data =
-                decodeLz4Container(data);
+                decodeLz4Container(
+                    data
+                );
 
             continue;
         }
 
-        /*
-         * GZIP
-         */
+        // --------------------------------
+        // GZIP
+        // --------------------------------
 
         if (isGzip(data)) {
 
@@ -752,14 +810,19 @@ function decodeSaveCity(cityBytes) {
             );
 
             data =
-                zlib.gunzipSync(data);
+                zlib.gunzipSync(
+                    data
+                );
 
             continue;
         }
 
-        /*
-         * SaveCrypto 0x79 / 0x54 / 0x1F
-         */
+        // --------------------------------
+        // SaveCrypto
+        // --------------------------------
+
+        const type =
+            data[0];
 
         if (
             type === 0x79 ||
@@ -771,7 +834,9 @@ function decodeSaveCity(cityBytes) {
                 data;
 
             data =
-                decodeTransport(data);
+                decodeTransport(
+                    data
+                );
 
             console.log(
                 `[FetchCity] layer ${rounds}: ${bufferMagic(before)} -> ${bufferMagic(data)}`
@@ -779,10 +844,6 @@ function decodeSaveCity(cityBytes) {
 
             continue;
         }
-
-        /*
-         * إذا وصلنا هنا، لا نخمن المرحلة التالية.
-         */
 
         throw new Error(
             `تم فك طبقات FetchCity لكن المرحلة التالية غير معروفة. Magic=${bufferMagic(data)}`
@@ -823,7 +884,9 @@ function encryptRequest(requestJson) {
 
     const ciphertext =
         Buffer.concat([
-            cipher.update(plaintext),
+            cipher.update(
+                plaintext
+            ),
             cipher.final()
         ]);
 
@@ -832,11 +895,8 @@ function encryptRequest(requestJson) {
 
     /*
      * مهم:
-     *
-     * النسخة القديمة العاملة كانت ترسل
-     * ciphertext فقط في body.
-     *
-     * الـ tag موجود داخل ts-id.
+     * body = ciphertext فقط
+     * tag داخل ts-id
      */
 
     const tsId =
@@ -855,7 +915,10 @@ function encryptRequest(requestJson) {
 // DECRYPT RESPONSE
 // ============================================================
 
-function decryptResponse(body, tsId) {
+function decryptResponse(
+    body,
+    tsId
+) {
 
     if (!tsId) {
         throw new Error(
@@ -875,28 +938,38 @@ function decryptResponse(body, tsId) {
     const hex =
         tsId.slice(3);
 
-    if (hex.length < 24 + 32) {
+    if (
+        hex.length <
+        24 + 32
+    ) {
         throw new Error(
             `ts-id قصير: ${tsId}`
         );
     }
 
-    /*
-     * 12-byte IV = 24 hex chars
-     * 16-byte GCM tag = 32 hex chars
-     */
-
     const ivHex =
-        hex.slice(0, 24);
+        hex.slice(
+            0,
+            24
+        );
 
     const tagHex =
-        hex.slice(24, 24 + 32);
+        hex.slice(
+            24,
+            24 + 32
+        );
 
     const iv =
-        Buffer.from(ivHex, "hex");
+        Buffer.from(
+            ivHex,
+            "hex"
+        );
 
     const tag =
-        Buffer.from(tagHex, "hex");
+        Buffer.from(
+            tagHex,
+            "hex"
+        );
 
     const decipher =
         crypto.createDecipheriv(
@@ -905,7 +978,9 @@ function decryptResponse(body, tsId) {
             iv
         );
 
-    decipher.setAuthTag(tag);
+    decipher.setAuthTag(
+        tag
+    );
 
     return Buffer.concat([
         decipher.update(body),
@@ -915,7 +990,128 @@ function decryptResponse(body, tsId) {
 
 
 // ============================================================
-// HTTP REQUEST
+// FLEXIBLE RESPONSE DECOMPRESSION
+// ============================================================
+
+function decompressResponse(
+    decrypted
+) {
+
+    console.log(
+        `[FetchCity] decrypted size=${decrypted.length}`
+    );
+
+    console.log(
+        `[FetchCity] decrypted magic=${bufferMagic(decrypted)}`
+    );
+
+    // --------------------------------
+    // GZIP
+    // --------------------------------
+
+    try {
+
+        const result =
+            zlib.gunzipSync(
+                decrypted
+            );
+
+        console.log(
+            "[FetchCity] compression = GZIP"
+        );
+
+        return result;
+
+    } catch (gzipError) {
+
+        console.log(
+            "[FetchCity] GZIP failed"
+        );
+    }
+
+
+    // --------------------------------
+    // ZLIB
+    // --------------------------------
+
+    try {
+
+        const result =
+            zlib.inflateSync(
+                decrypted
+            );
+
+        console.log(
+            "[FetchCity] compression = ZLIB"
+        );
+
+        return result;
+
+    } catch (zlibError) {
+
+        console.log(
+            "[FetchCity] ZLIB failed"
+        );
+    }
+
+
+    // --------------------------------
+    // RAW DEFLATE
+    // --------------------------------
+
+    try {
+
+        const result =
+            zlib.inflateRawSync(
+                decrypted
+            );
+
+        console.log(
+            "[FetchCity] compression = RAW DEFLATE"
+        );
+
+        return result;
+
+    } catch (rawError) {
+
+        console.log(
+            "[FetchCity] RAW DEFLATE failed"
+        );
+    }
+
+
+    // --------------------------------
+    // Plain JSON
+    // --------------------------------
+
+    const text =
+        decrypted
+            .toString("utf8")
+            .trim();
+
+    if (
+        text.startsWith("{") ||
+        text.startsWith("[")
+    ) {
+
+        console.log(
+            "[FetchCity] response = plain JSON"
+        );
+
+        return decrypted;
+    }
+
+
+    throw new Error(
+        "تعذر فك ضغط استجابة FetchCity. " +
+        `magic=${bufferMagic(decrypted)} ` +
+        `size=${decrypted.length}`
+    );
+}
+
+
+// ============================================================
+// REQUEST FETCHCITY
 // ============================================================
 
 async function requestFetchCity(
@@ -931,7 +1127,9 @@ async function requestFetchCity(
     );
 
     const encrypted =
-        encryptRequest(requestJson);
+        encryptRequest(
+            requestJson
+        );
 
     const controller =
         new AbortController();
@@ -952,7 +1150,9 @@ async function requestFetchCity(
                     method: "POST",
 
                     headers: {
-                        "Accept-Encoding": "identity",
+                        "Accept-Encoding":
+                            "identity",
+
                         "Content-Type":
                             "application/octet-stream",
 
@@ -969,8 +1169,7 @@ async function requestFetchCity(
                             "fver",
 
                         /*
-                         * مهم جداً:
-                         * القيمة القديمة التي كان الطلب يعمل بها.
+                         * القيمة القديمة العاملة
                          */
                         "ts-gpid":
                             "new",
@@ -980,9 +1179,7 @@ async function requestFetchCity(
                     },
 
                     /*
-                     * مهم:
-                     * body = ciphertext فقط.
-                     * لا نضيف tag هنا.
+                     * لا نضيف GCM tag هنا
                      */
                     body:
                         encrypted.body,
@@ -997,6 +1194,10 @@ async function requestFetchCity(
                 await response.arrayBuffer()
             );
 
+        // --------------------------------
+        // Upstream error
+        // --------------------------------
+
         if (!response.ok) {
 
             const text =
@@ -1009,12 +1210,17 @@ async function requestFetchCity(
             );
         }
 
+        // --------------------------------
+        // Response ts-id
+        // --------------------------------
+
         const responseTsId =
             response.headers.get(
                 "ts-id"
             );
 
         if (!responseTsId) {
+
             throw new Error(
                 "Upstream response missing ts-id"
             );
@@ -1024,25 +1230,41 @@ async function requestFetchCity(
             `[FetchCity] upstream status=${response.status}`
         );
 
+        // --------------------------------
+        // AES-GCM
+        // --------------------------------
+
         const decrypted =
             decryptResponse(
                 responseBody,
                 responseTsId
             );
 
-        /*
-         * النسخة القديمة:
-         * decrypt -> gunzip -> JSON
-         */
+        // --------------------------------
+        // Compression
+        // --------------------------------
 
-        const unzipped =
-            zlib.gunzipSync(
+        const uncompressed =
+            decompressResponse(
                 decrypted
             );
 
+        // --------------------------------
+        // JSON
+        // --------------------------------
+
+        const text =
+            uncompressed.toString(
+                "utf8"
+            );
+
+        console.log(
+            `[FetchCity] JSON size=${text.length}`
+        );
+
         const json =
             JSON.parse(
-                unzipped.toString("utf8")
+                text
             );
 
         return json;
@@ -1055,7 +1277,7 @@ async function requestFetchCity(
 
 
 // ============================================================
-// PROCESS FETCHCITY RESULT
+// HANDLE FETCHCITY
 // ============================================================
 
 async function handleFetchCity(
@@ -1105,15 +1327,19 @@ async function handleFetchCity(
             `[FetchCity] incoming cityId=${cityId} cityVer=${cityVer}`
         );
 
-        // ----------------------------------------------------
-        // الطلب القديم كما هو
-        // ----------------------------------------------------
+        // ================================================
+        // الطلب القديم
+        // ================================================
 
         const json =
             await requestFetchCity(
                 cityId,
                 cityVer
             );
+
+        // ================================================
+        // result.data
+        // ================================================
 
         if (
             !json ||
@@ -1133,9 +1359,9 @@ async function handleFetchCity(
             `[FetchCity] Base64 length=${base64.length}`
         );
 
-        // ----------------------------------------------------
+        // ================================================
         // Base64
-        // ----------------------------------------------------
+        // ================================================
 
         const cityBytes =
             Buffer.from(
@@ -1147,9 +1373,9 @@ async function handleFetchCity(
             `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
         );
 
-        // ----------------------------------------------------
-        // SaveCrypto decode
-        // ----------------------------------------------------
+        // ================================================
+        // SaveCrypto
+        // ================================================
 
         const xml =
             decodeSaveCity(
@@ -1160,9 +1386,9 @@ async function handleFetchCity(
             `[FetchCity] XML size=${xml.length}`
         );
 
-        // ----------------------------------------------------
+        // ================================================
         // Return XML
-        // ----------------------------------------------------
+        // ================================================
 
         res.status(200);
 
@@ -1176,7 +1402,9 @@ async function handleFetchCity(
             "no-store"
         );
 
-        return res.send(xml);
+        return res.send(
+            xml
+        );
 
     } catch (err) {
 
@@ -1187,11 +1415,6 @@ async function handleFetchCity(
                 ? err.stack
                 : err
         );
-
-        /*
-         * لا نرمي الخطأ إلى Express
-         * حتى لا يؤثر على بقية السيرفر.
-         */
 
         return res
             .status(500)
@@ -1212,26 +1435,20 @@ async function handleFetchCity(
 // ============================================================
 
 /*
- * عند:
+ * مع:
  *
  * app.use("/api", fetchCity)
  *
- * هذا المسار يصبح:
+ * يعمل:
  *
  * POST /api/
+ * POST /api/fetch-city
  */
 
 router.post(
     "/",
     handleFetchCity
 );
-
-
-/*
- * وهذا يسمح أيضًا بـ:
- *
- * POST /api/fetch-city
- */
 
 router.post(
     "/fetch-city",
@@ -1242,5 +1459,9 @@ router.post(
 // ============================================================
 // EXPORT
 // ============================================================
+
+console.log(
+    "[FetchCity] module loaded"
+);
 
 module.exports = router;
