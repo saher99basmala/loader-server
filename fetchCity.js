@@ -149,6 +149,32 @@ function looksLikeTextJson(buf) {
     );
 }
 
+function looksLikeXml(buf) {
+
+    if (!buf || buf.length === 0) {
+        return false;
+    }
+
+    const text =
+        buf
+            .subarray(
+                0,
+                Math.min(buf.length, 512)
+            )
+            .toString("utf8")
+            .replace(/^\uFEFF/, "")
+            .trimStart();
+
+    return (
+        text.startsWith("<") &&
+        (
+            text.startsWith("<root") ||
+            text.startsWith("<?xml") ||
+            text.startsWith("<root ")
+        )
+    );
+}
+
 function trimJsonBuffer(buf) {
 
     if (!Buffer.isBuffer(buf)) {
@@ -2036,176 +2062,284 @@ function friendLz4Decompress(
 }
 
 // ============================================================
-// FRIEND FILE -> JSON
+// XML HELPERS
 // ============================================================
 
-function decodeFriendFile(
-    data
-) {
+function parseXmlAttributes(tagText) {
 
-    if (!Buffer.isBuffer(data)) {
-        data = Buffer.from(data);
-    }
+    const attrs = {};
 
-    if (
-        data.length === 0
+    const regex =
+        /([A-Za-z_][A-Za-z0-9_.:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+
+    let match;
+
+    while (
+        (match = regex.exec(tagText)) !== null
     ) {
 
-        throw new Error(
-            "ملف فارغ"
-        );
+        attrs[match[1]] =
+            match[2] !== undefined
+                ? match[2]
+                : match[3];
     }
 
-    console.log(
-        `[IDs] decode input size=${data.length}`
-    );
-
-    console.log(
-        `[IDs] decode input magic=${bufferMagic(data)}`
-    );
-
-    // JSON مباشر
-    if (
-        looksLikeTextJson(data)
-    ) {
-
-        console.log(
-            "[IDs] JSON detected directly"
-        );
-
-        return trimJsonBuffer(
-            data
-        );
-    }
-
-    // XML قديم
-    if (
-        data[0] === 0x3C
-    ) {
-
-        console.log(
-            "[IDs] XML detected"
-        );
-
-        return data;
-    }
-
-    // الملف المشفر
-    if (
-        data[0] !== 0x79
-    ) {
-
-        throw new Error(
-            "نوع غير مدعوم. " +
-            `Magic=${bufferMagic(data)}`
-        );
-    }
-
-    let payload =
-        friendXorDecode(
-            data
-        );
-
-    console.log(
-        `[IDs] after 0x79 size=${payload.length}`
-    );
-
-    console.log(
-        `[IDs] after 0x79 magic=${bufferMagic(payload)}`
-    );
-
-    if (
-        friendIsLz4(
-            payload
-        )
-    ) {
-
-        console.log(
-            "[IDs] LZ4 detected after 0x79"
-        );
-
-        payload =
-            friendLz4Decompress(
-                payload
-            );
-
-        console.log(
-            `[IDs] after LZ4 size=${payload.length}`
-        );
-
-        console.log(
-            `[IDs] after LZ4 magic=${bufferMagic(payload)}`
-        );
-    }
-
-    if (
-        looksLikeTextJson(payload)
-    ) {
-
-        console.log(
-            "[IDs] JSON detected after decode"
-        );
-
-        return trimJsonBuffer(
-            payload
-        );
-    }
-
-    if (
-        isGzip(payload)
-    ) {
-
-        console.log(
-            "[IDs] GZIP detected after decode"
-        );
-
-        payload =
-            zlib.gunzipSync(
-                payload
-            );
-
-        console.log(
-            `[IDs] after GZIP size=${payload.length}`
-        );
-
-        return trimJsonBuffer(
-            payload
-        );
-    }
-
-    return friendTrimData(
-        payload
-    );
+    return attrs;
 }
 
-function friendTrimData(
-    data
+function xmlDecodeEntities(value) {
+
+    return String(value || "")
+        .replace(
+            /&quot;/g,
+            '"'
+        )
+        .replace(
+            /&apos;/g,
+            "'"
+        )
+        .replace(
+            /&lt;/g,
+            "<"
+        )
+        .replace(
+            /&gt;/g,
+            ">"
+        )
+        .replace(
+            /&amp;/g,
+            "&"
+        );
+}
+
+// ============================================================
+// EXTRACT <friend>
+// ============================================================
+
+function extractFriendsFromXml(
+    xml
 ) {
 
-    if (!Buffer.isBuffer(data)) {
-        data = Buffer.from(data);
-    }
+    const friends = [];
 
-    const text =
-        data
-            .toString("utf8")
-            .replace(
-                /^\uFEFF/,
-                ""
-            )
-            .trim();
+    const seen =
+        new Set();
 
-    if (
-        text.startsWith("{") ||
-        text.startsWith("[")
+    const friendOpenRegex =
+        /<friend\b([^>]*?)(?:\/>|>)/gi;
+
+    let match;
+
+    while (
+        (match =
+            friendOpenRegex.exec(xml)) !== null
     ) {
 
-        return trimJsonBuffer(
-            data
+        const attrs =
+            parseXmlAttributes(
+                match[1]
+            );
+
+        const cityId =
+            cleanString(
+                xmlDecodeEntities(
+                    attrs.city_id ||
+                    attrs.cityId ||
+                    ""
+                )
+            );
+
+        if (!cityId) {
+            continue;
+        }
+
+        if (
+            seen.has(cityId)
+        ) {
+            continue;
+        }
+
+        seen.add(
+            cityId
         );
+
+        friends.push({
+
+            city_id:
+                cityId,
+
+            city_name:
+                cleanString(
+                    xmlDecodeEntities(
+                        attrs.city_name ||
+                        attrs.cityName ||
+                        ""
+                    )
+                ),
+
+            name:
+                cleanString(
+                    xmlDecodeEntities(
+                        attrs.name ||
+                        ""
+                    )
+                ),
+
+            level:
+                cleanString(
+                    attrs.level ||
+                    ""
+                ),
+
+            fetched_city_ver:
+                cleanString(
+                    attrs.fetched_city_ver ||
+                    "0"
+                )
+        });
     }
 
-    return data;
+    return friends;
+}
+
+// ============================================================
+// EXTRACT ProfilesCache
+// ============================================================
+
+function extractProfilesCacheFromXml(
+    xml
+) {
+
+    const saveIds = [];
+
+    const seen =
+        new Set();
+
+    const componentRegex =
+        /<OtherPlayerProfilesLogicFeatureComponent\b[^>]*\bProfilesCache\s*=\s*(['"])([\s\S]*?)\1[^>]*\/?>/gi;
+
+    let match;
+
+    while (
+        (match =
+            componentRegex.exec(xml)) !== null
+    ) {
+
+        let raw =
+            match[2];
+
+        raw =
+            xmlDecodeEntities(
+                raw
+            );
+
+        let profiles;
+
+        try {
+
+            profiles =
+                JSON.parse(
+                    raw
+                );
+
+        } catch (
+            error
+        ) {
+
+            console.error(
+                "[IDs] ProfilesCache JSON parse failed:",
+                error.message
+            );
+
+            continue;
+        }
+
+        if (
+            !Array.isArray(profiles)
+        ) {
+
+            continue;
+        }
+
+        for (
+            const profile of profiles
+        ) {
+
+            if (
+                !profile ||
+                typeof profile !== "object"
+            ) {
+
+                continue;
+            }
+
+            const saveId =
+                cleanString(
+                    profile.saveId
+                );
+
+            if (!saveId) {
+                continue;
+            }
+
+            if (
+                seen.has(saveId)
+            ) {
+
+                continue;
+            }
+
+            seen.add(
+                saveId
+            );
+
+            saveIds.push({
+
+                save_id:
+                    saveId,
+
+                name:
+                    cleanString(
+                        profile.cityname ??
+                        profile.cityName ??
+                        profile.name ??
+                        ""
+                    ),
+
+                level:
+                    cleanString(
+                        profile.level ??
+                        ""
+                    )
+            });
+        }
+    }
+
+    return saveIds;
+}
+
+// ============================================================
+// EXTRACT BOTH LISTS FROM XML
+// ============================================================
+
+function extractXmlLists(
+    xml
+) {
+
+    const friends =
+        extractFriendsFromXml(
+            xml
+        );
+
+    const saveIds =
+        extractProfilesCacheFromXml(
+            xml
+        );
+
+    return {
+        friends,
+        saveIds
+    };
 }
 
 // ============================================================
@@ -2439,7 +2573,7 @@ function extractSaveRecords(
 }
 
 // ============================================================
-// DECODE FRIENDS API - FULL DIAGNOSTIC
+// DECODE FRIENDS API
 // ============================================================
 
 async function handleDecodeFriends(
@@ -2556,36 +2690,6 @@ async function handleDecodeFriends(
                 decoded
             );
 
-        const decodedHex =
-            decoded
-                .subarray(
-                    0,
-                    Math.min(
-                        decoded.length,
-                        512
-                    )
-                )
-                .toString(
-                    "hex"
-                );
-
-        const decodedText =
-            decoded
-                .subarray(
-                    0,
-                    Math.min(
-                        decoded.length,
-                        4000
-                    )
-                )
-                .toString(
-                    "utf8"
-                )
-                .replace(
-                    /[\x00-\x08\x0B\x0C\x0E-\x1F]/g,
-                    "."
-                );
-
         console.log(
             `[IDs] decoded size=${decodedSize}`
         );
@@ -2594,15 +2698,50 @@ async function handleDecodeFriends(
             `[IDs] decoded magic=${decodedMagic}`
         );
 
-        console.log(
-            "[IDs] decoded first hex:",
-            decodedHex
-        );
+        // ====================================================
+        // XML
+        // ====================================================
 
-        console.log(
-            "[IDs] decoded first text:",
-            decodedText
-        );
+        if (
+            looksLikeXml(
+                decoded
+            )
+        ) {
+
+            const xml =
+                decoded.toString(
+                    "utf8"
+                );
+
+            const lists =
+                extractXmlLists(
+                    xml
+                );
+
+            console.log(
+                `[IDs] XML friends=${lists.friends.length} saveIds=${lists.saveIds.length}`
+            );
+
+            return res
+                .status(200)
+                .json({
+
+                    ok: true,
+
+                    count:
+                        lists.friends.length,
+
+                    friends:
+                        lists.friends,
+
+                    saveIds:
+                        lists.saveIds
+                });
+        }
+
+        // ====================================================
+        // JSON
+        // ====================================================
 
         const text =
             decoded
@@ -2628,59 +2767,39 @@ async function handleDecodeFriends(
             parseError
         ) {
 
+            const decodedHex =
+                decoded
+                    .subarray(
+                        0,
+                        Math.min(
+                            decoded.length,
+                            512
+                        )
+                    )
+                    .toString(
+                        "hex"
+                    );
+
+            const decodedText =
+                decoded
+                    .subarray(
+                        0,
+                        Math.min(
+                            decoded.length,
+                            4000
+                        )
+                    )
+                    .toString(
+                        "utf8"
+                    )
+                    .replace(
+                        /[\x00-\x08\x0B\x0C\x0E-\x1F]/g,
+                        "."
+                    );
+
             console.error(
                 "[IDs] JSON parse failed:",
                 parseError.message
-            );
-
-            const diagnostic =
-                [
-                    "JSON PARSE FAILED",
-
-                    "",
-
-                    "Parse error:",
-                    parseError.message,
-
-                    "",
-
-                    "Encrypted size:",
-                    String(
-                        encryptedFile.length
-                    ),
-
-                    "",
-
-                    "Encrypted magic:",
-                    bufferMagic(
-                        encryptedFile
-                    ),
-
-                    "",
-
-                    "Decoded size:",
-                    String(
-                        decodedSize
-                    ),
-
-                    "",
-
-                    "Decoded magic:",
-                    decodedMagic,
-
-                    "",
-
-                    "Decoded HEX:",
-                    decodedHex,
-
-                    "",
-
-                    "Decoded TEXT:",
-                    decodedText
-                ].join("\n");
-
-            console.error(
-                diagnostic
             );
 
             return res
@@ -2693,7 +2812,7 @@ async function handleDecodeFriends(
                         "json_parse",
 
                     error:
-                        "بعد فك الملف لم يتم الحصول على JSON صالح",
+                        "بعد فك الملف لم يتم الحصول على JSON أو XML صالح",
 
                     parseError:
                         parseError.message,
@@ -2728,27 +2847,6 @@ async function handleDecodeFriends(
         console.log(
             `[IDs] save records=${records.length}`
         );
-
-        if (
-            records.length === 0
-        ) {
-
-            return res
-                .status(200)
-                .json({
-
-                    ok: true,
-
-                    count: 0,
-
-                    ids: [],
-
-                    saveIds: [],
-
-                    warning:
-                        "تم الحصول على JSON صالح، لكن لم يتم العثور على أي saveId"
-                });
-        }
 
         return res
             .status(200)
