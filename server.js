@@ -17,8 +17,10 @@ const mGameInfoDecoder =
 const mGameInfoEditor =
     require("./mGameInfoEditor");
 
-const fetchCity =
-    require("./fetchCity");
+app.use(
+    "/api",
+    fetchCity
+);
 
 
 const PORT =
