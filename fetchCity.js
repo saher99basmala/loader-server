@@ -69,10 +69,6 @@ function add32(a, b) {
     return (a + b) >>> 0;
 }
 
-function sub32(a, b) {
-    return (a - b) >>> 0;
-}
-
 function bufferMagic(buf, magic) {
     if (!Buffer.isBuffer(buf)) {
         return false;
@@ -82,11 +78,17 @@ function bufferMagic(buf, magic) {
         return false;
     }
 
-    return buf.subarray(0, magic.length).equals(magic);
+    return buf.subarray(
+        0,
+        magic.length
+    ).equals(magic);
 }
 
 function isLz4Magic(buf) {
-    return bufferMagic(buf, LZ4_MAGIC);
+    return bufferMagic(
+        buf,
+        LZ4_MAGIC
+    );
 }
 
 function isGzip(buf) {
@@ -103,11 +105,21 @@ function looksLikeXml(buf) {
         return false;
     }
 
-    const text = buf
-        .subarray(0, Math.min(buf.length, 512))
-        .toString("utf8")
-        .replace(/^\uFEFF/, "")
-        .trimStart();
+    const text =
+        buf
+            .subarray(
+                0,
+                Math.min(
+                    buf.length,
+                    512
+                )
+            )
+            .toString("utf8")
+            .replace(
+                /^\uFEFF/,
+                ""
+            )
+            .trimStart();
 
     return (
         text.startsWith("<root") ||
@@ -116,15 +128,23 @@ function looksLikeXml(buf) {
 }
 
 /* =========================================================
-   FETCHCITY 0x79
+   0x79
 ========================================================= */
 
 function build79Table(seed) {
-    const table = Buffer.alloc(TABLE_SIZE);
+    const table =
+        Buffer.alloc(
+            TABLE_SIZE
+        );
 
-    let value = seed >>> 0;
+    let value =
+        seed >>> 0;
 
-    for (let i = 0; i < TABLE_SIZE; i++) {
+    for (
+        let i = 0;
+        i < TABLE_SIZE;
+        i++
+    ) {
         value =
             Math.imul(
                 value,
@@ -148,15 +168,20 @@ function build79Table(seed) {
 }
 
 function xorDecode79(raw) {
+
     if (
         !Buffer.isBuffer(raw) ||
         raw.length < 8
     ) {
-        throw new Error("0x79 buffer too small");
+        throw new Error(
+            "0x79 buffer too small"
+        );
     }
 
     if (raw[0] !== 0x79) {
-        throw new Error("Invalid 0x79 header");
+        throw new Error(
+            "Invalid 0x79 header"
+        );
     }
 
     const headerValue =
@@ -164,7 +189,8 @@ function xorDecode79(raw) {
         (raw[2] << 8) |
         (raw[3] << 16);
 
-    const total = raw.length;
+    const total =
+        raw.length;
 
     const derived =
         xor32(
@@ -187,18 +213,29 @@ function xorDecode79(raw) {
             total - 8
         );
 
-    if (processLen > maxLen) {
-        processLen = maxLen;
+    if (
+        processLen > maxLen
+    ) {
+        processLen =
+            maxLen;
     }
 
     const rawSeed =
-        u32le(raw, 4);
+        u32le(
+            raw,
+            4
+        );
 
     const seed =
-        add32(rawSeed, 4);
+        add32(
+            rawSeed,
+            4
+        );
 
     const table =
-        build79Table(seed);
+        build79Table(
+            seed
+        );
 
     const out =
         Buffer.from(
@@ -212,15 +249,23 @@ function xorDecode79(raw) {
         );
 
     if (count > 0) {
+
         out[0] =
             (
                 out[0] ^
                 table[0]
             ) & 0xFF;
 
-        for (let i = 1; i < count; i++) {
-            const current = out[i];
-            const previous = out[i - 1];
+        for (
+            let i = 1;
+            i < count;
+            i++
+        ) {
+            const current =
+                out[i];
+
+            const previous =
+                out[i - 1];
 
             out[i] =
                 (
@@ -239,19 +284,24 @@ function xorDecode79(raw) {
 }
 
 /* =========================================================
-   FETCHCITY 0x54
+   0x54
 ========================================================= */
 
 function decode54Layer(raw) {
+
     if (
         !Buffer.isBuffer(raw) ||
         raw.length < 3
     ) {
-        throw new Error("0x54 buffer too small");
+        throw new Error(
+            "0x54 buffer too small"
+        );
     }
 
     if (raw[0] !== 0x54) {
-        throw new Error("Invalid 0x54 header");
+        throw new Error(
+            "Invalid 0x54 header"
+        );
     }
 
     let processLen =
@@ -267,8 +317,11 @@ function decode54Layer(raw) {
             raw.length - 3
         );
 
-    if (processLen > maxLen) {
-        processLen = maxLen;
+    if (
+        processLen > maxLen
+    ) {
+        processLen =
+            maxLen;
     }
 
     const out =
@@ -283,13 +336,19 @@ function decode54Layer(raw) {
         );
 
     if (count > 0) {
+
         out[0] =
             (
                 out[0] -
                 0x54
             ) & 0xFF;
 
-        for (let i = 0; i < count; i++) {
+        for (
+            let i = 0;
+            i < count;
+            i++
+        ) {
+
             if (i > 0) {
                 out[i] =
                     (
@@ -300,7 +359,8 @@ function decode54Layer(raw) {
 
             out[i] ^=
                 FETCH54_TABLE[
-                    i % FETCH54_TABLE.length
+                    i %
+                    FETCH54_TABLE.length
                 ];
         }
     }
@@ -309,18 +369,22 @@ function decode54Layer(raw) {
 }
 
 /* =========================================================
-   TRANSPORT DECODER
+   TRANSPORT
 ========================================================= */
 
 function decodeTransport(raw) {
+
     if (
         !Buffer.isBuffer(raw) ||
         raw.length === 0
     ) {
-        throw new Error("Empty transport data");
+        throw new Error(
+            "Empty transport data"
+        );
     }
 
     switch (raw[0]) {
+
         case 0x79:
             return xorDecode79(raw);
 
@@ -341,15 +405,18 @@ function decodeTransport(raw) {
 }
 
 /* =========================================================
-   LZ4 BLOCK DECOMPRESSOR
+   LZ4
 ========================================================= */
 
 function lz4DecompressBlock(
     src,
     expectedSize
 ) {
+
     const out =
-        Buffer.alloc(expectedSize);
+        Buffer.alloc(
+            expectedSize
+        );
 
     let srcPos = 0;
     let dstPos = 0;
@@ -358,29 +425,43 @@ function lz4DecompressBlock(
         srcPos < src.length &&
         dstPos < expectedSize
     ) {
+
         const token =
             src[srcPos++];
 
         let literalLen =
             token >>> 4;
 
-        if (literalLen === 15) {
+        if (
+            literalLen === 15
+        ) {
+
             let b;
 
             do {
-                if (srcPos >= src.length) {
+
+                if (
+                    srcPos >=
+                    src.length
+                ) {
                     throw new Error(
                         "LZ4 literal length overflow"
                     );
                 }
 
-                b = src[srcPos++];
+                b =
+                    src[srcPos++];
+
                 literalLen += b;
-            } while (b === 255);
+
+            } while (
+                b === 255
+            );
         }
 
         if (
-            srcPos + literalLen >
+            srcPos +
+            literalLen >
             src.length
         ) {
             throw new Error(
@@ -389,7 +470,8 @@ function lz4DecompressBlock(
         }
 
         if (
-            dstPos + literalLen >
+            dstPos +
+            literalLen >
             expectedSize
         ) {
             throw new Error(
@@ -401,17 +483,26 @@ function lz4DecompressBlock(
             out,
             dstPos,
             srcPos,
-            srcPos + literalLen
+            srcPos +
+                literalLen
         );
 
-        srcPos += literalLen;
-        dstPos += literalLen;
+        srcPos +=
+            literalLen;
 
-        if (srcPos >= src.length) {
+        dstPos +=
+            literalLen;
+
+        if (
+            srcPos >= src.length
+        ) {
             break;
         }
 
-        if (srcPos + 2 > src.length) {
+        if (
+            srcPos + 2 >
+            src.length
+        ) {
             throw new Error(
                 "LZ4 missing match offset"
             );
@@ -435,25 +526,38 @@ function lz4DecompressBlock(
         let matchLen =
             token & 0x0F;
 
-        if (matchLen === 15) {
+        if (
+            matchLen === 15
+        ) {
+
             let b;
 
             do {
-                if (srcPos >= src.length) {
+
+                if (
+                    srcPos >=
+                    src.length
+                ) {
                     throw new Error(
                         "LZ4 match length overflow"
                     );
                 }
 
-                b = src[srcPos++];
+                b =
+                    src[srcPos++];
+
                 matchLen += b;
-            } while (b === 255);
+
+            } while (
+                b === 255
+            );
         }
 
         matchLen += 4;
 
         if (
-            dstPos + matchLen >
+            dstPos +
+            matchLen >
             expectedSize
         ) {
             throw new Error(
@@ -462,7 +566,8 @@ function lz4DecompressBlock(
         }
 
         let matchPos =
-            dstPos - offset;
+            dstPos -
+            offset;
 
         for (
             let i = 0;
@@ -474,7 +579,9 @@ function lz4DecompressBlock(
         }
     }
 
-    if (dstPos !== expectedSize) {
+    if (
+        dstPos !== expectedSize
+    ) {
         throw new Error(
             "LZ4 output size mismatch: " +
             dstPos +
@@ -486,11 +593,8 @@ function lz4DecompressBlock(
     return out;
 }
 
-/* =========================================================
-   LZ4 CONTAINER
-========================================================= */
-
 function decodeLz4Container(raw) {
+
     if (!isLz4Magic(raw)) {
         throw new Error(
             "Invalid LZ4 container"
@@ -504,29 +608,27 @@ function decodeLz4Container(raw) {
     }
 
     const expectedSize =
-        u32le(raw, 4);
-
-    const compressed =
-        raw.subarray(8);
+        u32le(
+            raw,
+            4
+        );
 
     return lz4DecompressBlock(
-        compressed,
+        raw.subarray(8),
         expectedSize
     );
 }
 
 /* =========================================================
-   XML TRIM
+   XML
 ========================================================= */
 
 function trimXml(buf) {
-    let xml;
 
-    if (Buffer.isBuffer(buf)) {
-        xml = buf.toString("utf8");
-    } else {
-        xml = String(buf || "");
-    }
+    let xml =
+        Buffer.isBuffer(buf)
+            ? buf.toString("utf8")
+            : String(buf || "");
 
     xml =
         xml.replace(
@@ -535,13 +637,17 @@ function trimXml(buf) {
         );
 
     const end =
-        xml.lastIndexOf("</root>");
+        xml.lastIndexOf(
+            "</root>"
+        );
 
     if (end !== -1) {
+
         xml =
             xml.substring(
                 0,
-                end + "</root>".length
+                end +
+                "</root>".length
             );
     }
 
@@ -549,61 +655,67 @@ function trimXml(buf) {
 }
 
 /* =========================================================
-   CITY XML EDIT
-========================================================= */
-
-function editCityXml(xml) {
-    xml = String(xml || "");
-
-    xml =
-        xml.replace(
-            /(<Var\b[^>]*\bname=["']cityId["'][^>]*\bvalue=["'])[^"']*(["'][^>]*\/?>)/i,
-            "$1$2"
-        );
-
-    xml =
-        xml.replace(
-            /(<Var\b[^>]*\bname=["']Device["'][^>]*\bvalue=["'])[^"']*(["'][^>]*\/?>)/i,
-            "$1ASUS_Z01QD$2"
-        );
-
-    return xml;
-}
-
-/* =========================================================
-   COMPLETE CITY DECODER
+   COMPLETE 0x79 / 0x54 / LZ4 DECODER
 ========================================================= */
 
 function decodeSaveCity(cityBytes) {
-    let current =
-        Buffer.from(cityBytes);
 
-    for (let layer = 0; layer < 8; layer++) {
-        if (looksLikeXml(current)) {
+    let current =
+        Buffer.from(
+            cityBytes
+        );
+
+    for (
+        let layer = 0;
+        layer < 12;
+        layer++
+    ) {
+
+        if (
+            looksLikeXml(
+                current
+            )
+        ) {
             return trimXml(current);
         }
 
-        if (isLz4Magic(current)) {
+        if (
+            isLz4Magic(
+                current
+            )
+        ) {
+
             current =
-                decodeLz4Container(current);
+                decodeLz4Container(
+                    current
+                );
 
             continue;
         }
 
-        if (isGzip(current)) {
+        if (
+            isGzip(
+                current
+            )
+        ) {
+
             current =
-                zlib.gunzipSync(current);
+                zlib.gunzipSync(
+                    current
+                );
 
             continue;
         }
 
         if (
             current[0] === 0x79 ||
-            current[0] === 0x54 ||
-            current[0] === 0x1F
+            current[0] === 0x54
         ) {
+
             current =
-                decodeTransport(current);
+                decodeTransport(
+                    current
+                );
 
             continue;
         }
@@ -625,7 +737,11 @@ function decodeSaveCity(cityBytes) {
    XML ATTRIBUTE
 ========================================================= */
 
-function xmlAttr(tag, name) {
+function xmlAttr(
+    tag,
+    name
+) {
+
     const re =
         new RegExp(
             "\\b" +
@@ -643,708 +759,13 @@ function xmlAttr(tag, name) {
 }
 
 /* =========================================================
-   CITY INFO
-========================================================= */
-
-function parseCityInfo(xml) {
-    xml = String(xml || "");
-
-    let cityId = "";
-    let cityName = "";
-    let name = "";
-    let level = "";
-    let cityVer = "";
-
-    const cityIdPatterns = [
-        /<Var\b[^>]*\bname=["']cityId["'][^>]*\bvalue=["']([^"']*)["']/i,
-        /<Var\b[^>]*\bname=["']CityId["'][^>]*\bvalue=["']([^"']*)["']/i,
-        /\bcityId=["']([^"']+)["']/i
-    ];
-
-    for (const pattern of cityIdPatterns) {
-        const m = xml.match(pattern);
-
-        if (m && m[1]) {
-            cityId = m[1];
-            break;
-        }
-    }
-
-    const cityNamePatterns = [
-        /<Var\b[^>]*\bname=["']cityName["'][^>]*\bvalue=["']([^"']*)["']/i,
-        /<Var\b[^>]*\bname=["']CityName["'][^>]*\bvalue=["']([^"']*)["']/i,
-        /<Var\b[^>]*\bname=["']city_name["'][^>]*\bvalue=["']([^"']*)["']/i
-    ];
-
-    for (const pattern of cityNamePatterns) {
-        const m = xml.match(pattern);
-
-        if (m && m[1]) {
-            cityName = m[1];
-            break;
-        }
-    }
-
-    const versionMatch =
-        xml.match(
-            /<Version\b[^>]*\bversion=["']([^"']+)["']/i
-        );
-
-    if (versionMatch) {
-        cityVer = versionMatch[1];
-    }
-
-    const fverMatch =
-        xml.match(
-            /<Version\b[^>]*\bFVer=["']([^"']+)["']/i
-        );
-
-    const levelPatterns = [
-        /\blvl=["']([^"']+)["']/i,
-        /\blevel=["']([^"']+)["']/i,
-        /\bLevel=["']([^"']+)["']/i
-    ];
-
-    for (const pattern of levelPatterns) {
-        const m = xml.match(pattern);
-
-        if (m && m[1]) {
-            level = m[1];
-            break;
-        }
-    }
-
-    const namePatterns = [
-        /\bpname=["']([^"']*)["']/i,
-        /\bcityname=["']([^"']*)["']/i,
-        /\bcity_name=["']([^"']*)["']/i
-    ];
-
-    for (const pattern of namePatterns) {
-        const m = xml.match(pattern);
-
-        if (
-            m &&
-            m[1] &&
-            m[1].trim() !== ""
-        ) {
-            name = m[1];
-            break;
-        }
-    }
-
-    if (cityId === "") {
-        const push =
-            xml.match(
-                /<PushNotifDeviceInfo\b[^>]*\/?>/i
-            );
-
-        if (push) {
-            cityId =
-                xmlAttr(
-                    push[0],
-                    "cityId"
-                );
-        }
-    }
-
-    if (cityName === "") {
-        const push =
-            xml.match(
-                /<PushNotifDeviceInfo\b[^>]*\/?>/i
-            );
-
-        if (push) {
-            cityName =
-                xmlAttr(
-                    push[0],
-                    "pname"
-                );
-        }
-    }
-
-    if (level === "") {
-        const push =
-            xml.match(
-                /<PushNotifDeviceInfo\b[^>]*\/?>/i
-            );
-
-        if (push) {
-            level =
-                xmlAttr(
-                    push[0],
-                    "lvl"
-                );
-        }
-    }
-
-    return {
-        city_id: cityId,
-        city_name: cityName,
-        name,
-        level,
-        cityVer,
-        fver:
-            fverMatch
-                ? fverMatch[1]
-                : ""
-    };
-}
-
-/* =========================================================
-   AES
-========================================================= */
-
-function encryptRequest(payload) {
-    const iv =
-        crypto.randomBytes(16);
-
-    const cipher =
-        crypto.createCipheriv(
-            "aes-128-cbc",
-            AES_KEY,
-            iv
-        );
-
-    const encrypted =
-        Buffer.concat([
-            cipher.update(
-                Buffer.from(
-                    payload,
-                    "utf8"
-                )
-            ),
-            cipher.final()
-        ]);
-
-    return Buffer.concat([
-        iv,
-        encrypted
-    ]);
-}
-
-function decryptResponse(data) {
-    if (!Buffer.isBuffer(data)) {
-        data = Buffer.from(data);
-    }
-
-    if (data.length < 16) {
-        throw new Error(
-            "Encrypted response too small"
-        );
-    }
-
-    const iv =
-        data.subarray(0, 16);
-
-    const encrypted =
-        data.subarray(16);
-
-    const decipher =
-        crypto.createDecipheriv(
-            "aes-128-cbc",
-            AES_KEY,
-            iv
-        );
-
-    return Buffer.concat([
-        decipher.update(encrypted),
-        decipher.final()
-    ]);
-}
-
-/* =========================================================
-   RESPONSE DECOMPRESSION
-========================================================= */
-
-function decompressResponse(data) {
-    let current =
-        Buffer.from(data);
-
-    for (let i = 0; i < 8; i++) {
-        if (looksLikeXml(current)) {
-            return trimXml(current);
-        }
-
-        if (isGzip(current)) {
-            current =
-                zlib.gunzipSync(current);
-
-            continue;
-        }
-
-        if (isLz4Magic(current)) {
-            current =
-                decodeLz4Container(current);
-
-            continue;
-        }
-
-        if (
-            current[0] === 0x79 ||
-            current[0] === 0x54 ||
-            current[0] === 0x1F
-        ) {
-            current =
-                decodeTransport(current);
-
-            continue;
-        }
-
-        break;
-    }
-
-    return current;
-}
-
-/* =========================================================
-   FETCH CITY REQUEST
-========================================================= */
-
-async function requestFetchCity(
-    cityId,
-    cityVer
-) {
-    const requestBody =
-        JSON.stringify({
-            cityId: "",
-            cityVer:
-                Number(cityVer) || 0,
-            fetchCityId:
-                String(cityId),
-            important: true
-        });
-
-    const encrypted =
-        encryptRequest(requestBody);
-
-    const controller =
-        new AbortController();
-
-    const timer =
-        setTimeout(
-            () => controller.abort(),
-            TIMEOUT_MS
-        );
-
-    try {
-        const response =
-            await fetch(
-                ENDPOINT +
-                encodeURIComponent(
-                    String(cityId)
-                ),
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/octet-stream",
-
-                        "ts-id":
-                            String(
-                                Date.now()
-                            )
-                    },
-
-                    body: encrypted,
-
-                    signal:
-                        controller.signal
-                }
-            );
-
-        const body =
-            await response.buffer();
-
-        if (!response.ok) {
-            throw new Error(
-                "Playrix HTTP " +
-                response.status +
-                ": " +
-                body
-                    .subarray(0, 1000)
-                    .toString("utf8")
-            );
-        }
-
-        return body;
-
-    } finally {
-        clearTimeout(timer);
-    }
-}
-
-/* =========================================================
-   FETCHCITY HANDLER
-========================================================= */
-
-async function handleFetchCity(
-    req,
-    res
-) {
-    try {
-        const body =
-            req.body || {};
-
-        const cityId =
-            String(
-                body.cityId || ""
-            ).trim();
-
-        const cityVer =
-            Number(
-                body.cityVer || 0
-            );
-
-        if (cityId === "") {
-            return res
-                .status(400)
-                .json({
-                    ok: false,
-                    error:
-                        "cityId is required"
-                });
-        }
-
-        const encrypted =
-            await requestFetchCity(
-                cityId,
-                cityVer
-            );
-
-        const decrypted =
-            decryptResponse(
-                encrypted
-            );
-
-        const xmlBuffer =
-            decompressResponse(
-                decrypted
-            );
-
-        let xml =
-            Buffer.isBuffer(xmlBuffer)
-                ? xmlBuffer.toString("utf8")
-                : String(xmlBuffer);
-
-        xml = trimXml(xml);
-
-        if (!xml.match(/^<root\b/i)) {
-            throw new Error(
-                "Decoded response is not XML"
-            );
-        }
-
-        xml =
-            editCityXml(xml);
-
-        return res
-            .status(200)
-            .send(xml);
-
-    } catch (err) {
-        console.error(
-            "[fetch-city]",
-            err
-        );
-
-        return res
-            .status(500)
-            .json({
-                ok: false,
-                error:
-                    String(
-                        err &&
-                        err.message
-                            ? err.message
-                            : err
-                    )
-            });
-    }
-}
-
-/* =========================================================
-   DECODE .CITY CACHE
-========================================================= */
-
-async function handleDecodeCityCache(
-    req,
-    res
-) {
-    try {
-        const data =
-            req.body;
-
-        if (
-            !Buffer.isBuffer(data) ||
-            data.length === 0
-        ) {
-            return res
-                .status(400)
-                .json({
-                    ok: false,
-                    error:
-                        "Empty .city file"
-                });
-        }
-
-        console.log(
-            "[decode-city-cache] received:",
-            data.length,
-            "bytes"
-        );
-
-        const xml =
-            decodeSaveCity(data);
-
-        if (
-            !xml ||
-            !xml.match(/^<root\b/i)
-        ) {
-            throw new Error(
-                "Decoded .city is not valid XML"
-            );
-        }
-
-        const info =
-            parseCityInfo(xml);
-
-        if (!info.city_id) {
-            throw new Error(
-                "city_id was not found in decoded city XML"
-            );
-        }
-
-        return res
-            .status(200)
-            .json({
-                ok: true,
-                city_id:
-                    info.city_id,
-                city_name:
-                    info.city_name,
-                name:
-                    info.name,
-                level:
-                    info.level,
-                cityVer:
-                    info.cityVer,
-                fver:
-                    info.fver
-            });
-
-    } catch (err) {
-        console.error(
-            "[decode-city-cache]",
-            err
-        );
-
-        return res
-            .status(400)
-            .json({
-                ok: false,
-                error:
-                    String(
-                        err &&
-                        err.message
-                            ? err.message
-                            : err
-                    )
-            });
-    }
-}
-
-/* =========================================================
-   FRIEND .123.XML DECODER
-========================================================= */
-
-function friendMmh2(input) {
-    let h = 0x9747b28c;
-
-    for (
-        let i = 0;
-        i < input.length;
-        i++
-    ) {
-        h ^= input.charCodeAt(i);
-
-        h =
-            Math.imul(
-                h,
-                0x5bd1e995
-            );
-
-        h ^= h >>> 13;
-    }
-
-    h =
-        Math.imul(
-            h,
-            0x5bd1e995
-        );
-
-    h ^= h >>> 13;
-
-    return h >>> 0;
-}
-
-function friendGetHashTable(seed) {
-    const table =
-        Buffer.alloc(0x2D7);
-
-    let x = seed >>> 0;
-
-    for (
-        let i = 0;
-        i < table.length;
-        i++
-    ) {
-        x =
-            Math.imul(
-                x ^ (x >>> 13),
-                0x5bd1e995
-            ) >>> 0;
-
-        x =
-            (
-                x +
-                0x6D2B79F5
-            ) >>> 0;
-
-        table[i] =
-            (
-                x ^
-                (x >>> 16)
-            ) & 0xff;
-    }
-
-    return table;
-}
-
-function friendXorDecode(raw) {
-    if (
-        !Buffer.isBuffer(raw) ||
-        raw.length < 8
-    ) {
-        throw new Error(
-            "Friend file too small"
-        );
-    }
-
-    if (raw[0] !== 0x79) {
-        throw new Error(
-            "Invalid friend header"
-        );
-    }
-
-    const seed =
-        u32le(raw, 4);
-
-    const table =
-        friendGetHashTable(seed);
-
-    const out =
-        Buffer.from(
-            raw.subarray(8)
-        );
-
-    for (
-        let i = 0;
-        i < out.length;
-        i++
-    ) {
-        out[i] ^=
-            table[
-                i % table.length
-            ];
-    }
-
-    return out;
-}
-
-function friendIsLz4(buf) {
-    return isLz4Magic(buf);
-}
-
-function friendLz4Decompress(buf) {
-    if (buf.length < 8) {
-        throw new Error(
-            "Friend LZ4 too small"
-        );
-    }
-
-    return decodeLz4Container(buf);
-}
-
-function friendTrimXml(buf) {
-    return trimXml(buf);
-}
-
-function decodeFriendFile(data) {
-    if (!Buffer.isBuffer(data)) {
-        data = Buffer.from(data);
-    }
-
-    if (data.length === 0) {
-        throw new Error(
-            "Empty friend file"
-        );
-    }
-
-    if (data[0] === 0x3C) {
-        return friendTrimXml(data);
-    }
-
-    if (data[0] !== 0x79) {
-        throw new Error(
-            "Unsupported friend file header"
-        );
-    }
-
-    let current =
-        friendXorDecode(data);
-
-    if (friendIsLz4(current)) {
-        current =
-            friendLz4Decompress(current);
-    }
-
-    return friendTrimXml(current);
-}
-
-/* =========================================================
-   FRIEND VERSION
-========================================================= */
-
-function parseFriendVersion(xml) {
-    const match =
-        String(xml || "").match(
-            /<Version\b[^>]*\bversion=["']([^"']*)["'][^>]*\bFVer=["']([^"']*)["']/i
-        );
-
-    if (!match) {
-        return {
-            bver: "",
-            fver: ""
-        };
-    }
-
-    return {
-        bver:
-            match[1] || "",
-
-        fver:
-            match[2] || ""
-    };
-}
-
-/* =========================================================
    FRIEND PARSER
 ========================================================= */
 
 function parseFriends(xml) {
+
     const friends = [];
+    const seen = new Set();
 
     const source =
         String(xml || "");
@@ -1358,6 +779,7 @@ function parseFriends(xml) {
         (match =
             regex.exec(source))
     ) {
+
         const tag =
             match[0];
 
@@ -1371,7 +793,14 @@ function parseFriends(xml) {
             continue;
         }
 
+        if (seen.has(city_id)) {
+            continue;
+        }
+
+        seen.add(city_id);
+
         friends.push({
+
             city_id,
 
             city_name:
@@ -1434,8 +863,7 @@ function parseFriends(xml) {
                     "bc"
                 ),
 
-            source:
-                "friend"
+            source: "friend"
         });
     }
 
@@ -1443,68 +871,58 @@ function parseFriends(xml) {
 }
 
 /* =========================================================
-   NEW ID EXTRACTION
+   DISCOVER ALL city_id / friendId
 ========================================================= */
 
-function addDiscoveredId(
-    map,
-    id,
-    source,
-    extra
+function discoverIds(
+    xml,
+    friends
 ) {
-    id =
-        String(
-            id || ""
-        ).trim();
 
-    if (!id) {
-        return;
-    }
+    const result = [];
+    const known = new Set();
 
-    /*
-      نتجنب القيم الطويلة جدًا أو الواضحة أنها
-      ليست IDs للمدينة.
-    */
-    if (
-        id.length < 4 ||
-        id.length > 64
+    for (
+        const friend of friends
     ) {
-        return;
-    }
-
-    if (map.has(id)) {
-        const existing =
-            map.get(id);
 
         if (
-            existing.source !== "friend" &&
-            source === "friend"
+            friend.city_id
         ) {
-            existing.source = "friend";
-        }
 
-        return;
+            known.add(
+                friend.city_id
+            );
+        }
     }
 
-    map.set(
+    function addId(
         id,
-        {
+        source
+    ) {
+
+        id =
+            String(
+                id || ""
+            ).trim();
+
+        if (!id) {
+            return;
+        }
+
+        if (known.has(id)) {
+            return;
+        }
+
+        known.add(id);
+
+        result.push({
+
             city_id: id,
-            city_name:
-                extra &&
-                extra.city_name
-                    ? extra.city_name
-                    : "",
-            name:
-                extra &&
-                extra.name
-                    ? extra.name
-                    : "",
-            level:
-                extra &&
-                extra.level
-                    ? extra.level
-                    : "",
+
+            city_name: "",
+            name: "",
+            level: "",
             xp: "",
             likes: "",
             lang: "",
@@ -1512,226 +930,613 @@ function addDiscoveredId(
             help: "",
             fetched_city_ver: "0",
             bc: "",
+
             source
-        }
-    );
-}
+        });
+    }
 
-function parseAllCityIds(xml, map) {
-    const source =
-        String(xml || "");
+    /* -----------------------------------------------------
+       XML city_id
+    ----------------------------------------------------- */
 
-    let match;
-
-    /*
-      XML attributes:
-      city_id="XXXX"
-      city_id='XXXX'
-    */
-    const xmlCityId =
+    const cityIdRegex =
         /\bcity_id\s*=\s*["']([^"']+)["']/gi;
 
-    while (
-        (match =
-            xmlCityId.exec(source))
-    ) {
-        addDiscoveredId(
-            map,
-            match[1],
-            "city_id"
-        );
-    }
-
-    /*
-      JSON:
-      "city_id":"XXXX"
-    */
-    const jsonCityId =
-        /"city_id"\s*:\s*"([^"]+)"/gi;
-
-    while (
-        (match =
-            jsonCityId.exec(source))
-    ) {
-        addDiscoveredId(
-            map,
-            match[1],
-            "city_id"
-        );
-    }
-}
-
-function parseAllFriendIds(xml, map) {
-    const source =
-        String(xml || "");
-
     let match;
 
-    /*
-      JSON:
-      "friendId":"XXXX"
-    */
+    while (
+        (match =
+            cityIdRegex.exec(xml))
+    ) {
+
+        addId(
+            match[1],
+            "city_id"
+        );
+    }
+
+    /* -----------------------------------------------------
+       JSON city_id
+    ----------------------------------------------------- */
+
+    const jsonCityIdRegex =
+        /["']city_id["']\s*:\s*["']([^"']+)["']/gi;
+
+    while (
+        (match =
+            jsonCityIdRegex.exec(xml))
+    ) {
+
+        addId(
+            match[1],
+            "city_id"
+        );
+    }
+
+    /* -----------------------------------------------------
+       JSON friendId
+    ----------------------------------------------------- */
+
     const friendIdRegex =
-        /"friendId"\s*:\s*"([^"]+)"/gi;
+        /["']friendId["']\s*:\s*["']([^"']+)["']/gi;
 
     while (
         (match =
-            friendIdRegex.exec(source))
+            friendIdRegex.exec(xml))
     ) {
-        addDiscoveredId(
-            map,
+
+        addId(
             match[1],
             "friendId"
         );
     }
 
-    /*
-      في حال ظهر friendId كـ XML attribute.
-    */
-    const friendIdAttr =
-        /\bfriendId\s*=\s*["']([^"']+)["']/gi;
-
-    while (
-        (match =
-            friendIdAttr.exec(source))
-    ) {
-        addDiscoveredId(
-            map,
-            match[1],
-            "friendId"
-        );
-    }
+    return result;
 }
 
 /* =========================================================
-   MERGE FRIENDS + DISCOVERED IDS
+   PARSE ALL INFORMATION
 ========================================================= */
 
-function parseFriendsAndDiscovered(xml) {
-    const parsedFriends =
+function parseAllCities(xml) {
+
+    const originalFriends =
         parseFriends(xml);
 
-    const map =
-        new Map();
+    const discovered =
+        discoverIds(
+            xml,
+            originalFriends
+        );
 
-    /*
-      أولًا المدن الأصلية.
-      نحتفظ بكل بياناتها.
-    */
+    return {
+
+        friends:
+            originalFriends.concat(
+                discovered
+            ),
+
+        original_count:
+            originalFriends.length,
+
+        discovered_count:
+            discovered.length,
+
+        total_count:
+            originalFriends.length +
+            discovered.length
+    };
+}
+
+/* =========================================================
+   FRIEND VERSION
+========================================================= */
+
+function parseFriendVersion(xml) {
+
+    const match =
+        String(xml || "").match(
+            /<Version\b[^>]*\bversion=["']([^"']*)["'][^>]*\bFVer=["']([^"']*)["']/i
+        );
+
+    if (!match) {
+
+        return {
+            bver: "",
+            fver: ""
+        };
+    }
+
+    return {
+
+        bver:
+            match[1] || "",
+
+        fver:
+            match[2] || ""
+    };
+}
+
+/* =========================================================
+   AES
+========================================================= */
+
+function encryptRequest(payload) {
+
+    const iv =
+        crypto.randomBytes(16);
+
+    const cipher =
+        crypto.createCipheriv(
+            "aes-128-cbc",
+            AES_KEY,
+            iv
+        );
+
+    const encrypted =
+        Buffer.concat([
+            cipher.update(
+                Buffer.from(
+                    payload,
+                    "utf8"
+                )
+            ),
+            cipher.final()
+        ]);
+
+    return Buffer.concat([
+        iv,
+        encrypted
+    ]);
+}
+
+function decryptResponse(data) {
+
+    if (!Buffer.isBuffer(data)) {
+        data =
+            Buffer.from(data);
+    }
+
+    if (data.length < 16) {
+        throw new Error(
+            "Encrypted response too small"
+        );
+    }
+
+    const iv =
+        data.subarray(
+            0,
+            16
+        );
+
+    const encrypted =
+        data.subarray(
+            16
+        );
+
+    const decipher =
+        crypto.createDecipheriv(
+            "aes-128-cbc",
+            AES_KEY,
+            iv
+        );
+
+    return Buffer.concat([
+        decipher.update(
+            encrypted
+        ),
+        decipher.final()
+    ]);
+}
+
+/* =========================================================
+   RESPONSE DECOMPRESSION
+========================================================= */
+
+function decompressResponse(data) {
+
+    let current =
+        Buffer.from(data);
+
     for (
-        const friend of parsedFriends
+        let i = 0;
+        i < 12;
+        i++
     ) {
-        const id =
-            String(
-                friend.city_id || ""
-            ).trim();
 
-        if (!id) {
+        if (
+            looksLikeXml(current)
+        ) {
+            return trimXml(current);
+        }
+
+        if (
+            isGzip(current)
+        ) {
+
+            current =
+                zlib.gunzipSync(
+                    current
+                );
+
             continue;
         }
 
-        map.set(
-            id,
-            {
-                ...friend,
-                source: "friend"
-            }
-        );
+        if (
+            isLz4Magic(current)
+        ) {
+
+            current =
+                decodeLz4Container(
+                    current
+                );
+
+            continue;
+        }
+
+        if (
+            current[0] === 0x79 ||
+            current[0] === 0x54
+        ) {
+
+            current =
+                decodeTransport(
+                    current
+                );
+
+            continue;
+        }
+
+        break;
     }
 
-    /*
-      بعد ذلك IDs الموجودة في كامل XML.
-    */
-    parseAllCityIds(
-        xml,
-        map
-    );
-
-    parseAllFriendIds(
-        xml,
-        map
-    );
-
-    return Array.from(
-        map.values()
-    );
+    return current;
 }
 
 /* =========================================================
-   DECODE FRIENDS HANDLER
+   FETCH CITY REQUEST
+========================================================= */
+
+async function requestFetchCity(
+    cityId,
+    cityVer
+) {
+
+    const requestBody =
+        JSON.stringify({
+
+            cityId: "",
+
+            cityVer:
+                Number(cityVer) || 0,
+
+            fetchCityId:
+                String(cityId),
+
+            important: true
+        });
+
+    const encrypted =
+        encryptRequest(
+            requestBody
+        );
+
+    const controller =
+        new AbortController();
+
+    const timer =
+        setTimeout(
+            () => controller.abort(),
+            TIMEOUT_MS
+        );
+
+    try {
+
+        const response =
+            await fetch(
+                ENDPOINT +
+                encodeURIComponent(
+                    String(cityId)
+                ),
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/octet-stream",
+
+                        "ts-id":
+                            String(
+                                Date.now()
+                            )
+                    },
+
+                    body:
+                        encrypted,
+
+                    signal:
+                        controller.signal
+                }
+            );
+
+        const body =
+            await response.buffer();
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Playrix HTTP " +
+                response.status +
+                ": " +
+                body
+                    .subarray(
+                        0,
+                        1000
+                    )
+                    .toString("utf8")
+            );
+        }
+
+        return body;
+
+    } finally {
+
+        clearTimeout(timer);
+    }
+}
+
+/* =========================================================
+   FETCHCITY
+========================================================= */
+
+function editCityXml(xml) {
+
+    xml =
+        String(xml || "");
+
+    xml =
+        xml.replace(
+            /(<Var\b[^>]*\bname=["']cityId["'][^>]*\bvalue=["'])[^"']*(["'][^>]*\/?>)/i,
+            "$1$2"
+        );
+
+    xml =
+        xml.replace(
+            /(<Var\b[^>]*\bname=["']Device["'][^>]*\bvalue=["'])[^"']*(["'][^>]*\/?>)/i,
+            "$1ASUS_Z01QD$2"
+        );
+
+    return xml;
+}
+
+async function handleFetchCity(
+    req,
+    res
+) {
+
+    try {
+
+        const body =
+            req.body || {};
+
+        const cityId =
+            String(
+                body.cityId || ""
+            ).trim();
+
+        const cityVer =
+            Number(
+                body.cityVer || 0
+            );
+
+        if (!cityId) {
+
+            return res
+                .status(400)
+                .json({
+
+                    ok: false,
+
+                    error:
+                        "cityId is required"
+                });
+        }
+
+        const encrypted =
+            await requestFetchCity(
+                cityId,
+                cityVer
+            );
+
+        const decrypted =
+            decryptResponse(
+                encrypted
+            );
+
+        const xmlBuffer =
+            decompressResponse(
+                decrypted
+            );
+
+        let xml =
+            Buffer.isBuffer(
+                xmlBuffer
+            )
+                ? xmlBuffer.toString("utf8")
+                : String(xmlBuffer);
+
+        xml =
+            trimXml(xml);
+
+        if (
+            !/^<root\b/i.test(xml)
+        ) {
+
+            throw new Error(
+                "Decoded response is not XML"
+            );
+        }
+
+        xml =
+            editCityXml(xml);
+
+        return res
+            .status(200)
+            .send(xml);
+
+    } catch (err) {
+
+        console.error(
+            "[fetch-city]",
+            err
+        );
+
+        return res
+            .status(500)
+            .json({
+
+                ok: false,
+
+                error:
+                    String(
+                        err &&
+                        err.message
+                            ? err.message
+                            : err
+                    )
+            });
+    }
+}
+
+/* =========================================================
+   DECODE MAIN GAME FILE
+   IMPORTANT:
+   MAIN FILE STARTS WITH 0x79
 ========================================================= */
 
 async function handleDecodeFriends(
     req,
     res
 ) {
+
     try {
-        const data =
+
+        let data =
             req.body;
+
+        /*
+         * express.raw() normally gives Buffer.
+         * This fallback keeps the route safe if
+         * another middleware has converted it.
+         */
+
+        if (
+            typeof data === "string"
+        ) {
+
+            data =
+                Buffer.from(
+                    data,
+                    "binary"
+                );
+        }
 
         if (
             !Buffer.isBuffer(data) ||
             data.length === 0
         ) {
+
             return res
                 .status(400)
                 .json({
+
                     ok: false,
+
                     error:
-                        "Empty friend file"
+                        "Empty main game file"
                 });
         }
 
         console.log(
             "[decode-friends] received:",
             data.length,
-            "bytes"
+            "bytes",
+            "header:",
+            "0x" +
+            data[0]
+                .toString(16)
+                .padStart(2, "0")
         );
 
-        const xml =
-            decodeFriendFile(data);
+        /*
+         * The main LocalInfo.xml supplied by the game
+         * starts with 0x79.
+         *
+         * DO NOT use friendXorDecode() here.
+         *
+         * Use the existing FETCHCITY 0x79 decoder.
+         */
+
+        let xml =
+            decodeSaveCity(
+                data
+            );
+
+        xml =
+            trimXml(xml);
 
         if (
-            !xml ||
-            !xml.match(/^<root\b/i)
+            !/^<root\b/i.test(xml)
         ) {
+
             throw new Error(
-                "Decoded friend file is not XML"
+                "Decoded main file is not XML"
             );
         }
 
-        const version =
-            parseFriendVersion(xml);
+        console.log(
+            "[decode-friends] decoded XML:",
+            xml.length,
+            "chars"
+        );
 
-        const friends =
-            parseFriendsAndDiscovered(
+        /* -------------------------------------------------
+           VERSION
+        ------------------------------------------------- */
+
+        const version =
+            parseFriendVersion(
                 xml
             );
 
-        const originalCount =
-            friends.filter(
-                x =>
-                    x.source === "friend"
-            ).length;
+        /* -------------------------------------------------
+           EXTRACT EVERYTHING
+        ------------------------------------------------- */
 
-        const discoveredCount =
-            friends.filter(
-                x =>
-                    x.source !== "friend"
-            ).length;
+        const parsed =
+            parseAllCities(
+                xml
+            );
 
         console.log(
             "[decode-friends] original:",
-            originalCount,
+            parsed.original_count,
             "discovered:",
-            discoveredCount,
+            parsed.discovered_count,
             "total:",
-            friends.length
+            parsed.total_count
         );
+
+        /* -------------------------------------------------
+           RETURN
+        ------------------------------------------------- */
 
         return res
             .status(200)
             .json({
+
                 ok: true,
 
                 bver:
@@ -1741,18 +1546,20 @@ async function handleDecodeFriends(
                     version.fver,
 
                 count:
-                    friends.length,
+                    parsed.total_count,
 
                 original_count:
-                    originalCount,
+                    parsed.original_count,
 
                 discovered_count:
-                    discoveredCount,
+                    parsed.discovered_count,
 
-                friends
+                friends:
+                    parsed.friends
             });
 
     } catch (err) {
+
         console.error(
             "[decode-friends]",
             err
@@ -1761,6 +1568,102 @@ async function handleDecodeFriends(
         return res
             .status(400)
             .json({
+
+                ok: false,
+
+                error:
+                    String(
+                        err &&
+                        err.message
+                            ? err.message
+                            : err
+                    )
+            });
+    }
+}
+
+/* =========================================================
+   DECODE .CITY CACHE
+========================================================= */
+
+async function handleDecodeCityCache(
+    req,
+    res
+) {
+
+    try {
+
+        let data =
+            req.body;
+
+        if (
+            typeof data === "string"
+        ) {
+
+            data =
+                Buffer.from(
+                    data,
+                    "binary"
+                );
+        }
+
+        if (
+            !Buffer.isBuffer(data) ||
+            data.length === 0
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    ok: false,
+
+                    error:
+                        "Empty .city file"
+                });
+        }
+
+        console.log(
+            "[decode-city-cache] received:",
+            data.length,
+            "bytes"
+        );
+
+        const xml =
+            decodeSaveCity(
+                data
+            );
+
+        if (
+            !/^<root\b/i.test(xml)
+        ) {
+
+            throw new Error(
+                "Decoded .city is not valid XML"
+            );
+        }
+
+        return res
+            .status(200)
+            .json({
+
+                ok: true,
+
+                xml:
+                    trimXml(xml)
+            });
+
+    } catch (err) {
+
+        console.error(
+            "[decode-city-cache]",
+            err
+        );
+
+        return res
+            .status(400)
+            .json({
+
                 ok: false,
 
                 error:
@@ -1794,28 +1697,29 @@ router.post(
     handleFetchCity
 );
 
-router.post(
-    "/decode-city-cache",
-    express.raw({
-        type:
-            "application/octet-stream",
-
-        limit:
-            "50mb"
-    }),
-    handleDecodeCityCache
-);
+/*
+ * IMPORTANT:
+ * Use */* here instead of requiring a specific
+ * content-type. GameGuardian may send the raw
+ * file with a different Content-Type.
+ */
 
 router.post(
     "/decode-friends",
     express.raw({
-        type:
-            "application/octet-stream",
-
-        limit:
-            "50mb"
+        type: "*/*",
+        limit: "50mb"
     }),
     handleDecodeFriends
+);
+
+router.post(
+    "/decode-city-cache",
+    express.raw({
+        type: "*/*",
+        limit: "50mb"
+    }),
+    handleDecodeCityCache
 );
 
 /* =========================================================
