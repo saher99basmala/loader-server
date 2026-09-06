@@ -241,180 +241,35 @@ function looksLikeJson(buf) {
    ============================================================ */
 
 function build79Table(seed) {
+    const table = Buffer.alloc(TABLE_SIZE);
 
-    const table =
-        Buffer.alloc(
-            TABLE_SIZE
-        );
+    let x = seed >>> 0;
 
-    let state =
-        seed >>> 0;
+    for (let i = 0; i < TABLE_SIZE; i++) {
+        x ^= x >>> 16;
+        x = Math.imul(x, 0x7FEB352D) >>> 0;
+        x ^= x >>> 15;
+        x = Math.imul(x, 0x846CA68B) >>> 0;
+        x ^= x >>> 16;
 
-    for (
-        let i = 0;
-        i < TABLE_SIZE;
-        i++
-    ) {
-
-        state =
-            Math.imul(
-                state,
-                TABLE_MULTIPLIER
-            ) >>> 0;
-
-        table[i] =
-            (state >>> 24) & 0xFF;
+        table[i] = x & 0xFF;
     }
 
     return table;
-}
-
-function xorDecode79(raw) {
-
-    if (!Buffer.isBuffer(raw)) {
-        raw = Buffer.from(raw);
-    }
-
-    if (raw.length < 8) {
-
-        throw new Error(
-            `بيانات 0x79 قصيرة: ${raw.length}`
-        );
-    }
-
-    if (raw[0] !== 0x79) {
-
-        throw new Error(
-            `بيانات 0x79 غير صحيحة. Magic=${bufferMagic(raw)}`
-        );
-    }
-
-    const headerValue =
-        u32le(
-            raw,
-            1
-        );
-
-    const total =
-        raw.length >>> 0;
-
-    const derived =
-        xor32(
-            TOTAL_XOR,
-            total
-        );
-
-    let processLenU32 =
-        sub32(
-            headerValue,
-            derived
-        );
-
-    processLenU32 =
-        xor32(
-            processLenU32,
-            PROCESS_XOR
-        );
-
-    const maxProcessLen =
-        Math.max(
-            0,
-            total - 8
-        );
-
-    const processLen =
-        Math.min(
-            maxProcessLen,
-            processLenU32 >>> 0
-        );
-
-    const rawSeed =
-        u32le(
-            raw,
-            4
-        );
-
-    const seed =
-        add32(
-            rawSeed,
-            4
-        );
-
-    const table =
-        build79Table(
-            seed
-        );
-
-    const out =
-        Buffer.from(
-            raw.subarray(
-                8,
-                8 + processLen
-            )
-        );
-
-    if (
-        out.length === 0
-    ) {
-        return out;
-    }
-
-    out[0] =
-        (
-            out[0] ^
-            table[0]
-        ) & 0xFF;
-
-    for (
-        let i = 1;
-        i < out.length;
-        i++
-    ) {
-
-        const current =
-            out[i];
-
-        const previousDecoded =
-            out[i - 1];
-
-        const delta =
-            (
-                current -
-                previousDecoded
-            ) & 0xFF;
-
-        out[i] =
-            (
-                delta ^
-                table[
-                    i % TABLE_SIZE
-                ]
-            ) & 0xFF;
-    }
-
-    return out;
 }
 
 /* ============================================================
    0x54
    OLD ALGORITHM
    ============================================================ */
-
 function decode54Layer(raw) {
-
-    if (!Buffer.isBuffer(raw)) {
-        raw = Buffer.from(raw);
-    }
+    if (!Buffer.isBuffer(raw)) raw = Buffer.from(raw);
 
     if (raw.length < 4) {
-
-        throw new Error(
-            `بيانات 0x54 قصيرة: ${raw.length}`
-        );
+        throw new Error(`بيانات 0x54 قصيرة: ${raw.length}`);
     }
 
     if (raw[0] !== 0x54) {
-
         throw new Error(
             `بيانات 0x54 غير صحيحة. Magic=${bufferMagic(raw)}`
         );
@@ -431,63 +286,43 @@ function decode54Layer(raw) {
             )
         ) >>> 0;
 
-    processLen =
-        Math.min(
-            processLen,
-            raw.length - 3
-        );
+    processLen = Math.min(
+        processLen,
+        raw.length - 3
+    );
 
-    const out =
-        Buffer.from(
-            raw.subarray(3)
-        );
+    const out = Buffer.from(raw.subarray(3));
 
-    if (
-        out.length === 0
-    ) {
-        return out;
-    }
+    if (out.length === 0) return out;
 
-    out[0] =
-        (
-            out[0] -
-            0x54
-        ) & 0xFF;
+    out[0] = (
+        out[0] -
+        0x54
+    ) & 0xFF;
 
-    const count =
-        Math.min(
-            processLen,
-            out.length
-        );
+    const count = Math.min(
+        processLen,
+        out.length
+    );
 
-    for (
-        let i = 0;
-        i < count;
-        i++
-    ) {
-
+    for (let i = 0; i < count; i++) {
         if (i > 0) {
-
-            out[i] =
-                (
-                    out[i] -
-                    out[i - 1]
-                ) & 0xFF;
+            out[i] = (
+                out[i] -
+                out[i - 1]
+            ) & 0xFF;
         }
 
-        out[i] =
-            (
-                out[i] ^
-                FETCH54_TABLE[
-                    i %
-                    FETCH54_TABLE.length
-                ]
-            ) & 0xFF;
+        out[i] = (
+            out[i] ^
+            FETCH54_TABLE[
+                i % FETCH54_TABLE.length
+            ]
+        ) & 0xFF;
     }
 
     return out;
 }
-
 /* ============================================================
    TRANSPORT
    ============================================================ */
@@ -1089,54 +924,19 @@ function friendMmh2(
     return h >>> 0;
 }
 
-function friendGetHashTable(
-    length,
-    seed
-) {
+function friendGetHashTable(length, seed) {
+    const table = Buffer.alloc(FRIEND_TABLE_SIZE);
 
-    const table =
-        Buffer.alloc(
-            FRIEND_TABLE_SIZE
-        );
-
-    let h =
-        friendU32(seed);
-
+    let h = friendU32(seed);
     let i = 0;
 
-    while (
-        i <
-        FRIEND_TABLE_SIZE
-    ) {
+    while (i < FRIEND_TABLE_SIZE) {
+        const v = friendU32Bytes(h);
+        h = friendMmh2(v, length);
+        const hb = friendU32Bytes(h);
 
-        const v =
-            friendU32Bytes(
-                h
-            );
-
-        h =
-            friendMmh2(
-                v,
-                length
-            );
-
-        const hb =
-            friendU32Bytes(
-                h
-            );
-
-        for (
-            let j = 0;
-            j < 4 &&
-            i + j <
-            FRIEND_TABLE_SIZE;
-            j++
-        ) {
-
-            table[
-                i + j
-            ] =
-                hb[j];
+        for (let j = 0; j < 4 && i + j < FRIEND_TABLE_SIZE; j++) {
+            table[i + j] = hb[j];
         }
 
         i += 4;
@@ -1145,16 +945,9 @@ function friendGetHashTable(
     return table;
 }
 
-function friendXorDecode(
-    data
-) {
-
-    if (
-        data.length < 8
-    ) {
-        throw new Error(
-            "الملف صغير جداً"
-        );
+function friendXorDecode(data) {
+    if (data.length < 8) {
+        throw new Error("بيانات Friend قصيرة");
     }
 
     const hl =
@@ -1168,15 +961,12 @@ function friendXorDecode(
         (data[6] << 16) |
         (data[7] << 24);
 
-    const srcSize =
-        data.length;
+    const srcSize = data.length;
 
     const table =
         friendGetHashTable(
             hl,
-            friendU32(
-                4 + hs
-            )
+            friendU32(4 + hs)
         );
 
     const sf =
@@ -1184,8 +974,7 @@ function friendXorDecode(
             (
                 hl -
                 friendU32(
-                    0xC5EED ^
-                    srcSize
+                    0xC5EED ^ srcSize
                 )
             ) ^
             0x396A8
@@ -1197,59 +986,32 @@ function friendXorDecode(
             srcSize - 8
         );
 
-    const out =
-        Buffer.alloc(
-            actual
-        );
+    const out = Buffer.alloc(actual);
 
-    for (
-        let i = 0;
-        i < actual;
-        i++
-    ) {
-
-        out[i] =
-            data[8 + i];
+    for (let i = 0; i < actual; i++) {
+        out[i] = data[8 + i];
     }
 
     let j = 0;
 
-    for (
-        let i = 0;
-        i < out.length;
-        i++
-    ) {
-
-        if (
-            i > 0
-        ) {
-
+    for (let i = 0; i < out.length; i++) {
+        if (i > 0) {
             out[i] =
-                (
-                    out[i] -
-                    out[i - 1]
-                ) & 0xff;
+                (out[i] - out[i - 1]) & 0xff;
         }
 
         out[i] =
-            (
-                out[i] ^
-                table[j]
-            ) & 0xff;
+            (out[i] ^ table[j]) & 0xff;
 
         j++;
 
-        if (
-            j >=
-            FRIEND_TABLE_SIZE
-        ) {
+        if (j >= FRIEND_TABLE_SIZE) {
             j = 0;
         }
     }
 
     return out;
 }
-
 function friendIsLz4(
     data
 ) {
@@ -1483,34 +1245,21 @@ function friendLz4Decompress(
    DECODE FRIEND FILE
    ============================================================ */
 
-function decodeFriendFile(
-    data
-) {
+function decodeFriendFile(data) {
 
-    if (
-        !Buffer.isBuffer(data)
-    ) {
-        data =
-            Buffer.from(data);
+    if (!Buffer.isBuffer(data)) {
+        data = Buffer.from(data);
     }
 
-    if (
-        data.length === 0
-    ) {
-        throw new Error(
-            "الملف فارغ"
-        );
+    if (data.length === 0) {
+        throw new Error("الملف فارغ");
     }
 
-    if (
-        data[0] === 0x3C
-    ) {
+    if (data[0] === 0x3C) {
         return data;
     }
 
-    if (
-        data[0] !== 0x79
-    ) {
+    if (data[0] !== 0x79) {
         throw new Error(
             "نوع غير مدعوم\nMagic: 0x" +
             data[0]
@@ -1519,26 +1268,13 @@ function decodeFriendFile(
         );
     }
 
-    let payload =
-        friendXorDecode(
-            data
-        );
+    let payload = friendXorDecode(data);
 
-    if (
-        friendIsLz4(
-            payload
-        )
-    ) {
-
-        payload =
-            friendLz4Decompress(
-                payload
-            );
+    if (friendIsLz4(payload)) {
+        payload = friendLz4Decompress(payload);
     }
 
-    return trimXml(
-        payload
-    );
+    return trimXml(payload);
 }
 
 /* ============================================================
