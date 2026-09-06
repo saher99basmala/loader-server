@@ -20,6 +20,13 @@ const mGameInfoEditor =
 const fetchCity =
     require("./fetchCity");
 
+// ============================================================
+// City Cache
+// ============================================================
+
+const cityCache =
+    require("./cityCache");
+
 
 const PORT =
     process.env.PORT || 3000;
@@ -84,6 +91,16 @@ console.log(
 app.use(
     "/api",
     fetchCity
+);
+
+
+// ============================================================
+// City Cache
+// ============================================================
+
+app.use(
+    "/api",
+    cityCache
 );
 
 
