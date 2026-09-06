@@ -172,12 +172,33 @@ function isLz4Magic(buf) {
 
 function isGzip(buf) {
 
-    return (
-        Buffer.isBuffer(buf) &&
-        buf.length >= 2 &&
-        buf[0] === 0x1F &&
-        buf[1] === 0x8B
-    );
+    if (!Buffer.isBuffer(buf)) {
+        return false;
+    }
+
+    if (buf.length < 10) {
+        return false;
+    }
+
+    // GZIP magic
+    if (
+        buf[0] !== 0x1F ||
+        buf[1] !== 0x8B
+    ) {
+        return false;
+    }
+
+    // Compression method must be DEFLATE
+    if (buf[2] !== 0x08) {
+        return false;
+    }
+
+    // Reserved FLG bits must be zero
+    if ((buf[3] & 0xE0) !== 0) {
+        return false;
+    }
+
+    return true;
 }
 
 function looksLikeXml(buf) {
