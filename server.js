@@ -17,10 +17,8 @@ const mGameInfoDecoder =
 const mGameInfoEditor =
     require("./mGameInfoEditor");
 
-app.use(
-    "/api",
-    fetchCity
-);
+const fetchCity =
+    require("./fetchCity");
 
 
 const PORT =
@@ -46,7 +44,6 @@ app.use(
         limit: "10mb"
     })
 );
-
 
 app.use(
     session({
@@ -80,8 +77,12 @@ app.use(
 // FetchCity Proxy
 // ============================================================
 
+console.log(
+    "[FetchCity] module loaded"
+);
+
 app.use(
-    "/api/fetch-city",
+    "/api",
     fetchCity
 );
 
@@ -540,6 +541,10 @@ app.listen(
 
         console.log(
             `Server running on port ${PORT}`
+        );
+
+        console.log(
+            `[FetchCity] POST /api/fetch-city`
         );
     }
 );
