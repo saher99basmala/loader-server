@@ -1,34 +1,10 @@
-/*
-========================================
-fetchCity.js
-========================================
-
-- ظٹط­ط§ظپط¸ ط¹ظ„ظ‰ ط·ظ„ط¨ FetchCity ط§ظ„ظ‚ط¯ظٹظ…
-- AES-128-GCM ظƒظ…ط§ ظپظٹ ط§ظ„ظ†ط³ط®ط© ط§ظ„ط¹ط§ظ…ظ„ط©
-- ts-gpid = new
-- ظ†ظپط³ JSON ط§ظ„ظ‚ط¯ظٹظ…
-- ظ†ظپط³ headers
-- ظ†ظپط³ ts-id
-- body = ciphertext ظپظ‚ط·
-- ظپظƒ AES ظ…ظ† ts-id ط§ظ„ط®ط§طµ ط¨ط§ظ„ط§ط³طھط¬ط§ط¨ط©
-- ظ…ط­ط§ظˆظ„ط© GZIP / ZLIB / RAW DEFLATE
-- ط«ظ… ط§ط³طھط®ط±ط§ط¬ result.data
-- Base64
-- SaveCrypto 0x79 / 0x54 / 0x1F
-- LZ4
-- ط¥ط±ط¬ط§ط¹ XML
-
-ظ„ط§ ظٹط؛ظٹظ‘ط± ط¨ظ‚ظٹط© ط§ظ„ط³ظٹط±ظپط±.
-========================================
-*/
-
+/* ======================================== fetchCity.js ======================================== */
 const express = require("express");
 const crypto = require("crypto");
 const zlib = require("zlib");
 const fetch = require("node-fetch");
 
 const router = express.Router();
-
 
 // ============================================================
 // CONFIG
@@ -46,7 +22,6 @@ const ENDPOINT =
 const TIMEOUT_MS =
     Number(process.env.FETCHCITY_TIMEOUT_MS || 25000);
 
-
 // ============================================================
 // SAVECRYPTO CONSTANTS
 // ============================================================
@@ -63,7 +38,6 @@ const LZ4_MAGIC = Buffer.from([
     0x18
 ]);
 
-
 // ============================================================
 // FETCH54 TABLE
 // ============================================================
@@ -72,7 +46,6 @@ const FETCH54_TABLE = Buffer.from(
     "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82bG5bc1lkczpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGJmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
     "base64"
 );
-
 
 // ============================================================
 // UTILS
@@ -95,21 +68,17 @@ function u32le(buf, offset) {
     );
 }
 
-
 function xor32(a, b) {
     return (a ^ b) >>> 0;
 }
-
 
 function add32(a, b) {
     return (a + b) >>> 0;
 }
 
-
 function sub32(a, b) {
     return (a - b) >>> 0;
 }
-
 
 function bufferMagic(buf) {
     if (!buf || buf.length < 4) {
@@ -125,7 +94,6 @@ function bufferMagic(buf) {
         .join(" ");
 }
 
-
 function isLz4Magic(buf) {
     return (
         buf &&
@@ -137,7 +105,6 @@ function isLz4Magic(buf) {
     );
 }
 
-
 function isGzip(buf) {
     return (
         buf &&
@@ -146,7 +113,6 @@ function isGzip(buf) {
         buf[1] === 0x8B
     );
 }
-
 
 function looksLikeXml(buf) {
     if (!buf || buf.length === 0) {
@@ -167,7 +133,6 @@ function looksLikeXml(buf) {
         text.startsWith("<?xml")
     );
 }
-
 
 // ============================================================
 // 0x79 TABLE
@@ -199,7 +164,6 @@ function build79Table(seed) {
 
     return table;
 }
-
 
 // ============================================================
 // 0x79 DECODER
@@ -313,7 +277,6 @@ function xorDecode79(raw) {
     return out;
 }
 
-
 // ============================================================
 // 0x54 DECODER
 // ============================================================
@@ -400,7 +363,6 @@ function decode54Layer(raw) {
     return out;
 }
 
-
 // ============================================================
 // TRANSPORT DECODER
 // ============================================================
@@ -443,7 +405,6 @@ function decodeTransport(raw) {
             );
     }
 }
-
 
 // ============================================================
 // LZ4 BLOCK
@@ -534,7 +495,7 @@ function lz4DecompressBlock(
         dstPos +=
             literalLength;
 
-        // ط¢ط®ط± sequence
+        // آخر sequence
         if (
             srcPos >= src.length
         ) {
@@ -651,7 +612,6 @@ function lz4DecompressBlock(
     return output;
 }
 
-
 // ============================================================
 // LZ4 CONTAINER
 // ============================================================
@@ -688,7 +648,6 @@ function decodeLz4Container(raw) {
         expectedSize
     );
 }
-
 
 // ============================================================
 // XML TRIM
@@ -745,6 +704,99 @@ function trimXml(buf) {
     );
 }
 
+// ============================================================
+// XML EDIT
+// ============================================================
+
+function editCityXml(xml) {
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    let text =
+        xml.toString("utf8");
+
+    text =
+        text.replace(
+            /<Var\b[^>]*\/?>/gi,
+            function(tag) {
+
+                // --------------------------------
+                // cityId -> empty
+                // --------------------------------
+
+                if (
+                    /\bname\s*=\s*["']cityId["']/i.test(tag)
+                ) {
+
+                    const valueRegex =
+                        /(\bv\s*=\s*["'])[^"']*(["'])/i;
+
+                    if (
+                        valueRegex.test(tag)
+                    ) {
+
+                        return tag.replace(
+                            valueRegex,
+                            "$1$2"
+                        );
+                    }
+
+                    return tag.replace(
+                        /\/?>$/,
+                        ' v=""/>'
+                    );
+                }
+
+                // --------------------------------
+                // Device -> ASUS_Z01QD
+                // --------------------------------
+
+                if (
+                    /\bname\s*=\s*["']Device["']/i.test(tag)
+                ) {
+
+                    const valueRegex =
+                        /(\bv\s*=\s*["'])[^"']*(["'])/i;
+
+                    if (
+                        valueRegex.test(tag)
+                    ) {
+
+                        return tag.replace(
+                            valueRegex,
+                            "$1ASUS_Z01QD$2"
+                        );
+                    }
+
+                    return tag.replace(
+                        /\/?>$/,
+                        ' v="ASUS_Z01QD"/>'
+                    );
+                }
+
+                return tag;
+            }
+        );
+
+    console.log(
+        "[FetchCity] XML modifications applied"
+    );
+
+    console.log(
+        "[FetchCity] cityId = empty"
+    );
+
+    console.log(
+        "[FetchCity] Device = ASUS_Z01QD"
+    );
+
+    return Buffer.from(
+        text,
+        "utf8"
+    );
+}
 
 // ============================================================
 // COMPLETE SAVE DECODER
@@ -859,7 +911,6 @@ function decodeSaveCity(cityBytes) {
     );
 }
 
-
 // ============================================================
 // ENCRYPT REQUEST
 // ============================================================
@@ -894,9 +945,9 @@ function encryptRequest(requestJson) {
         cipher.getAuthTag();
 
     /*
-     * ظ…ظ‡ظ…:
-     * body = ciphertext ظپظ‚ط·
-     * tag ط¯ط§ط®ظ„ ts-id
+     * مهم:
+     * body = ciphertext فقط
+     * tag داخل ts-id
      */
 
     const tsId =
@@ -909,7 +960,6 @@ function encryptRequest(requestJson) {
         tsId
     };
 }
-
 
 // ============================================================
 // DECRYPT RESPONSE
@@ -988,7 +1038,6 @@ function decryptResponse(
     ]);
 }
 
-
 // ============================================================
 // FLEXIBLE RESPONSE DECOMPRESSION
 // ============================================================
@@ -1029,7 +1078,6 @@ function decompressResponse(
         );
     }
 
-
     // --------------------------------
     // ZLIB
     // --------------------------------
@@ -1053,7 +1101,6 @@ function decompressResponse(
             "[FetchCity] ZLIB failed"
         );
     }
-
 
     // --------------------------------
     // RAW DEFLATE
@@ -1079,7 +1126,6 @@ function decompressResponse(
         );
     }
 
-
     // --------------------------------
     // Plain JSON
     // --------------------------------
@@ -1101,14 +1147,12 @@ function decompressResponse(
         return decrypted;
     }
 
-
     throw new Error(
         "طھط¹ط°ط± ظپظƒ ط¶ط؛ط· ط§ط³طھط¬ط§ط¨ط© FetchCity. " +
         `magic=${bufferMagic(decrypted)} ` +
         `size=${decrypted.length}`
     );
 }
-
 
 // ============================================================
 // REQUEST FETCHCITY
@@ -1150,6 +1194,7 @@ async function requestFetchCity(
                     method: "POST",
 
                     headers: {
+
                         "Accept-Encoding":
                             "identity",
 
@@ -1169,7 +1214,7 @@ async function requestFetchCity(
                             "fver",
 
                         /*
-                         * ط§ظ„ظ‚ظٹظ…ط© ط§ظ„ظ‚ط¯ظٹظ…ط© ط§ظ„ط¹ط§ظ…ظ„ط©
+                         * القيمة القديمة العاملة
                          */
                         "ts-gpid":
                             "new",
@@ -1179,7 +1224,7 @@ async function requestFetchCity(
                     },
 
                     /*
-                     * ظ„ط§ ظ†ط¶ظٹظپ GCM tag ظ‡ظ†ط§
+                     * لا نضيف GCM tag هنا
                      */
                     body:
                         encrypted.body,
@@ -1275,7 +1320,6 @@ async function requestFetchCity(
     }
 }
 
-
 // ============================================================
 // HANDLE FETCHCITY
 // ============================================================
@@ -1328,7 +1372,7 @@ async function handleFetchCity(
         );
 
         // ================================================
-        // ط§ظ„ط·ظ„ط¨ ط§ظ„ظ‚ط¯ظٹظ…
+        // الطلب القديم
         // ================================================
 
         const json =
@@ -1387,6 +1431,19 @@ async function handleFetchCity(
         );
 
         // ================================================
+        // XML MODIFICATION
+        // ================================================
+
+        const modifiedXml =
+            editCityXml(
+                xml
+            );
+
+        console.log(
+            `[FetchCity] Modified XML size=${modifiedXml.length}`
+        );
+
+        // ================================================
         // Return XML
         // ================================================
 
@@ -1403,7 +1460,7 @@ async function handleFetchCity(
         );
 
         return res.send(
-            xml
+            modifiedXml
         );
 
     } catch (err) {
@@ -1429,17 +1486,16 @@ async function handleFetchCity(
     }
 }
 
-
 // ============================================================
 // ROUTES
 // ============================================================
 
 /*
- * ظ…ط¹:
+ * مع:
  *
  * app.use("/api", fetchCity)
  *
- * ظٹط¹ظ…ظ„:
+ * يعمل:
  *
  * POST /api/
  * POST /api/fetch-city
@@ -1454,7 +1510,6 @@ router.post(
     "/fetch-city",
     handleFetchCity
 );
-
 
 // ============================================================
 // EXPORT
