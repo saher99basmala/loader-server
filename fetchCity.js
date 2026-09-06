@@ -62,7 +62,7 @@ function u32le(buf, offset) {
 
     if (offset + 4 > buf.length) {
         throw new Error(
-            "u32le خارج حدود البيانات"
+            `u32le خارج حدود البيانات: offset=${offset}, size=${buf.length}`
         );
     }
 
@@ -102,6 +102,28 @@ function bufferMagic(buf) {
         buf.subarray(
             0,
             Math.min(8, buf.length)
+        )
+    )
+        .map(
+            x =>
+                x
+                    .toString(16)
+                    .padStart(2, "0")
+        )
+        .join(" ");
+}
+
+
+function bufferHex(buf, count = 32) {
+
+    if (!buf || !buf.length) {
+        return "";
+    }
+
+    return Array.from(
+        buf.subarray(
+            0,
+            Math.min(count, buf.length)
         )
     )
         .map(
@@ -264,6 +286,9 @@ function trimJsonBuffer(buf) {
 // ============================================================
 // FETCHCITY 0x79
 // ============================================================
+// هذه الخوارزمية خاصة بملفات LocalInfo / IDs.
+// لا يتم افتراض أنها طبقة بعد 0x54 في FetchCity.
+// ============================================================
 
 function build79Table(seed) {
 
@@ -305,6 +330,13 @@ function xorDecode79(raw) {
 
         throw new Error(
             `بيانات 0x79 قصيرة: ${raw.length}`
+        );
+    }
+
+    if (raw[0] !== 0x79) {
+
+        throw new Error(
+            `Magic 0x79 غير صحيح: ${bufferMagic(raw)}`
         );
     }
 
@@ -363,6 +395,10 @@ function xorDecode79(raw) {
         build79Table(
             seed
         );
+
+    console.log(
+        `[79] header=${headerValue} total=${total} processLen=${processLen} seed=${seed}`
+    );
 
     const out =
         Buffer.from(
@@ -500,63 +536,44 @@ function decode54Layer(raw) {
             ) & 0xFF;
     }
 
+    console.log(
+        `[54] processLen=${processLen} output=${out.length}`
+    );
+
+    console.log(
+        `[54] output magic=${bufferMagic(out)}`
+    );
+
+    console.log(
+        `[54] output first32=${bufferHex(out, 32)}`
+    );
+
     return out;
 }
 
 
 // ============================================================
-// FETCHCITY TRANSPORT
-// ============================================================
-
-function decodeTransport(raw) {
-
-    if (!Buffer.isBuffer(raw)) {
-        raw = Buffer.from(raw);
-    }
-
-    if (raw.length === 0) {
-        return raw;
-    }
-
-    const type =
-        raw[0];
-
-    console.log(
-        `[FetchCity] SaveCrypto type=0x${type
-            .toString(16)
-            .padStart(2, "0")}`
-    );
-
-    switch (type) {
-
-        case 0x79:
-            return xorDecode79(raw);
-
-        case 0x54:
-            return decode54Layer(raw);
-
-        case 0x1F:
-            return raw;
-
-        default:
-
-            throw new Error(
-                `نوع FetchCity غير مدعوم حالياً: 0x${type
-                    .toString(16)
-                    .padStart(2, "0")}`
-            );
-    }
-}
-
-
-// ============================================================
-// FETCHCITY LZ4
+// LZ4
 // ============================================================
 
 function lz4DecompressBlock(
     src,
     expectedSize
 ) {
+
+    if (!Buffer.isBuffer(src)) {
+        src = Buffer.from(src);
+    }
+
+    if (
+        expectedSize <= 0 ||
+        expectedSize > 1024 * 1024 * 512
+    ) {
+
+        throw new Error(
+            `LZ4 expectedSize غير صالح: ${expectedSize}`
+        );
+    }
 
     let srcPos = 0;
     let dstPos = 0;
@@ -642,9 +659,11 @@ function lz4DecompressBlock(
         dstPos +=
             literalLength;
 
+        /*
+         * آخر sequence في LZ4 يمكن أن يكون literals فقط.
+         */
         if (
-            srcPos >=
-            src.length
+            srcPos >= src.length
         ) {
 
             break;
@@ -679,8 +698,7 @@ function lz4DecompressBlock(
         }
 
         if (
-            offset >
-            dstPos
+            offset > dstPos
         ) {
 
             throw new Error(
@@ -733,6 +751,11 @@ function lz4DecompressBlock(
             );
         }
 
+        /*
+         * مهم:
+         * النسخ يتم byte-by-byte حتى يعمل overlap
+         * الصحيح الخاص بـ LZ4.
+         */
         for (
             let i = 0;
             i < matchLength;
@@ -800,6 +823,10 @@ function decodeLz4Container(raw) {
 
     console.log(
         `[FetchCity] LZ4 expectedSize=${expectedSize}, compressed=${compressed.length}`
+    );
+
+    console.log(
+        `[FetchCity] LZ4 compressed first32=${bufferHex(compressed, 32)}`
     );
 
     return lz4DecompressBlock(
@@ -952,7 +979,22 @@ function editCityXml(xml) {
 
 
 // ============================================================
-// COMPLETE FETCHCITY SAVE DECODER
+// FETCHCITY SAVE DECODER
+// ============================================================
+//
+// المسار:
+//
+// FetchCity JSON
+//      ↓
+// base64
+//      ↓
+// 0x54
+//      ↓
+// LZ4 إذا كان magic فعلاً
+//      ↓
+// XML
+//
+// لا يتم تشغيل 0x79 تلقائياً هنا.
 // ============================================================
 
 function decodeSaveCity(cityBytes) {
@@ -966,22 +1008,200 @@ function decodeSaveCity(cityBytes) {
         `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
     );
 
-    let rounds = 0;
+    console.log(
+        `[FetchCity] cityBytes first32=${bufferHex(data, 32)}`
+    );
 
-    while (
-        data.length > 0 &&
-        rounds < 8
+
+    // --------------------------------------------------------
+    // Round 1
+    // --------------------------------------------------------
+
+    if (
+        looksLikeXml(data)
     ) {
 
-        rounds++;
+        console.log(
+            "[FetchCity] XML already available"
+        );
+
+        return trimXml(
+            data
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // gzip
+    // --------------------------------------------------------
+
+    if (
+        isGzip(data)
+    ) {
+
+        console.log(
+            "[FetchCity] gzip detected"
+        );
+
+        data =
+            zlib.gunzipSync(
+                data
+            );
+
+        console.log(
+            `[FetchCity] after gzip size=${data.length} magic=${bufferMagic(data)}`
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // 0x54
+    // --------------------------------------------------------
+
+    if (
+        data.length > 0 &&
+        data[0] === 0x54
+    ) {
+
+        console.log(
+            "[FetchCity] 0x54 detected"
+        );
+
+        data =
+            decode54Layer(
+                data
+            );
+
+        console.log(
+            `[FetchCity] AFTER 0x54 size=${data.length} magic=${bufferMagic(data)}`
+        );
+
+        console.log(
+            `[FetchCity] AFTER 0x54 first32=${bufferHex(data, 32)}`
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // XML بعد 0x54
+    // --------------------------------------------------------
+
+    if (
+        looksLikeXml(data)
+    ) {
+
+        console.log(
+            "[FetchCity] XML detected after 0x54"
+        );
+
+        return trimXml(
+            data
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // LZ4 بعد 0x54
+    // --------------------------------------------------------
+
+    if (
+        isLz4Magic(data)
+    ) {
+
+        console.log(
+            "[FetchCity] LZ4 detected after 0x54"
+        );
+
+        data =
+            decodeLz4Container(
+                data
+            );
+
+        console.log(
+            `[FetchCity] AFTER LZ4 size=${data.length} magic=${bufferMagic(data)}`
+        );
+
+        console.log(
+            `[FetchCity] AFTER LZ4 first32=${bufferHex(data, 32)}`
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // XML بعد LZ4
+    // --------------------------------------------------------
+
+    if (
+        looksLikeXml(data)
+    ) {
+
+        console.log(
+            "[FetchCity] XML detected after LZ4"
+        );
+
+        return trimXml(
+            data
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // JSON
+    // --------------------------------------------------------
+
+    if (
+        looksLikeTextJson(data)
+    ) {
+
+        console.log(
+            "[FetchCity] JSON detected"
+        );
+
+        return trimJsonBuffer(
+            data
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // إذا ظهر 0x79 هنا
+    // لا نفكه تلقائياً لأن 0x79 معروف حالياً
+    // كمسار LocalInfo.
+    // --------------------------------------------------------
+
+    if (
+        data.length > 0 &&
+        data[0] === 0x79
+    ) {
+
+        throw new Error(
+            "ظهر 0x79 بعد مسار FetchCity/0x54. " +
+            "هذا يحتاج تأكيد ترتيب الطبقات قبل تطبيق خوارزمية LocalInfo 0x79. " +
+            `magic=${bufferMagic(data)} size=${data.length} first32=${bufferHex(data, 32)}`
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // gzip بعد أي طبقة
+    // --------------------------------------------------------
+
+    if (
+        isGzip(data)
+    ) {
+
+        console.log(
+            "[FetchCity] gzip detected in final stage"
+        );
+
+        data =
+            zlib.gunzipSync(
+                data
+            );
 
         if (
             looksLikeXml(data)
         ) {
-
-            console.log(
-                `[FetchCity] XML detected after ${rounds - 1} layer(s)`
-            );
 
             return trimXml(
                 data
@@ -989,60 +1209,25 @@ function decodeSaveCity(cityBytes) {
         }
 
         if (
-            isLz4Magic(data)
+            looksLikeTextJson(data)
         ) {
 
-            data =
-                decodeLz4Container(
-                    data
-                );
-
-            continue;
+            return trimJsonBuffer(
+                data
+            );
         }
-
-        if (
-            isGzip(data)
-        ) {
-
-            data =
-                zlib.gunzipSync(
-                    data
-                );
-
-            continue;
-        }
-
-        const type =
-            data[0];
-
-        if (
-            type === 0x79 ||
-            type === 0x54 ||
-            type === 0x1F
-        ) {
-
-            data =
-                decodeTransport(
-                    data
-                );
-
-            continue;
-        }
-
-        throw new Error(
-            `تم فك طبقات FetchCity لكن المرحلة التالية غير معروفة. Magic=${bufferMagic(data)}`
-        );
     }
 
-    if (
-        looksLikeXml(data)
-    ) {
 
-        return trimXml(data);
-    }
+    // --------------------------------------------------------
+    // غير معروف
+    // --------------------------------------------------------
 
     throw new Error(
-        `تعذر الوصول إلى XML. Magic=${bufferMagic(data)}`
+        "تعذر الوصول إلى XML بعد فك FetchCity. " +
+        `size=${data.length} ` +
+        `magic=${bufferMagic(data)} ` +
+        `first32=${bufferHex(data, 32)}`
     );
 }
 
@@ -1172,6 +1357,15 @@ function decompressResponse(
     decrypted
 ) {
 
+    console.log(
+        `[FetchCity] decrypted size=${decrypted.length} magic=${bufferMagic(decrypted)}`
+    );
+
+    console.log(
+        `[FetchCity] decrypted first32=${bufferHex(decrypted, 32)}`
+    );
+
+
     try {
 
         return zlib.gunzipSync(
@@ -1179,6 +1373,7 @@ function decompressResponse(
         );
 
     } catch (_) {}
+
 
     try {
 
@@ -1188,6 +1383,7 @@ function decompressResponse(
 
     } catch (_) {}
 
+
     try {
 
         return zlib.inflateRawSync(
@@ -1196,23 +1392,42 @@ function decompressResponse(
 
     } catch (_) {}
 
-    const text =
-        decrypted
-            .toString("utf8")
-            .trim();
 
+    /*
+     * أحياناً يكون المحتوى JSON مباشرة.
+     */
     if (
-        text.startsWith("{") ||
-        text.startsWith("[")
+        looksLikeTextJson(
+            decrypted
+        )
     ) {
 
         return decrypted;
     }
 
+
+    /*
+     * وأحياناً يمكن أن يكون binary SaveCrypto
+     * مباشرة بعد AES.
+     */
+    if (
+        decrypted.length > 0 &&
+        (
+            decrypted[0] === 0x54 ||
+            decrypted[0] === 0x79 ||
+            isLz4Magic(decrypted)
+        )
+    ) {
+
+        return decrypted;
+    }
+
+
     throw new Error(
         "تعذر فك ضغط استجابة FetchCity. " +
         `magic=${bufferMagic(decrypted)} ` +
-        `size=${decrypted.length}`
+        `size=${decrypted.length} ` +
+        `first32=${bufferHex(decrypted, 32)}`
     );
 }
 
@@ -1291,10 +1506,17 @@ async function requestFetchCity(
                 }
             );
 
+
         const responseBody =
             Buffer.from(
                 await response.arrayBuffer()
             );
+
+
+        console.log(
+            `[FetchCity] upstream HTTP=${response.status} size=${responseBody.length} magic=${bufferMagic(responseBody)}`
+        );
+
 
         if (!response.ok) {
 
@@ -1304,10 +1526,12 @@ async function requestFetchCity(
             );
         }
 
+
         const responseTsId =
             response.headers.get(
                 "ts-id"
             );
+
 
         if (!responseTsId) {
 
@@ -1316,20 +1540,46 @@ async function requestFetchCity(
             );
         }
 
+
         const decrypted =
             decryptResponse(
                 responseBody,
                 responseTsId
             );
 
+
         const uncompressed =
             decompressResponse(
                 decrypted
             );
 
-        return JSON.parse(
-            uncompressed.toString("utf8")
+
+        console.log(
+            `[FetchCity] response data size=${uncompressed.length} magic=${bufferMagic(uncompressed)}`
         );
+
+
+        const text =
+            uncompressed
+                .toString("utf8")
+                .trim();
+
+
+        try {
+
+            return JSON.parse(
+                text
+            );
+
+        } catch (error) {
+
+            throw new Error(
+                "FetchCity response بعد AES/decompression ليس JSON صالح. " +
+                `magic=${bufferMagic(uncompressed)} ` +
+                `size=${uncompressed.length} ` +
+                `first32=${bufferHex(uncompressed, 32)}`
+            );
+        }
 
     } finally {
 
@@ -1343,16 +1593,19 @@ async function requestFetchCity(
 // ============================================================
 // FETCHCITY API
 // ============================================================
+//
 // Lua يرسل فقط:
 //
 // {
-//     city_id: "...",
-//     city_name: "...",
-//     level: 16
+//     "city_id": "...",
+//     "city_name": "...",
+//     "level": 16
 // }
 //
-// السيرفر يستخدم city_id فقط لجلب FetchCity.
-// city_name و level يتم استقبالهما وتسجيلهما فقط.
+// city_id = SaveId أو city_id حسب المصدر.
+// السيرفر يستخدم city_id كـ fetchCityId.
+//
+// cityVer = 0 داخلياً.
 // ============================================================
 
 async function handleFetchCity(
@@ -1363,13 +1616,9 @@ async function handleFetchCity(
     try {
 
         const body =
-            req.body || {};
+            req.body ||
+            {};
 
-
-        // ----------------------------------------------------
-        // IMPORTANT:
-        // نستقبل city_id فقط كمعرف الجلب
-        // ----------------------------------------------------
 
         const cityId =
             String(
@@ -1388,10 +1637,6 @@ async function handleFetchCity(
                 body.level || 0
             );
 
-
-        // ----------------------------------------------------
-        // التحقق
-        // ----------------------------------------------------
 
         if (!cityId) {
 
@@ -1434,13 +1679,8 @@ async function handleFetchCity(
         );
 
 
-        // ----------------------------------------------------
-        // FetchCity يستخدم city_id
-        //
-        // cityVer = 0 داخليًا
-        // ----------------------------------------------------
-
-        const cityVer = 0;
+        const cityVer =
+            0;
 
 
         const json =
@@ -1469,6 +1709,11 @@ async function handleFetchCity(
             );
 
 
+        console.log(
+            `[FetchCity] result.data decoded size=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
+        );
+
+
         const xml =
             decodeSaveCity(
                 cityBytes
@@ -1480,10 +1725,6 @@ async function handleFetchCity(
                 xml
             );
 
-
-        // ----------------------------------------------------
-        // XML
-        // ----------------------------------------------------
 
         res.set(
             "Content-Type",
@@ -2221,6 +2462,7 @@ function decodeFriendFile(
         );
     }
 
+
     let payload =
         friendXorDecode(
             data
@@ -2393,7 +2635,6 @@ function xmlDecodeEntities(
     let text =
         String(value);
 
-
     text =
         text.replace(
             /&#x([0-9a-fA-F]+);/g,
@@ -2415,7 +2656,6 @@ function xmlDecodeEntities(
             }
         );
 
-
     text =
         text.replace(
             /&#([0-9]+);/g,
@@ -2436,7 +2676,6 @@ function xmlDecodeEntities(
                 }
             }
         );
-
 
     text =
         text.replace(
