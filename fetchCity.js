@@ -9,6 +9,7 @@ const fetch = require("node-fetch");
 
 const router = express.Router();
 
+
 // ============================================================
 // CONFIG
 // ============================================================
@@ -25,8 +26,9 @@ const ENDPOINT =
 const TIMEOUT_MS =
     Number(process.env.FETCHCITY_TIMEOUT_MS || 25000);
 
+
 // ============================================================
-// SAVECRYPTO CONSTANTS - FETCHCITY
+// SAVECRYPTO CONSTANTS
 // ============================================================
 
 const TABLE_SIZE = 0x2D7;
@@ -41,6 +43,7 @@ const LZ4_MAGIC = Buffer.from([
     0x18
 ]);
 
+
 // ============================================================
 // FETCH54 TABLE
 // ============================================================
@@ -50,8 +53,9 @@ const FETCH54_TABLE = Buffer.from(
     "base64"
 );
 
+
 // ============================================================
-// UTILS
+// GENERAL UTILS
 // ============================================================
 
 function u32le(buf, offset) {
@@ -72,17 +76,21 @@ function u32le(buf, offset) {
     );
 }
 
+
 function xor32(a, b) {
     return (a ^ b) >>> 0;
 }
+
 
 function add32(a, b) {
     return (a + b) >>> 0;
 }
 
+
 function sub32(a, b) {
     return (a - b) >>> 0;
 }
+
 
 function bufferMagic(buf) {
 
@@ -105,6 +113,7 @@ function bufferMagic(buf) {
         .join(" ");
 }
 
+
 function isLz4Magic(buf) {
 
     return (
@@ -117,6 +126,7 @@ function isLz4Magic(buf) {
     );
 }
 
+
 function isGzip(buf) {
 
     return (
@@ -126,6 +136,7 @@ function isGzip(buf) {
         buf[1] === 0x8B
     );
 }
+
 
 function looksLikeTextJson(buf) {
 
@@ -149,6 +160,7 @@ function looksLikeTextJson(buf) {
     );
 }
 
+
 function looksLikeXml(buf) {
 
     if (!buf || buf.length === 0) {
@@ -171,6 +183,7 @@ function looksLikeXml(buf) {
         text.startsWith("<")
     );
 }
+
 
 function trimJsonBuffer(buf) {
 
@@ -247,6 +260,7 @@ function trimJsonBuffer(buf) {
     );
 }
 
+
 // ============================================================
 // FETCHCITY 0x79
 // ============================================================
@@ -279,6 +293,7 @@ function build79Table(seed) {
 
     return table;
 }
+
 
 function xorDecode79(raw) {
 
@@ -397,6 +412,7 @@ function xorDecode79(raw) {
     return out;
 }
 
+
 // ============================================================
 // FETCHCITY 0x54
 // ============================================================
@@ -487,6 +503,7 @@ function decode54Layer(raw) {
     return out;
 }
 
+
 // ============================================================
 // FETCHCITY TRANSPORT
 // ============================================================
@@ -530,6 +547,7 @@ function decodeTransport(raw) {
             );
     }
 }
+
 
 // ============================================================
 // FETCHCITY LZ4
@@ -748,6 +766,7 @@ function lz4DecompressBlock(
     return output;
 }
 
+
 function decodeLz4Container(raw) {
 
     if (
@@ -788,6 +807,7 @@ function decodeLz4Container(raw) {
         expectedSize
     );
 }
+
 
 // ============================================================
 // FETCHCITY XML
@@ -854,6 +874,7 @@ function trimXml(buf) {
         end
     );
 }
+
 
 function editCityXml(xml) {
 
@@ -928,6 +949,7 @@ function editCityXml(xml) {
         "utf8"
     );
 }
+
 
 // ============================================================
 // COMPLETE FETCHCITY SAVE DECODER
@@ -1024,6 +1046,7 @@ function decodeSaveCity(cityBytes) {
     );
 }
 
+
 // ============================================================
 // AES REQUEST
 // ============================================================
@@ -1072,6 +1095,7 @@ function encryptRequest(
     };
 }
 
+
 // ============================================================
 // AES RESPONSE
 // ============================================================
@@ -1102,8 +1126,7 @@ function decryptResponse(
         tsId.slice(3);
 
     if (
-        hex.length <
-        56
+        hex.length < 56
     ) {
 
         throw new Error(
@@ -1139,6 +1162,7 @@ function decryptResponse(
         decipher.final()
     ]);
 }
+
 
 // ============================================================
 // RESPONSE DECOMPRESSION
@@ -1191,6 +1215,7 @@ function decompressResponse(
         `size=${decrypted.length}`
     );
 }
+
 
 // ============================================================
 // REQUEST PLAYRIX
@@ -1313,6 +1338,7 @@ async function requestFetchCity(
         );
     }
 }
+
 
 // ============================================================
 // FETCHCITY API
@@ -1437,15 +1463,18 @@ async function handleFetchCity(
     }
 }
 
+
 // ============================================================
 // FRIEND FILE DECODER
 // ============================================================
 
 const FRIEND_TABLE_SIZE = 0x2D7;
 
+
 function friendU32(v) {
     return v >>> 0;
 }
+
 
 function friendReadU32(
     data,
@@ -1470,6 +1499,7 @@ function friendReadU32(
     ) >>> 0;
 }
 
+
 function friendU32Bytes(v) {
 
     v =
@@ -1482,6 +1512,7 @@ function friendU32Bytes(v) {
         (v >>> 24) & 0xff
     ]);
 }
+
 
 function friendMmh2(
     data,
@@ -1607,6 +1638,7 @@ function friendMmh2(
     return h >>> 0;
 }
 
+
 function friendGetHashTable(
     length,
     seed
@@ -1662,6 +1694,7 @@ function friendGetHashTable(
 
     return table;
 }
+
 
 function friendXorDecode(
     data
@@ -1800,6 +1833,7 @@ function friendXorDecode(
     return out;
 }
 
+
 // ============================================================
 // FRIEND LZ4
 // ============================================================
@@ -1817,6 +1851,7 @@ function friendIsLz4(
         data[3] === 0x18
     );
 }
+
 
 function friendLz4Decompress(
     data
@@ -2058,6 +2093,7 @@ function friendLz4Decompress(
     return output;
 }
 
+
 // ============================================================
 // FRIEND FILE -> DATA
 // ============================================================
@@ -2087,6 +2123,7 @@ function decodeFriendFile(
         `[IDs] decode input magic=${bufferMagic(data)}`
     );
 
+
     // --------------------------------------------------------
     // JSON مباشر
     // --------------------------------------------------------
@@ -2104,6 +2141,7 @@ function decodeFriendFile(
         );
     }
 
+
     // --------------------------------------------------------
     // XML مباشر
     // --------------------------------------------------------
@@ -2120,6 +2158,7 @@ function decodeFriendFile(
             data
         );
     }
+
 
     // --------------------------------------------------------
     // الملف المشفر 0x79
@@ -2147,6 +2186,7 @@ function decodeFriendFile(
     console.log(
         `[IDs] after 0x79 magic=${bufferMagic(payload)}`
     );
+
 
     // --------------------------------------------------------
     // بعد 0x79 قد يكون LZ4
@@ -2176,6 +2216,7 @@ function decodeFriendFile(
         );
     }
 
+
     // --------------------------------------------------------
     // XML بعد الفك
     // --------------------------------------------------------
@@ -2193,6 +2234,7 @@ function decodeFriendFile(
         );
     }
 
+
     // --------------------------------------------------------
     // JSON بعد الفك
     // --------------------------------------------------------
@@ -2209,6 +2251,7 @@ function decodeFriendFile(
             payload
         );
     }
+
 
     // --------------------------------------------------------
     // GZIP
@@ -2250,6 +2293,7 @@ function decodeFriendFile(
     );
 }
 
+
 function friendTrimData(
     data
 ) {
@@ -2289,6 +2333,7 @@ function friendTrimData(
     return data;
 }
 
+
 // ============================================================
 // XML ATTRIBUTE HELPERS
 // ============================================================
@@ -2319,34 +2364,130 @@ function parseXmlAttributes(
     return attrs;
 }
 
+
+// ============================================================
+// XML ENTITY DECODER
+// ============================================================
+
 function xmlDecodeEntities(
     value
 ) {
 
-    return String(
-        value || ""
-    )
-        .replace(
+    if (
+        value === undefined ||
+        value === null
+    ) {
+
+        return "";
+    }
+
+    let text =
+        String(value);
+
+
+    // مهم:
+    // نفك amp أخيراً حتى لا نكسر
+    // &amp;quot; ونحوها
+
+    text =
+        text.replace(
+            /&#x([0-9a-fA-F]+);/g,
+            function(_, hex) {
+
+                try {
+
+                    return String.fromCodePoint(
+                        parseInt(
+                            hex,
+                            16
+                        )
+                    );
+
+                } catch (_) {
+
+                    return _;
+                }
+            }
+        );
+
+
+    text =
+        text.replace(
+            /&#([0-9]+);/g,
+            function(_, dec) {
+
+                try {
+
+                    return String.fromCodePoint(
+                        parseInt(
+                            dec,
+                            10
+                        )
+                    );
+
+                } catch (_) {
+
+                    return _;
+                }
+            }
+        );
+
+
+    text =
+        text.replace(
             /&quot;/g,
             '"'
-        )
-        .replace(
+        );
+
+    text =
+        text.replace(
             /&apos;/g,
             "'"
-        )
-        .replace(
+        );
+
+    text =
+        text.replace(
             /&lt;/g,
             "<"
-        )
-        .replace(
+        );
+
+    text =
+        text.replace(
             /&gt;/g,
             ">"
-        )
-        .replace(
+        );
+
+    text =
+        text.replace(
             /&amp;/g,
             "&"
         );
+
+    return text;
 }
+
+
+// ============================================================
+// CLEAN STRING
+// ============================================================
+
+function cleanString(
+    value
+) {
+
+    if (
+        value === undefined ||
+        value === null
+    ) {
+
+        return "";
+    }
+
+    return String(
+        value
+    ).trim();
+}
+
 
 // ============================================================
 // EXTRACT FRIENDS FROM XML
@@ -2391,6 +2532,7 @@ function extractFriendsFromXml(
         if (
             seen.has(cityId)
         ) {
+
             continue;
         }
 
@@ -2437,8 +2579,70 @@ function extractFriendsFromXml(
     return friends;
 }
 
+
 // ============================================================
-// EXTRACT ProfilesCache / saveId FROM XML
+// FIND XML TAG SAFELY
+// ============================================================
+
+function extractComponentTags(
+    xml
+) {
+
+    const tags = [];
+
+    const regex =
+        /<OtherPlayerProfilesLogicFeatureComponent\b[\s\S]*?\/?>/gi;
+
+    let match;
+
+    while (
+        (match = regex.exec(xml)) !== null
+    ) {
+
+        tags.push(
+            match[0]
+        );
+    }
+
+    return tags;
+}
+
+
+// ============================================================
+// GET ONE XML ATTRIBUTE
+// ============================================================
+
+function getXmlAttribute(
+    tagText,
+    attributeName
+) {
+
+    const regex =
+        new RegExp(
+            "\\b" +
+            attributeName.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                "\\$&"
+            ) +
+            "\\s*=\\s*(['\"])([\\s\\S]*?)\\1",
+            "i"
+        );
+
+    const match =
+        regex.exec(
+            tagText
+        );
+
+    if (!match) {
+        return null;
+    }
+
+    return match[2];
+}
+
+
+// ============================================================
+// EXTRACT ProfilesCache
 // ============================================================
 
 function extractProfilesCacheFromXml(
@@ -2450,22 +2654,72 @@ function extractProfilesCacheFromXml(
     const seen =
         new Set();
 
-    const componentRegex =
-        /<OtherPlayerProfilesLogicFeatureComponent\b[^>]*\bProfilesCache\s*=\s*(['"])([\s\S]*?)\1[^>]*\/?>/gi;
+    const componentTags =
+        extractComponentTags(
+            xml
+        );
 
-    let match;
+    console.log(
+        `[IDs] OtherPlayerProfilesLogicFeatureComponent tags=${componentTags.length}`
+    );
 
-    while (
-        (match = componentRegex.exec(xml)) !== null
+
+    for (
+        const tag of componentTags
     ) {
 
         let raw =
-            match[2];
+            getXmlAttribute(
+                tag,
+                "ProfilesCache"
+            );
+
+        if (
+            raw === null
+        ) {
+
+            console.log(
+                "[IDs] ProfilesCache attribute not found in component"
+            );
+
+            continue;
+        }
+
+
+        console.log(
+            `[IDs] ProfilesCache raw length=${raw.length}`
+        );
+
+
+        // ----------------------------------------------------
+        // XML entities
+        // ----------------------------------------------------
 
         raw =
             xmlDecodeEntities(
                 raw
             );
+
+
+        // ----------------------------------------------------
+        // تنظيف بسيط
+        // ----------------------------------------------------
+
+        raw =
+            raw.trim();
+
+
+        if (
+            !raw.startsWith("[")
+        ) {
+
+            console.log(
+                `[IDs] ProfilesCache does not start with [. first=${raw.slice(0, 80)}`
+            );
+
+            continue;
+        }
+
 
         let profiles;
 
@@ -2485,8 +2739,17 @@ function extractProfilesCacheFromXml(
                 error.message
             );
 
+            console.error(
+                "[IDs] ProfilesCache first 500 chars:",
+                raw.slice(
+                    0,
+                    500
+                )
+            );
+
             continue;
         }
+
 
         if (
             !Array.isArray(
@@ -2494,8 +2757,22 @@ function extractProfilesCacheFromXml(
             )
         ) {
 
+            console.log(
+                "[IDs] ProfilesCache JSON is not an array"
+            );
+
             continue;
         }
+
+
+        console.log(
+            `[IDs] ProfilesCache profiles=${profiles.length}`
+        );
+
+
+        // ----------------------------------------------------
+        // استخراج saveId
+        // ----------------------------------------------------
 
         for (
             const profile of profiles
@@ -2509,25 +2786,48 @@ function extractProfilesCacheFromXml(
                 continue;
             }
 
+
             const saveId =
                 cleanString(
                     profile.saveId
                 );
 
+
             if (!saveId) {
                 continue;
             }
 
+
             if (
-                seen.has(saveId)
+                seen.has(
+                    saveId
+                )
             ) {
 
                 continue;
             }
 
+
             seen.add(
                 saveId
             );
+
+
+            const name =
+                cleanString(
+                    profile.cityname ??
+                    profile.cityName ??
+                    profile.name ??
+                    ""
+                );
+
+
+            const level =
+                cleanString(
+                    profile.level ??
+                    ""
+                );
+
 
             saveIds.push({
 
@@ -2535,24 +2835,22 @@ function extractProfilesCacheFromXml(
                     saveId,
 
                 name:
-                    cleanString(
-                        profile.cityname ??
-                        profile.cityName ??
-                        profile.name ??
-                        ""
-                    ),
+                    name,
 
                 level:
-                    cleanString(
-                        profile.level ??
-                        ""
-                    )
+                    level
             });
         }
     }
 
+
+    console.log(
+        `[IDs] extracted saveIds=${saveIds.length}`
+    );
+
     return saveIds;
 }
+
 
 // ============================================================
 // EXTRACT BOTH XML LISTS
@@ -2578,24 +2876,10 @@ function extractXmlLists(
     };
 }
 
+
 // ============================================================
-// JSON RECORD EXTRACTION
+// JSON HELPERS
 // ============================================================
-
-function cleanString(value) {
-
-    if (
-        value === undefined ||
-        value === null
-    ) {
-
-        return "";
-    }
-
-    return String(
-        value
-    ).trim();
-}
 
 function firstValue(
     object,
@@ -2629,6 +2913,11 @@ function firstValue(
     return "";
 }
 
+
+// ============================================================
+// JSON SAVE RECORDS
+// ============================================================
+
 function extractSaveRecords(
     root
 ) {
@@ -2637,6 +2926,7 @@ function extractSaveRecords(
 
     const seen =
         new Set();
+
 
     function visit(
         value,
@@ -2662,6 +2952,7 @@ function extractSaveRecords(
             return;
         }
 
+
         if (
             !value ||
             typeof value !== "object"
@@ -2669,6 +2960,7 @@ function extractSaveRecords(
 
             return;
         }
+
 
         const ownName =
             cleanString(
@@ -2687,6 +2979,7 @@ function extractSaveRecords(
                 )
             );
 
+
         const ownLevel =
             cleanString(
                 firstValue(
@@ -2697,6 +2990,7 @@ function extractSaveRecords(
                     ]
                 )
             );
+
 
         const saveId =
             cleanString(
@@ -2711,15 +3005,18 @@ function extractSaveRecords(
                 )
             );
 
+
         const name =
             ownName ||
             inheritedName ||
             "";
 
+
         const level =
             ownLevel ||
             inheritedLevel ||
             "";
+
 
         if (
             saveId
@@ -2732,13 +3029,17 @@ function extractSaveRecords(
                     level
                 ].join("|");
 
+
             if (
-                !seen.has(key)
+                !seen.has(
+                    key
+                )
             ) {
 
                 seen.add(
                     key
                 );
+
 
                 records.push({
 
@@ -2778,6 +3079,7 @@ function extractSaveRecords(
             }
         }
 
+
         for (
             const key of Object.keys(value)
         ) {
@@ -2799,14 +3101,17 @@ function extractSaveRecords(
         }
     }
 
+
     visit(
         root,
         "",
         ""
     );
 
+
     return records;
 }
+
 
 // ============================================================
 // DECODE FRIENDS API
@@ -2822,8 +3127,9 @@ async function handleDecodeFriends(
         const encryptedFile =
             req.body;
 
+
         // ----------------------------------------------------
-        // تأكد أن Lua أرسل الملف كـ octet-stream
+        // يجب أن يكون Buffer
         // ----------------------------------------------------
 
         if (
@@ -2843,6 +3149,7 @@ async function handleDecodeFriends(
                 });
         }
 
+
         if (
             encryptedFile.length === 0
         ) {
@@ -2858,6 +3165,7 @@ async function handleDecodeFriends(
                 });
         }
 
+
         console.log(
             `[IDs] encrypted file size=${encryptedFile.length}`
         );
@@ -2865,6 +3173,7 @@ async function handleDecodeFriends(
         console.log(
             `[IDs] encrypted magic=${bufferMagic(encryptedFile)}`
         );
+
 
         // ----------------------------------------------------
         // فك الملف
@@ -2918,6 +3227,7 @@ async function handleDecodeFriends(
                 });
         }
 
+
         if (
             !Buffer.isBuffer(
                 decoded
@@ -2930,6 +3240,7 @@ async function handleDecodeFriends(
                 );
         }
 
+
         const decodedSize =
             decoded.length;
 
@@ -2937,6 +3248,7 @@ async function handleDecodeFriends(
             bufferMagic(
                 decoded
             );
+
 
         console.log(
             `[IDs] decoded size=${decodedSize}`
@@ -2946,9 +3258,10 @@ async function handleDecodeFriends(
             `[IDs] decoded magic=${decodedMagic}`
         );
 
-        // ----------------------------------------------------
+
+        // ====================================================
         // XML
-        // ----------------------------------------------------
+        // ====================================================
 
         if (
             looksLikeXml(
@@ -2960,23 +3273,28 @@ async function handleDecodeFriends(
                 "[IDs] XML detected - extracting friends and saveIds"
             );
 
+
             const xml =
                 trimXml(
                     decoded
                 );
+
 
             const lists =
                 extractXmlLists(
                     xml.toString("utf8")
                 );
 
+
             console.log(
                 `[IDs] friends=${lists.friends.length}`
             );
 
+
             console.log(
                 `[IDs] saveIds=${lists.saveIds.length}`
             );
+
 
             return res
                 .status(200)
@@ -2995,9 +3313,10 @@ async function handleDecodeFriends(
                 });
         }
 
-        // ----------------------------------------------------
+
+        // ====================================================
         // JSON
-        // ----------------------------------------------------
+        // ====================================================
 
         const text =
             decoded
@@ -3009,6 +3328,7 @@ async function handleDecodeFriends(
                     ""
                 )
                 .trim();
+
 
         let json;
 
@@ -3036,6 +3356,7 @@ async function handleDecodeFriends(
                         "hex"
                     );
 
+
             const decodedText =
                 decoded
                     .subarray(
@@ -3053,20 +3374,24 @@ async function handleDecodeFriends(
                         "."
                     );
 
+
             console.error(
                 "[IDs] JSON parse failed:",
                 parseError.message
             );
+
 
             console.error(
                 "[IDs] decoded HEX:",
                 decodedHex
             );
 
+
             console.error(
                 "[IDs] decoded TEXT:",
                 decodedText
             );
+
 
             return res
                 .status(500)
@@ -3105,22 +3430,26 @@ async function handleDecodeFriends(
                 });
         }
 
-        // ----------------------------------------------------
+
+        // ====================================================
         // استخراج saveIds من JSON
-        // ----------------------------------------------------
+        // ====================================================
 
         const records =
             extractSaveRecords(
                 json
             );
 
+
         console.log(
             `[IDs] save records=${records.length}`
         );
 
+
         const saveIds =
             records.map(
                 record => ({
+
                     save_id:
                         record.save_id,
 
@@ -3131,6 +3460,7 @@ async function handleDecodeFriends(
                         record.level
                 })
             );
+
 
         return res
             .status(200)
@@ -3160,6 +3490,7 @@ async function handleDecodeFriends(
                 : err
         );
 
+
         return res
             .status(500)
             .json({
@@ -3180,6 +3511,7 @@ async function handleDecodeFriends(
     }
 }
 
+
 // ============================================================
 // RECEIVE SAVE INFO
 // ============================================================
@@ -3195,11 +3527,13 @@ async function handleSaveInfo(
             req.body ||
             {};
 
+
         const saveId =
             cleanString(
                 body.saveId ||
                 body.save_id
             );
+
 
         const cityname =
             cleanString(
@@ -3208,10 +3542,12 @@ async function handleSaveInfo(
                 body.name
             );
 
+
         const level =
             cleanString(
                 body.level
             );
+
 
         if (
             !saveId
@@ -3228,6 +3564,7 @@ async function handleSaveInfo(
                 });
         }
 
+
         console.log(
             "[SaveInfo]",
             {
@@ -3236,6 +3573,7 @@ async function handleSaveInfo(
                 level
             }
         );
+
 
         return res
             .status(200)
@@ -3262,6 +3600,7 @@ async function handleSaveInfo(
             err
         );
 
+
         return res
             .status(500)
             .json({
@@ -3279,6 +3618,7 @@ async function handleSaveInfo(
     }
 }
 
+
 // ============================================================
 // BODY PARSERS
 // ============================================================
@@ -3289,6 +3629,7 @@ router.use(
     })
 );
 
+
 // ============================================================
 // ROUTES
 // ============================================================
@@ -3298,18 +3639,22 @@ router.post(
     handleFetchCity
 );
 
+
 router.post(
     "/fetch-city",
     handleFetchCity
 );
+
 
 router.post(
     "/save-info",
     handleSaveInfo
 );
 
+
 router.post(
     "/decode-friends",
+
     express.raw({
         type:
             "application/octet-stream",
@@ -3317,8 +3662,10 @@ router.post(
         limit:
             "50mb"
     }),
+
     handleDecodeFriends
 );
+
 
 // ============================================================
 // MODULE
@@ -3327,6 +3674,7 @@ router.post(
 console.log(
     "[FetchCity] module loaded"
 );
+
 
 module.exports =
     router;
