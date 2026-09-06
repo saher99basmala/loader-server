@@ -18,9 +18,9 @@ const TIMEOUT_MS =
     Number(process.env.FETCHCITY_TIMEOUT_MS || 25000);
 
 
-// ==========================
-// GZIP
-// ==========================
+// ============================================================
+// أدوات الضغط
+// ============================================================
 
 function gzip(data) {
     return zlib.gzipSync(data);
@@ -31,9 +31,9 @@ function gunzip(data) {
 }
 
 
-// ==========================
-// AES-128-GCM REQUEST
-// ==========================
+// ============================================================
+// تشفير طلب FetchCity
+// ============================================================
 
 function encryptRequest(plain) {
 
@@ -64,9 +64,9 @@ function encryptRequest(plain) {
 }
 
 
-// ==========================
-// TS-ID PARSER
-// ==========================
+// ============================================================
+// قراءة ts-id
+// ============================================================
 
 function parseTsId(tsId) {
 
@@ -92,9 +92,9 @@ function parseTsId(tsId) {
 }
 
 
-// ==========================
-// AES-128-GCM RESPONSE
-// ==========================
+// ============================================================
+// فك استجابة FetchCity
+// ============================================================
 
 function decryptResponse(body, tsId) {
 
@@ -119,38 +119,35 @@ function decryptResponse(body, tsId) {
 }
 
 
-// ==========================
-// VALIDATION
-// ==========================
+// ============================================================
+// التحقق
+// ============================================================
 
-function validateInput(value, name) {
+function validateCityId(cityId) {
+
+    if (
+        typeof cityId !== "string" ||
+        !/^[A-Za-z0-9_-]{3,64}$/.test(cityId)
+    ) {
+        throw new Error("Invalid cityId");
+    }
+}
+
+
+function validateText(value, name) {
 
     if (
         typeof value !== "string" ||
         value.trim() === ""
     ) {
-        throw new Error(
-            `Missing ${name}`
-        );
+        throw new Error(`Missing ${name}`);
     }
 }
 
 
-function validateCityId(cityId) {
-
-    if (
-        !/^[A-Za-z0-9_-]{3,64}$/.test(cityId)
-    ) {
-        throw new Error(
-            "Invalid cityId"
-        );
-    }
-}
-
-
-// ==========================
-// FETCH CITY
-// ==========================
+// ============================================================
+// FetchCity
+// ============================================================
 
 async function fetchCity({
     cityId,
@@ -161,27 +158,49 @@ async function fetchCity({
 
     validateCityId(cityId);
 
-    validateInput(
+    validateText(
         String(cityVer),
         "cityVer"
     );
 
-    validateInput(
+    validateText(
         bver,
         "bver"
     );
 
-    validateInput(
+    validateText(
         fver,
         "fver"
     );
 
 
-    // نفس JSON الموجود في Android
+    // نفس JSON المستخدم في التطبيق
     const requestJson =
         `{"cityId":"","cityVer":${cityVer},"fetchCityId":"${cityId}","important":true}`;
 
 
+    console.log(
+        "[FetchCity] cityId:",
+        cityId
+    );
+
+    console.log(
+        "[FetchCity] cityVer:",
+        cityVer
+    );
+
+    console.log(
+        "[FetchCity] bver:",
+        bver
+    );
+
+    console.log(
+        "[FetchCity] fver:",
+        fver
+    );
+
+
+    // UTF-8
     const requestBytes =
         Buffer.from(
             requestJson,
@@ -194,16 +213,10 @@ async function fetchCity({
         gzip(requestBytes);
 
 
-    // AES-128-GCM
+    // AES-GCM
     const encrypted =
-        encryptRequest(
-            compressed
-        );
+        encryptRequest(compressed);
 
-
-    // ==========================
-    // REQUEST TO UPSTREAM
-    // ==========================
 
     const controller =
         new AbortController();
@@ -219,44 +232,48 @@ async function fetchCity({
 
     try {
 
-        response = await fetch(
-            ENDPOINT +
-            encodeURIComponent(cityId),
-            {
-                method: "POST",
+        response =
+            await fetch(
+                ENDPOINT +
+                encodeURIComponent(cityId),
 
-                headers: {
-                    "Accept-Encoding": "identity",
+                {
+                    method: "POST",
 
-                    "Content-Type":
-                        "application/octet-stream",
+                    headers: {
 
-                    "User-Agent":
-                        "okhttp/4.9.0",
+                        "Accept-Encoding":
+                            "identity",
 
-                    "ts-bp":
-                        "i",
+                        "Content-Type":
+                            "application/octet-stream",
 
-                    "ts-bver":
-                        bver,
+                        "User-Agent":
+                            "okhttp/4.9.0",
 
-                    "ts-fver":
-                        fver,
+                        "ts-bp":
+                            "i",
 
-                    "ts-gpid":
-                        "new",
+                        "ts-bver":
+                            bver,
 
-                    "ts-id":
-                        encrypted.tsId
-                },
+                        "ts-fver":
+                            fver,
 
-                body:
-                    encrypted.body,
+                        "ts-gpid":
+                            "new",
 
-                signal:
-                    controller.signal
-            }
-        );
+                        "ts-id":
+                            encrypted.tsId
+                    },
+
+                    body:
+                        encrypted.body,
+
+                    signal:
+                        controller.signal
+                }
+            );
 
     } finally {
 
@@ -264,9 +281,9 @@ async function fetchCity({
     }
 
 
-    // ==========================
-    // HTTP STATUS
-    // ==========================
+    // ========================================================
+    // فحص HTTP
+    // ========================================================
 
     if (!response.ok) {
 
@@ -286,9 +303,9 @@ async function fetchCity({
     }
 
 
-    // ==========================
-    // RESPONSE TS-ID
-    // ==========================
+    // ========================================================
+    // ts-id للاستجابة
+    // ========================================================
 
     const responseTsId =
         response.headers.get(
@@ -304,9 +321,9 @@ async function fetchCity({
     }
 
 
-    // ==========================
-    // RESPONSE BODY
-    // ==========================
+    // ========================================================
+    // Body
+    // ========================================================
 
     const responseBody =
         Buffer.from(
@@ -314,7 +331,10 @@ async function fetchCity({
         );
 
 
-    // AES-GCM decrypt
+    // ========================================================
+    // فك AES
+    // ========================================================
+
     const decrypted =
         decryptResponse(
             responseBody,
@@ -322,18 +342,14 @@ async function fetchCity({
         );
 
 
-    // GZIP decompress
+    // ========================================================
+    // فك GZIP
+    // ========================================================
+
     const jsonText =
-        gunzip(
-            decrypted
-        ).toString(
-            "utf8"
-        );
+        gunzip(decrypted)
+            .toString("utf8");
 
-
-    // ==========================
-    // JSON
-    // ==========================
 
     let json;
 
@@ -352,9 +368,9 @@ async function fetchCity({
     }
 
 
-    // ==========================
-    // result.data
-    // ==========================
+    // ========================================================
+    // استخراج result.data
+    // ========================================================
 
     const encodedCity =
         json &&
@@ -373,13 +389,13 @@ async function fetchCity({
     }
 
 
-    // ==========================
-    // BASE64 DECODE ONLY
-    // ==========================
+    // ========================================================
+    // Base64 -> bytes
     //
+    // هنا نتوقف.
     // لا نفك SaveCrypto.
-    // الملف الداخلي يبقى كما استلمه العميل.
-    //
+    // نعيد الملف كما يستلمه التطبيق بعد Base64.
+    // ========================================================
 
     const cityBytes =
         Buffer.from(
@@ -388,110 +404,77 @@ async function fetchCity({
         );
 
 
+    console.log(
+        "[FetchCity] received:",
+        cityBytes.length,
+        "bytes"
+    );
+
+
     return {
         cityId,
-        bytes: cityBytes,
-        encodedCity,
-        upstream: json
+        bytes: cityBytes
     };
 }
 
 
-// ==========================
-// GET /api/fetch-city
-// ==========================
-
-router.get("/", async (req, res) => {
-
-    try {
-
-        const result =
-            await fetchCity({
-
-                cityId:
-                    String(
-                        req.query.cityId || ""
-                    ),
-
-                cityVer:
-                    String(
-                        req.query.cityVer || ""
-                    ),
-
-                bver:
-                    String(
-                        req.query.bver || ""
-                    ),
-
-                fver:
-                    String(
-                        req.query.fver || ""
-                    )
-            });
-
-
-        res.set(
-            "Content-Type",
-            "application/octet-stream"
-        );
-
-        res.set(
-            "Content-Disposition",
-            `attachment; filename="${result.cityId}.bin"`
-        );
-
-        return res.send(
-            result.bytes
-        );
-
-    } catch (e) {
-
-        console.error(
-            "FetchCity error:",
-            e
-        );
-
-        return res.status(400).json({
-
-            status: "error",
-
-            error:
-                e.message
-        });
-    }
-});
-
-
-// ==========================
-// POST /api/fetch-city
-// ==========================
+// ============================================================
+// POST
+// ============================================================
+//
+// Lua يرسل:
+//
+// {
+//   cityId: "...",
+//   cityVer: 123,
+//   bver: "...",
+//   fver: "..."
+// }
+//
+// ============================================================
 
 router.post("/", async (req, res) => {
 
     try {
 
+        const cityId =
+            String(
+                req.body.cityId || ""
+            );
+
+        const cityVer =
+            String(
+                req.body.cityVer ?? "0"
+            );
+
+        const bver =
+            String(
+                req.body.bver || ""
+            );
+
+        const fver =
+            String(
+                req.body.fver || ""
+            );
+
+
+        console.log(
+            "[API] FetchCity request:",
+            {
+                cityId,
+                cityVer,
+                bver,
+                fver
+            }
+        );
+
+
         const result =
             await fetchCity({
-
-                cityId:
-                    String(
-                        req.body.cityId || ""
-                    ),
-
-                cityVer:
-                    String(
-                        req.body.cityVer || ""
-                    ),
-
-                bver:
-                    String(
-                        req.body.bver || ""
-                    ),
-
-                fver:
-                    String(
-                        req.body.fver || ""
-                    )
+                cityId,
+                cityVer,
+                bver,
+                fver
             });
 
 
@@ -502,19 +485,22 @@ router.post("/", async (req, res) => {
 
         res.set(
             "Content-Disposition",
-            `attachment; filename="${result.cityId}.bin"`
+            `attachment; filename="friend_${result.cityId}.bin"`
         );
+
 
         return res.send(
             result.bytes
         );
 
+
     } catch (e) {
 
         console.error(
-            "FetchCity error:",
+            "[FetchCity ERROR]",
             e
         );
+
 
         return res.status(400).json({
 
@@ -526,9 +512,5 @@ router.post("/", async (req, res) => {
     }
 });
 
-
-// ==========================
-// EXPORT
-// ==========================
 
 module.exports = router;
