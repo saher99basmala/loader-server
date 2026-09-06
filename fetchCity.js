@@ -16,7 +16,12 @@ fetchCity.js
 - Base64
 - SaveCrypto 0x79 / 0x54 / 0x1F
 - LZ4
+- تعديل XML بعد فك جميع الطبقات
 - إرجاع XML
+
+التعديلات:
+- Var cityId يصبح فارغاً
+- Var Device يصبح ASUS_Z01QD
 
 لا يغيّر بقية السيرفر.
 ========================================
@@ -69,7 +74,7 @@ const LZ4_MAGIC = Buffer.from([
 // ============================================================
 
 const FETCH54_TABLE = Buffer.from(
-    "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82bG5bc1lkczpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGJmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
+    "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlLZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82b5lbXzpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGJmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
     "base64"
 );
 
@@ -747,6 +752,66 @@ function trimXml(buf) {
 
 
 // ============================================================
+// XML EDITOR
+// ============================================================
+
+function editCityXml(xml) {
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    let text =
+        xml.toString("utf8");
+
+    // --------------------------------------------------------
+    // cityId
+    // أي:
+    //
+    // <Var name="cityId" v="iwnfGnr9SP"/>
+    //
+    // تصبح:
+    //
+    // <Var name="cityId" v=""/>
+    // --------------------------------------------------------
+
+    text =
+        text.replace(
+            /(<Var\s+name=["']cityId["']\s+v=["'])[^"']*(["'])/g,
+            "$1$2"
+        );
+
+
+    // --------------------------------------------------------
+    // Device
+    // أي قيمة:
+    //
+    // <Var name="Device" v="Infinix X6812"/>
+    //
+    // تصبح دائماً:
+    //
+    // <Var name="Device" v="ASUS_Z01QD"/>
+    // --------------------------------------------------------
+
+    text =
+        text.replace(
+            /(<Var\s+name=["']Device["']\s+v=["'])[^"']*(["'])/g,
+            "$1ASUS_Z01QD$2"
+        );
+
+
+    console.log(
+        "[FetchCity] XML modifications applied: cityId cleared, Device=ASUS_Z01QD"
+    );
+
+    return Buffer.from(
+        text,
+        "utf8"
+    );
+}
+
+
+// ============================================================
 // COMPLETE SAVE DECODER
 // ============================================================
 
@@ -1387,6 +1452,19 @@ async function handleFetchCity(
         );
 
         // ================================================
+        // تعديل XML
+        // ================================================
+
+        const modifiedXml =
+            editCityXml(
+                xml
+            );
+
+        console.log(
+            `[FetchCity] Modified XML size=${modifiedXml.length}`
+        );
+
+        // ================================================
         // Return XML
         // ================================================
 
@@ -1403,7 +1481,7 @@ async function handleFetchCity(
         );
 
         return res.send(
-            xml
+            modifiedXml
         );
 
     } catch (err) {
