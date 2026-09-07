@@ -494,7 +494,7 @@ app.get(
 
             const response =
                 await fetch(
-                    "https://pastebin.com/raw/uFVCAKm0"
+                    "https://pastebin.com/raw/JnWRrGcn"
                 );
 
 
