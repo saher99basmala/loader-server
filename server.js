@@ -209,21 +209,31 @@ app.post(
 
             } catch (e) {
 
+                console.error(
+                    "Invalid edits JSON:",
+                    e
+                );
+
                 return res.status(400).send(
                     "Invalid edits JSON"
                 );
             }
 
 
-            const decoded =
-                mGameInfoDecoder.decodeFile(
-                    req.body
-                );
+            /*
+            ====================================================
+            مهم:
 
+            /api/decode قام بفك الحفظ مسبقًا.
+
+            لذلك req.body هنا هو XML المفكوك،
+            ولا نقوم بفك التشفير مرة ثانية.
+            ====================================================
+            */
 
             const edited =
                 mGameInfoEditor.applyEdits(
-                    decoded,
+                    req.body,
                     edits
                 );
 
