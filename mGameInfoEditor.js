@@ -3,19 +3,20 @@
 mGameInfoEditor.js
 ========================================
 
-- طھط¹ط¯ظٹظ„ Vars
-- طھط¹ط¯ظٹظ„ DataElem
-- طھط¹ط¯ظٹظ„ Level
-- ظپطھط­ ط¬ظ…ظٹط¹ ط§ظ„ط¨ط·ط§ظ‚ط§طھ
-- ظپطھط­ طھظˆط³ط¹ط§طھ ط§ظ„ط£ط±ط§ط¶ظٹ
-- ظپطھط­ ط¬ظ…ظٹط¹ ط§ظ„ظ€ Avatars
-- ظپطھط­ ط¬ظ…ظٹط¹ ط§ظ„ظ€ Stickers / Chat Emojis
+- تعديل Vars
+- تعديل DataElem
+- تعديل Level
+- فتح جميع البطاقات
+- فتح توسعات الأراضي
+- فتح جميع الـ Avatars
+- فتح جميع الـ Stickers / Chat Emojis
+- تعديل Regata Tasks
 
-ظ…ظ†ط·ظ‚ ط§ظ„ظ€ Sticker ظ…ط³طھط®ط±ط¬ ظ…ظ† ItemActivity:
+منطق الـ Sticker مستخرج من ItemActivity:
 NewChatEmoji
 UnlockedChatEmoji
 
-IDs ط§ظ„ظ…ط³طھط®ط±ط¬ط©:
+IDs المستخرجة:
 sp1
 sp4-sp9
 sp10-sp27
@@ -24,13 +25,17 @@ st22-st32
 st34-st37
 st39-st80
 v1-v3
+
+Regata:
+taskCount: 1..105
+taskPoint: 1..135
 ========================================
 */
 
 
 /*
 ========================================
-طھط¹ط¯ظٹظ„ Var ط¹ط§ظ…
+تعديل Var عام
 ========================================
 */
 
@@ -75,7 +80,7 @@ function changeVar(
 
 /*
 ========================================
-طھط¹ط¯ظٹظ„ DataElem ط¹ط§ظ…
+تعديل DataElem عام
 ========================================
 */
 
@@ -120,7 +125,7 @@ function changeDataElem(
 
 /*
 ========================================
-طھط¹ط¯ظٹظ„ Level
+تعديل Level
 ========================================
 */
 
@@ -135,10 +140,6 @@ function changeLevel(
 
     const text =
         xml.toString("utf8");
-
-    /*
-    ظ†ط­ط§ظˆظ„ ط£ظƒط«ط± ظ…ظ† ط´ظƒظ„ ط´ط§ط¦ط¹ ظ„ظ„ظ€ Level
-    */
 
     let result = text;
 
@@ -176,7 +177,7 @@ function changeLevel(
 
 /*
 ========================================
-ط§ظ„ظ‚ظٹظ… ط§ظ„ط£طµظ„ظٹط©
+القيم الأصلية
 ========================================
 */
 
@@ -190,13 +191,12 @@ const UNLOCKED_STYLES_VALUE =
 
 
 const UNLOCKED_EXP_RANKS_VALUE =
-    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVgcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
+    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVgcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
 
 
 /*
 ========================================
 STICKER / CHAT EMOJI IDs
-ظ…ط³طھط®ط±ط¬ط© ظ…ظ† ItemActivity
 ========================================
 */
 
@@ -288,10 +288,6 @@ function unlockLandExpansions(xml) {
 
     let text =
         xml.toString("utf8");
-
-    /*
-    ط­ط°ظپ Objects ط§ظ„طھظٹ طھط­طھظˆظٹ ط¹ظ„ظ‰ storeId=expandBuy
-    */
 
     text =
         text.replace(
@@ -444,10 +440,6 @@ function setAvatarVar(
         );
     }
 
-    /*
-    ط¥ط°ط§ ظ„ظ… ظٹظƒظ† ظ…ظˆط¬ظˆط¯ظ‹ط§ ظ†ط¶ظٹظپظ‡ ظ‚ط¨ظ„ Global
-    */
-
     const varXml =
         '<Var name="' +
         escapeXml(name) +
@@ -529,7 +521,6 @@ function unlockAllAvatars(xml) {
 /*
 ========================================
 Chat Emoji Parser
-ظ†ظپط³ q0()
 ========================================
 */
 
@@ -546,11 +537,6 @@ function parseChatEmojiList(value) {
     ) {
         return result;
     }
-
-    /*
-    q0() ظٹط³طھط®ط¯ظ…:
-    split("[,|]")
-    */
 
     const parts =
         String(value).split(/[,|]/);
@@ -579,7 +565,6 @@ function parseChatEmojiList(value) {
 /*
 ========================================
 Chat Emoji Merge
-ظ†ظپط³ C()
 ========================================
 */
 
@@ -630,15 +615,6 @@ function mergeChatEmojiLists(
 /*
 ========================================
 Chat Emoji Format
-ظ†ظپط³ J()
-
-ظ…ط«ط§ظ„:
-
-a,b,c
-
-طھطµط¨ط­:
-
-,a,,b,,c,
 ========================================
 */
 
@@ -736,10 +712,6 @@ function setChatEmojiVar(
         );
     }
 
-    /*
-    ط¥ظ†ط´ط§ط، Var ط¥ط°ط§ ظ„ظ… ظٹظƒظ† ظ…ظˆط¬ظˆط¯ظ‹ط§
-    */
-
     const varXml =
         '<Var name="' +
         escapeXml(name) +
@@ -768,16 +740,6 @@ function setChatEmojiVar(
 /*
 ========================================
 Change Chat Emoji Var
-
-ط§ظ„ظ…ظ†ط·ظ‚:
-
-old
- +
-new
- â†“
-C()
- â†“
-J()
 ========================================
 */
 
@@ -825,11 +787,6 @@ function changeChatEmojiVar(
 /*
 ========================================
 Unlock All Chat Emojis / Stickers
-
-ظٹط¹ط¯ظ„:
-
-NewChatEmoji
-UnlockedChatEmoji
 ========================================
 */
 
@@ -844,10 +801,6 @@ function unlockChatEmojis(
 
     let text =
         xml.toString("utf8");
-
-    /*
-    NewChatEmoji
-    */
 
     const oldNew =
         getVarValue(
@@ -873,10 +826,6 @@ function unlockChatEmojis(
             formattedNew
         );
 
-
-    /*
-    UnlockedChatEmoji
-    */
 
     const oldUnlocked =
         getVarValue(
@@ -904,6 +853,378 @@ function unlockChatEmojis(
 
 
     return Buffer.from(text, "utf8");
+}
+
+
+/*
+========================================
+REGATA TASKS
+========================================
+
+مطابق لمنطق MainActivity.L0:
+
+taskCount:
+1 .. 105
+
+taskPoint:
+1 .. 135
+
+realEndTime:
+0x692cb050
+step:
+0x7080
+
+أي:
+
+1764522064
++ 28800 لكل مهمة
+========================================
+*/
+
+const REGATA_MAX_TASK_COUNT =
+    105;
+
+const REGATA_MAX_TASK_POINT =
+    135;
+
+const REGATA_START_REAL_END_TIME =
+    0x692cb050;
+
+const REGATA_REAL_END_TIME_STEP =
+    0x7080;
+
+
+/*
+========================================
+Normalize Regata Integer
+========================================
+*/
+
+function normalizeRegataInteger(
+    value,
+    defaultValue,
+    maxValue
+) {
+
+    const parsed =
+        parseInt(
+            value,
+            10
+        );
+
+    if (!Number.isFinite(parsed)) {
+        return defaultValue;
+    }
+
+    return Math.max(
+        1,
+        Math.min(
+            maxValue,
+            parsed
+        )
+    );
+}
+
+
+/*
+========================================
+Change Regata Tasks
+========================================
+*/
+
+function changeRegataTasks(
+    xml,
+    taskCount = 105,
+    taskPoint = 135
+) {
+
+    if (!Buffer.isBuffer(xml)) {
+        xml = Buffer.from(xml);
+    }
+
+    let text =
+        xml.toString("utf8");
+
+
+    /*
+    نفس الـ clamp الموجود في L0
+    */
+
+    taskCount =
+        normalizeRegataInteger(
+            taskCount,
+            105,
+            REGATA_MAX_TASK_COUNT
+        );
+
+    taskPoint =
+        normalizeRegataInteger(
+            taskPoint,
+            135,
+            REGATA_MAX_TASK_POINT
+        );
+
+
+    /*
+    البحث عن Regata
+    */
+
+    const regataRegex =
+        /(<Regata\b.*?<\/Regata>)/s;
+
+    const regataMatch =
+        text.match(
+            regataRegex
+        );
+
+    if (!regataMatch) {
+        return Buffer.from(
+            text,
+            "utf8"
+        );
+    }
+
+
+    const originalRegata =
+        regataMatch[1];
+
+    let regata =
+        originalRegata;
+
+
+    /*
+    حذف MyOldTask القديمة
+    */
+
+    regata =
+        regata.replace(
+            /<MyOldTask\b[^>]*\/>/gi,
+            ""
+        );
+
+
+    /*
+    استخراج user
+    */
+
+    const userMatch =
+        regata.match(
+            /\buser="([^"]*)"/i
+        );
+
+    const user =
+        userMatch
+            ? userMatch[1]
+            : "";
+
+
+    /*
+    البحث عن أول FreeTask
+    الذي يبدأ id الخاص به بـ:
+
+    match3_
+    */
+
+    const freeTaskRegex =
+        /<FreeTask\b[^>]*\bid="([^"]*)"/gi;
+
+    let freeTaskId =
+        null;
+
+    let freeTaskMatch;
+
+    while (
+        (
+            freeTaskMatch =
+                freeTaskRegex.exec(regata)
+        ) !== null
+    ) {
+
+        const id =
+            freeTaskMatch[1];
+
+        if (
+            String(id).startsWith(
+                "match3_"
+            )
+        ) {
+
+            freeTaskId =
+                id;
+
+            break;
+        }
+    }
+
+
+    /*
+    إذا لم نجد FreeTask مناسب
+    لا نعدّل الملف
+    */
+
+    if (!freeTaskId) {
+        return Buffer.from(
+            text,
+            "utf8"
+        );
+    }
+
+
+    /*
+    البحث عن Vars
+    */
+
+    const varsMatch =
+        regata.match(
+            /<Vars\b/i
+        );
+
+    if (!varsMatch) {
+        return Buffer.from(
+            text,
+            "utf8"
+        );
+    }
+
+    const varsIndex =
+        varsMatch.index;
+
+
+    /*
+    استخراج target
+
+    L0:
+
+    substring(7)
+
+    ثم حذف كل ما بعد
+    آخر underscore
+    */
+
+    let target =
+        freeTaskId.substring(7);
+
+    const lastUnderscore =
+        target.lastIndexOf("_");
+
+    if (
+        lastUnderscore > 0
+    ) {
+
+        target =
+            target.substring(
+                0,
+                lastUnderscore
+            );
+    }
+
+
+    /*
+    تجهيز المهام
+    */
+
+    let tasks =
+        "";
+
+
+    for (
+        let i = 0;
+        i < taskCount;
+        i++
+    ) {
+
+        const realEndTime =
+            REGATA_START_REAL_END_TIME +
+            (
+                i *
+                REGATA_REAL_END_TIME_STEP
+            );
+
+
+        tasks +=
+            '<MyOldTask' +
+            ' id="' +
+            escapeXml(freeTaskId) +
+            '"' +
+            ' type="event_order"' +
+            ' eventType="Match3"' +
+            ' target="' +
+            escapeXml(target) +
+            '"' +
+            ' user="' +
+            escapeXml(user) +
+            '"' +
+            ' num="' +
+            String(i + 6) +
+            '"' +
+            ' ver="1"' +
+            ' takenCounter="' +
+            String(i + 2) +
+            '"' +
+            ' score="' +
+            String(taskPoint) +
+            '"' +
+            ' realEndTime="' +
+            String(realEndTime) +
+            '"' +
+            '/>';
+    }
+
+
+    /*
+    إدخال المهام مباشرة قبل Vars
+    */
+
+    regata =
+        regata.slice(
+            0,
+            varsIndex
+        ) +
+        tasks +
+        regata.slice(
+            varsIndex
+        );
+
+
+    /*
+    مهم:
+    Java String.replace(CharSequence,...)
+    يستبدل كل التطابقات.
+
+    لذلك نستخدم split/join
+    بدلاً من replace العادي.
+    */
+
+    text =
+        text
+            .split(originalRegata)
+            .join(regata);
+
+
+    /*
+    نفس تنظيف L0
+    */
+
+    text =
+        text.replace(
+            /[\n\r\t]/g,
+            ""
+        );
+
+    text =
+        text.replace(
+            / {2,}/g,
+            " "
+        );
+
+    text =
+        text.trim();
+
+
+    return Buffer.from(
+        text,
+        "utf8"
+    );
 }
 
 
@@ -982,7 +1303,7 @@ const EDITORS = {
 
 
     /*
-    ط¬ظ…ظٹط¹ ط§ظ„ظ€ Chat Emojis / Stickers
+    Chat Emojis / Stickers
     */
 
     chatEmojis:
@@ -994,7 +1315,7 @@ const EDITORS = {
 
 
     /*
-    NewChatEmoji ظپظ‚ط·
+    NewChatEmoji فقط
     */
 
     newChatEmoji:
@@ -1007,7 +1328,7 @@ const EDITORS = {
 
 
     /*
-    UnlockedChatEmoji ظپظ‚ط·
+    UnlockedChatEmoji فقط
     */
 
     unlockedChatEmoji:
@@ -1016,6 +1337,34 @@ const EDITORS = {
                 xml,
                 "UnlockedChatEmoji",
                 ALL_CHAT_EMOJI_IDS
+            ),
+
+
+    /*
+    ========================================
+    REGATA TASKS
+    ========================================
+
+    الاستخدام:
+
+    {
+        "regataTasks": {
+            "taskCount": 105,
+            "taskPoint": 135
+        }
+    }
+    */
+
+    regataTasks:
+        (
+            xml,
+            taskCount = 105,
+            taskPoint = 135
+        ) =>
+            changeRegataTasks(
+                xml,
+                taskCount,
+                taskPoint
             )
 
 };
@@ -1041,9 +1390,19 @@ function applyEdits(
         return result;
     }
 
+
     /*
-    ط¥ط°ط§ ظƒط§ظ†طھ edits ظ…طµظپظˆظپط©:
-    ["cards","avatars","chatEmojis"]
+    ========================================
+    إذا كانت edits Array
+    ========================================
+
+    مثال:
+
+    [
+        "cards",
+        "avatars",
+        "chatEmojis"
+    ]
     */
 
     if (Array.isArray(edits)) {
@@ -1056,7 +1415,9 @@ function applyEdits(
             ) {
 
                 result =
-                    EDITORS[key](result);
+                    EDITORS[key](
+                        result
+                    );
             }
         }
 
@@ -1065,11 +1426,24 @@ function applyEdits(
 
 
     /*
-    ط¥ط°ط§ ظƒط§ظ†طھ edits Object:
+    ========================================
+    إذا كانت edits Object
+    ========================================
+
+    مثال قديم:
+
     {
-        cards: true,
-        avatars: true,
-        chatEmojis: true
+        "cards": true,
+        "avatars": true
+    }
+
+    ومثال Regata:
+
+    {
+        "regataTasks": {
+            "taskCount": 105,
+            "taskPoint": 135
+        }
     }
     */
 
@@ -1083,14 +1457,42 @@ function applyEdits(
         ) {
 
             if (
-                enabled &&
-                typeof EDITORS[key] ===
+                !enabled ||
+                typeof EDITORS[key] !==
                 "function"
+            ) {
+                continue;
+            }
+
+
+            /*
+            Regata له قيمتان
+            */
+
+            if (
+                key === "regataTasks" &&
+                typeof enabled === "object"
             ) {
 
                 result =
-                    EDITORS[key](result);
+                    EDITORS[key](
+                        result,
+                        enabled.taskCount,
+                        enabled.taskPoint
+                    );
+
+                continue;
             }
+
+
+            /*
+            جميع التعديلات القديمة
+            */
+
+            result =
+                EDITORS[key](
+                    result
+                );
         }
     }
 
@@ -1135,6 +1537,22 @@ module.exports = {
     changeChatEmojiVar,
 
     unlockChatEmojis,
+
+    /*
+    Regata
+    */
+
+    changeRegataTasks,
+
+    normalizeRegataInteger,
+
+    REGATA_MAX_TASK_COUNT,
+
+    REGATA_MAX_TASK_POINT,
+
+    REGATA_START_REAL_END_TIME,
+
+    REGATA_REAL_END_TIME_STEP,
 
     applyEdits,
 
