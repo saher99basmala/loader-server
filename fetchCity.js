@@ -545,8 +545,7 @@ function lz4DecompressBlock(
         const offset =
             src[srcPos] |
             (
-                src[srcPos + 1] <<
-                8
+                src[srcPos + 1] << 8
             );
 
         srcPos += 2;
@@ -1473,18 +1472,25 @@ async function handleFetchCity(
 }
 
 // ============================================================
-// FRIEND FILE DECODER - EXACT decodeFile.js
+// FRIEND FILE DECODER
 // ============================================================
 
 const FRIEND_TABLE_SIZE = 0x2D7;
 
 function friendU32(v) {
+
     return v >>> 0;
 }
 
-function friendReadU32(data, pos) {
+function friendReadU32(
+    data,
+    pos
+) {
 
-    if (pos + 4 > data.length) {
+    if (
+        pos + 4 >
+        data.length
+    ) {
 
         throw new Error(
             "بيانات غير كافية لقراءة UInt32"
@@ -1526,6 +1532,7 @@ function friendMmh2(
         );
 
     let i = 0;
+
     let length =
         data.length;
 
@@ -1926,7 +1933,6 @@ function friendLz4Decompress(
             outLen >=
             size
         ) {
-
             break;
         }
 
@@ -1943,8 +1949,7 @@ function friendLz4Decompress(
         const offset =
             readByte() |
             (
-                readByte() <<
-                8
+                readByte() << 8
             );
 
         if (
@@ -2196,6 +2201,25 @@ function attrFromXmlTag(
 }
 
 // ============================================================
+// NORMALIZE CITY NAME
+// ============================================================
+
+function normalizeCityName(
+    value
+) {
+
+    return String(
+        value || ""
+    )
+        .trim()
+        .replace(
+            /\s+/g,
+            " "
+        )
+        .toLowerCase();
+}
+
+// ============================================================
 // FRIEND VERSION
 // ============================================================
 
@@ -2333,7 +2357,10 @@ function parseFriends(
                 attrFromXmlTag(
                     tag,
                     "bc"
-                )
+                ),
+
+            // سيضاف saveId بعد قراءة ProfilesCache
+            saveId: ""
         });
     }
 
@@ -2434,7 +2461,10 @@ function parseSaveProfiles(
                 profile.saveId || ""
             ).trim();
 
-        if (!saveId) {
+        if (
+            !saveId
+        ) {
+
             continue;
         }
 
@@ -2443,13 +2473,21 @@ function parseSaveProfiles(
                 profile.cityname || ""
             ).trim();
 
+        const level =
+            String(
+                profile.level || ""
+            ).trim();
+
         profiles.push({
 
             cityname:
                 cityname,
 
             saveId:
-                saveId
+                saveId,
+
+            level:
+                level
         });
     }
 
@@ -2458,6 +2496,131 @@ function parseSaveProfiles(
     );
 
     return profiles;
+}
+
+// ============================================================
+// ATTACH saveId TO FRIENDS
+// ============================================================
+
+function attachSaveIdsToFriends(
+    friends,
+    saveProfiles
+) {
+
+    if (
+        !Array.isArray(friends)
+    ) {
+
+        return [];
+    }
+
+    if (
+        !Array.isArray(saveProfiles) ||
+        saveProfiles.length === 0
+    ) {
+
+        console.log(
+            "[Friends] لا توجد saveProfiles لربطها"
+        );
+
+        return friends;
+    }
+
+    const profileMap =
+        new Map();
+
+    for (
+        const profile of saveProfiles
+    ) {
+
+        const key =
+            normalizeCityName(
+                profile.cityname
+            );
+
+        if (
+            !key ||
+            !profile.saveId
+        ) {
+
+            continue;
+        }
+
+        // أول saveId لنفس الاسم يبقى هو المستخدم
+        if (
+            !profileMap.has(key)
+        ) {
+
+            profileMap.set(
+                key,
+                profile.saveId
+            );
+        }
+    }
+
+    let matched = 0;
+
+    for (
+        const friend of friends
+    ) {
+
+        const cityNameKey =
+            normalizeCityName(
+                friend.city_name
+            );
+
+        const friendNameKey =
+            normalizeCityName(
+                friend.name
+            );
+
+        let saveId = "";
+
+        // المطابقة الأساسية: city_name
+        if (
+            cityNameKey &&
+            profileMap.has(
+                cityNameKey
+            )
+        ) {
+
+            saveId =
+                profileMap.get(
+                    cityNameKey
+                );
+        }
+
+        // احتياطياً: name
+        if (
+            !saveId &&
+            friendNameKey &&
+            profileMap.has(
+                friendNameKey
+            )
+        ) {
+
+            saveId =
+                profileMap.get(
+                    friendNameKey
+                );
+        }
+
+        if (
+            saveId
+        ) {
+
+            friend.saveId =
+                saveId;
+
+            matched++;
+        }
+    }
+
+    console.log(
+        `[Friends] saveId matched=${matched}/${friends.length}`
+    );
+
+    return friends;
 }
 
 // ============================================================
@@ -2586,6 +2749,15 @@ async function handleDecodeFriends(
                 xml
             );
 
+        // ====================================================
+        // ربط saveId مع friends
+        // ====================================================
+
+        attachSaveIdsToFriends(
+            friends,
+            saveProfiles
+        );
+
         console.log(
             `[Friends] bver=${version.bver}`
         );
@@ -2601,6 +2773,24 @@ async function handleDecodeFriends(
         console.log(
             `[Friends] saveProfiles=${saveProfiles.length}`
         );
+
+        // ====================================================
+        // طباعة نتيجة الربط
+        // ====================================================
+
+        for (
+            const friend of friends
+        ) {
+
+            if (
+                friend.saveId
+            ) {
+
+                console.log(
+                    `[Friends] MATCH city_name="${friend.city_name}" city_id="${friend.city_id}" saveId="${friend.saveId}"`
+                );
+            }
+        }
 
         // ====================================================
         // RESPONSE
