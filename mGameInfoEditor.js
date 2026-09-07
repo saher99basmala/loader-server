@@ -3,25 +3,34 @@
 mGameInfoEditor.js
 ========================================
 
-- تعديل Vars
-- تعديل DataElem
-- تعديل Level
-- فتح جميع البطاقات
-- فتح توسعات الأراضي
-- فتح جميع الـ Avatars
-- فتح جميع الـ Stickers / Chat Emojis
-- تعديل Regata Tasks
+- طھط¹ط¯ظٹظ„ Vars
+- طھط¹ط¯ظٹظ„ DataElem
+- طھط¹ط¯ظٹظ„ Level
+- ظپطھط­ ط¬ظ…ظٹط¹ ط§ظ„ط¨ط·ط§ظ‚ط§طھ
+- ظپطھط­ طھظˆط³ط¹ط§طھ ط§ظ„ط£ط±ط§ط¶ظٹ
+- ظپطھط­ ط¬ظ…ظٹط¹ ط§ظ„ظ€ Avatars
+- ظپطھط­ ط¬ظ…ظٹط¹ ط§ظ„ظ€ Stickers / Chat Emojis
 
-منطق Regata مستخرج ومطابق لمنطق:
-MainActivity.L0(File, taskCount, taskPoint)
+ظ…ظ†ط·ظ‚ ط§ظ„ظ€ Sticker ظ…ط³طھط®ط±ط¬ ظ…ظ† ItemActivity:
+NewChatEmoji
+UnlockedChatEmoji
 
+IDs ط§ظ„ظ…ط³طھط®ط±ط¬ط©:
+sp1
+sp4-sp9
+sp10-sp27
+st1-st19
+st22-st32
+st34-st37
+st39-st80
+v1-v3
 ========================================
 */
 
 
 /*
 ========================================
-تعديل Var عام
+طھط¹ط¯ظٹظ„ Var ط¹ط§ظ…
 ========================================
 */
 
@@ -66,7 +75,7 @@ function changeVar(
 
 /*
 ========================================
-تعديل DataElem عام
+طھط¹ط¯ظٹظ„ DataElem ط¹ط§ظ…
 ========================================
 */
 
@@ -111,7 +120,7 @@ function changeDataElem(
 
 /*
 ========================================
-تعديل Level
+طھط¹ط¯ظٹظ„ Level
 ========================================
 */
 
@@ -126,6 +135,10 @@ function changeLevel(
 
     const text =
         xml.toString("utf8");
+
+    /*
+    ظ†ط­ط§ظˆظ„ ط£ظƒط«ط± ظ…ظ† ط´ظƒظ„ ط´ط§ط¦ط¹ ظ„ظ„ظ€ Level
+    */
 
     let result = text;
 
@@ -163,9 +176,10 @@ function changeLevel(
 
 /*
 ========================================
-القيم الأصلية
+ط§ظ„ظ‚ظٹظ… ط§ظ„ط£طµظ„ظٹط©
 ========================================
 */
+
 
 const UNLOCKED_FRAMES_VALUE =
     "JBsYDjhUWyATVlUjXw==,VEdYLhJsA309Gy0tFgIwCCM=";
@@ -182,7 +196,7 @@ const UNLOCKED_EXP_RANKS_VALUE =
 /*
 ========================================
 STICKER / CHAT EMOJI IDs
-مستخرجة من ItemActivity
+ظ…ط³طھط®ط±ط¬ط© ظ…ظ† ItemActivity
 ========================================
 */
 
@@ -276,8 +290,7 @@ function unlockLandExpansions(xml) {
         xml.toString("utf8");
 
     /*
-    حذف Objects التي تحتوي:
-    storeId=expandBuy
+    ط­ط°ظپ Objects ط§ظ„طھظٹ طھط­طھظˆظٹ ط¹ظ„ظ‰ storeId=expandBuy
     */
 
     text =
@@ -431,6 +444,10 @@ function setAvatarVar(
         );
     }
 
+    /*
+    ط¥ط°ط§ ظ„ظ… ظٹظƒظ† ظ…ظˆط¬ظˆط¯ظ‹ط§ ظ†ط¶ظٹظپظ‡ ظ‚ط¨ظ„ Global
+    */
+
     const varXml =
         '<Var name="' +
         escapeXml(name) +
@@ -512,7 +529,7 @@ function unlockAllAvatars(xml) {
 /*
 ========================================
 Chat Emoji Parser
-نفس q0()
+ظ†ظپط³ q0()
 ========================================
 */
 
@@ -531,7 +548,7 @@ function parseChatEmojiList(value) {
     }
 
     /*
-    q0() يستخدم:
+    q0() ظٹط³طھط®ط¯ظ…:
     split("[,|]")
     */
 
@@ -562,7 +579,7 @@ function parseChatEmojiList(value) {
 /*
 ========================================
 Chat Emoji Merge
-نفس C()
+ظ†ظپط³ C()
 ========================================
 */
 
@@ -613,13 +630,13 @@ function mergeChatEmojiLists(
 /*
 ========================================
 Chat Emoji Format
-نفس J()
+ظ†ظپط³ J()
 
-مثال:
+ظ…ط«ط§ظ„:
 
 a,b,c
 
-تصبح:
+طھطµط¨ط­:
 
 ,a,,b,,c,
 ========================================
@@ -719,6 +736,10 @@ function setChatEmojiVar(
         );
     }
 
+    /*
+    ط¥ظ†ط´ط§ط، Var ط¥ط°ط§ ظ„ظ… ظٹظƒظ† ظ…ظˆط¬ظˆط¯ظ‹ط§
+    */
+
     const varXml =
         '<Var name="' +
         escapeXml(name) +
@@ -748,14 +769,14 @@ function setChatEmojiVar(
 ========================================
 Change Chat Emoji Var
 
-المنطق:
+ط§ظ„ظ…ظ†ط·ظ‚:
 
 old
  +
 new
- ↓
+ â†“
 C()
- ↓
+ â†“
 J()
 ========================================
 */
@@ -805,7 +826,7 @@ function changeChatEmojiVar(
 ========================================
 Unlock All Chat Emojis / Stickers
 
-يعدل:
+ظٹط¹ط¯ظ„:
 
 NewChatEmoji
 UnlockedChatEmoji
@@ -888,506 +909,6 @@ function unlockChatEmojis(
 
 /*
 ========================================
-REGATA TASKS
-مطابق MainActivity.L0()
-
-L0(File, taskCount, taskPoint)
-========================================
-*/
-
-const REGATA_MAX_TASK_COUNT =
-    105;
-
-const REGATA_MAX_TASK_POINT =
-    135;
-
-const REGATA_START_REAL_END_TIME =
-    0x692cb050; // 1764522064
-
-const REGATA_REAL_END_TIME_STEP =
-    0x7080; // 28800
-
-
-/*
-========================================
-Normalize Regata Integer
-========================================
-*/
-
-function normalizeRegataInteger(
-    value,
-    defaultValue,
-    maxValue
-) {
-
-    const parsed =
-        Number.parseInt(
-            value,
-            10
-        );
-
-    if (Number.isNaN(parsed)) {
-        return defaultValue;
-    }
-
-    return Math.max(
-        1,
-        Math.min(
-            maxValue,
-            parsed
-        )
-    );
-}
-
-
-/*
-========================================
-Change Regata Tasks
-
-هذا هو Port لمنطق:
-
-MainActivity.L0(
-    File,
-    taskCount,
-    taskPoint
-)
-
-مهم:
-
-الـ XML يجب أن يكون مفكوك التشفير
-قبل استدعاء هذه الدالة.
-========================================
-*/
-
-function changeRegataTasks(
-    xml,
-    taskCount = 105,
-    taskPoint = 135
-) {
-
-    if (!Buffer.isBuffer(xml)) {
-        xml = Buffer.from(xml);
-    }
-
-    let text =
-        xml.toString("utf8");
-
-
-    /*
-    ========================================
-    1. Clamp taskCount
-    ========================================
-    */
-
-    const count =
-        normalizeRegataInteger(
-            taskCount,
-            105,
-            REGATA_MAX_TASK_COUNT
-        );
-
-
-    /*
-    ========================================
-    2. Clamp taskPoint
-    ========================================
-    */
-
-    const point =
-        normalizeRegataInteger(
-            taskPoint,
-            135,
-            REGATA_MAX_TASK_POINT
-        );
-
-
-    /*
-    ========================================
-    3. Find Regata
-
-    Java:
-
-    (<Regata\b.*?</Regata>)
-
-    Pattern.DOTALL
-    ========================================
-    */
-
-    const regataRegex =
-        /(<Regata\b.*?<\/Regata>)/s;
-
-    const regataMatch =
-        text.match(
-            regataRegex
-        );
-
-    /*
-    في التطبيق الأصلي:
-    إذا لم توجد Regata يرجع false.
-
-    هنا، لأن الـ editor architecture
-    يعتمد على Buffer، نرجع XML كما هو.
-    */
-
-    if (!regataMatch) {
-
-        return Buffer.from(
-            text,
-            "utf8"
-        );
-    }
-
-
-    /*
-    ========================================
-    4. حفظ Regata الأصلية
-    ========================================
-    */
-
-    const originalRegata =
-        regataMatch[1];
-
-    let regata =
-        originalRegata;
-
-
-    /*
-    ========================================
-    5. حذف MyOldTask القديمة
-
-    Java:
-
-    <MyOldTask\b[^>]*/>
-    ========================================
-    */
-
-    regata =
-        regata.replace(
-            /<MyOldTask\b[^>]*\/>/g,
-            ""
-        );
-
-
-    /*
-    ========================================
-    6. استخراج user
-
-    Java:
-
-    user="([^"]*)"
-
-    إذا لم يوجد:
-    user = ""
-    ========================================
-    */
-
-    const userMatch =
-        regata.match(
-            /user="([^"]*)"/
-        );
-
-    const user =
-        userMatch
-            ? userMatch[1]
-            : "";
-
-
-    /*
-    ========================================
-    7. البحث عن أول FreeTask
-       يبدأ id الخاص به بـ:
-
-       match3_
-    ========================================
-    */
-
-    const freeTaskRegex =
-        /<FreeTask\b[^>]*id="([^"]*)"/g;
-
-    let freeTaskId = null;
-
-    let freeTaskMatch;
-
-    while (
-        (
-            freeTaskMatch =
-            freeTaskRegex.exec(regata)
-        ) !== null
-    ) {
-
-        const candidate =
-            freeTaskMatch[1];
-
-        if (
-            candidate.startsWith(
-                "match3_"
-            )
-        ) {
-
-            freeTaskId =
-                candidate;
-
-            break;
-        }
-    }
-
-
-    /*
-    ========================================
-    8. إذا لم يوجد FreeTask match3_
-    ========================================
-    */
-
-    if (!freeTaskId) {
-
-        return Buffer.from(
-            text,
-            "utf8"
-        );
-    }
-
-
-    /*
-    ========================================
-    9. البحث عن Vars
-    ========================================
-    */
-
-    const varsIndex =
-        regata.search(
-            /<Vars\b/
-        );
-
-    if (varsIndex === -1) {
-
-        return Buffer.from(
-            text,
-            "utf8"
-        );
-    }
-
-
-    /*
-    ========================================
-    10. استخراج target
-
-    Java:
-
-    if length > 7
-        substring(7)
-
-    ثم:
-
-    lastIndexOf("_")
-
-    ثم:
-
-    substring(0,lastIndex)
-    ========================================
-    */
-
-    let target = "";
-
-    if (
-        freeTaskId.length > 7
-    ) {
-
-        target =
-            freeTaskId.substring(
-                7
-            );
-    }
-
-    const lastUnderscore =
-        target.lastIndexOf("_");
-
-    if (
-        lastUnderscore > 0
-    ) {
-
-        target =
-            target.substring(
-                0,
-                lastUnderscore
-            );
-    }
-
-
-    /*
-    ========================================
-    11. إنشاء MyOldTask
-
-    Java:
-
-    i = 0
-
-    num:
-        i + 6
-
-    takenCounter:
-        i + 2
-
-    score:
-        taskPoint
-
-    realEndTime:
-        0x692cb050
-
-    ثم كل مرة:
-        + 0x7080
-    ========================================
-    */
-
-    let tasks = "";
-
-    let realEndTime =
-        REGATA_START_REAL_END_TIME;
-
-
-    for (
-        let i = 0;
-        i < count;
-        i++
-    ) {
-
-        tasks +=
-            '<MyOldTask' +
-            ' id="' +
-            freeTaskId +
-            '"' +
-            ' type="event_order"' +
-            ' eventType="Match3"' +
-            ' target="' +
-            target +
-            '"' +
-            ' user="' +
-            user +
-            '"' +
-            ' num="' +
-            (i + 6) +
-            '"' +
-            ' ver="1"' +
-            ' takenCounter="' +
-            (i + 2) +
-            '"' +
-            ' score="' +
-            point +
-            '"' +
-            ' realEndTime="' +
-            realEndTime +
-            '"/>';
-        
-
-        realEndTime +=
-            REGATA_REAL_END_TIME_STEP;
-    }
-
-
-    /*
-    ========================================
-    12. إدخال المهام قبل Vars
-
-    Java:
-
-    substring(0, varsIndex)
-    +
-    tasks
-    +
-    substring(varsIndex)
-    ========================================
-    */
-
-    regata =
-        regata.slice(
-            0,
-            varsIndex
-        ) +
-        tasks +
-        regata.slice(
-            varsIndex
-        );
-
-
-    /*
-    ========================================
-    13. استبدال Regata الأصلية
-    ========================================
-    */
-
-    let result =
-        text.replace(
-            originalRegata,
-            regata
-        );
-
-
-    /*
-    ========================================
-    14. نفس تنظيف Java
-
-    result.replace("\n", "")
-    result.replace("\r", "")
-    result.replace("\t", "")
-
-    ثم:
-
-    while contains("  ")
-        replace("  ", " ")
-
-    ثم trim()
-    ========================================
-    */
-
-    result =
-        result.replace(
-            /\n/g,
-            ""
-        );
-
-    result =
-        result.replace(
-            /\r/g,
-            ""
-        );
-
-    result =
-        result.replace(
-            /\t/g,
-            ""
-        );
-
-
-    while (
-        result.includes("  ")
-    ) {
-
-        result =
-            result.replace(
-                /  /g,
-                " "
-            );
-    }
-
-
-    result =
-        result.trim();
-
-
-    /*
-    ========================================
-    15. إرجاع Buffer
-    ========================================
-    */
-
-    return Buffer.from(
-        result,
-        "utf8"
-    );
-}
-
-
-/*
-========================================
 Editors
 ========================================
 */
@@ -1439,9 +960,7 @@ const EDITORS = {
 
     cards:
         (xml) =>
-            unlockAllCards(
-                xml
-            ),
+            unlockAllCards(xml),
 
 
     /*
@@ -1450,9 +969,7 @@ const EDITORS = {
 
     land:
         (xml) =>
-            unlockLandExpansions(
-                xml
-            ),
+            unlockLandExpansions(xml),
 
 
     /*
@@ -1461,13 +978,11 @@ const EDITORS = {
 
     avatars:
         (xml) =>
-            unlockAllAvatars(
-                xml
-            ),
+            unlockAllAvatars(xml),
 
 
     /*
-    جميع Chat Emojis / Stickers
+    ط¬ظ…ظٹط¹ ط§ظ„ظ€ Chat Emojis / Stickers
     */
 
     chatEmojis:
@@ -1479,7 +994,7 @@ const EDITORS = {
 
 
     /*
-    NewChatEmoji فقط
+    NewChatEmoji ظپظ‚ط·
     */
 
     newChatEmoji:
@@ -1492,7 +1007,7 @@ const EDITORS = {
 
 
     /*
-    UnlockedChatEmoji فقط
+    UnlockedChatEmoji ظپظ‚ط·
     */
 
     unlockedChatEmoji:
@@ -1501,29 +1016,6 @@ const EDITORS = {
                 xml,
                 "UnlockedChatEmoji",
                 ALL_CHAT_EMOJI_IDS
-            ),
-
-
-    /*
-    ========================================
-    REGATA
-
-    الافتراضي:
-        105 Task
-        135 Point
-    ========================================
-    */
-
-    regataTasks:
-        (
-            xml,
-            taskCount = 105,
-            taskPoint = 135
-        ) =>
-            changeRegataTasks(
-                xml,
-                taskCount,
-                taskPoint
             )
 
 };
@@ -1549,21 +1041,9 @@ function applyEdits(
         return result;
     }
 
-
     /*
-    ========================================
-    إذا كانت edits مصفوفة:
-
-    [
-        "cards",
-        "avatars",
-        "chatEmojis",
-        "regataTasks"
-    ]
-
-    Regata تستخدم:
-        105 / 135
-    ========================================
+    ط¥ط°ط§ ظƒط§ظ†طھ edits ظ…طµظپظˆظپط©:
+    ["cards","avatars","chatEmojis"]
     */
 
     if (Array.isArray(edits)) {
@@ -1576,9 +1056,7 @@ function applyEdits(
             ) {
 
                 result =
-                    EDITORS[key](
-                        result
-                    );
+                    EDITORS[key](result);
             }
         }
 
@@ -1587,20 +1065,12 @@ function applyEdits(
 
 
     /*
-    ========================================
-    إذا كانت edits Object:
-
+    ط¥ط°ط§ ظƒط§ظ†طھ edits Object:
     {
         cards: true,
         avatars: true,
-        chatEmojis: true,
-
-        regataTasks: {
-            taskCount: 105,
-            taskPoint: 135
-        }
+        chatEmojis: true
     }
-    ========================================
     */
 
     if (
@@ -1613,80 +1083,14 @@ function applyEdits(
         ) {
 
             if (
-                !enabled ||
-                typeof EDITORS[key] !==
+                enabled &&
+                typeof EDITORS[key] ===
                 "function"
             ) {
-                continue;
+
+                result =
+                    EDITORS[key](result);
             }
-
-
-            /*
-            ========================================
-            Regata
-
-            يسمح بـ:
-
-            regataTasks: true
-
-            أو:
-
-            regataTasks: {
-                taskCount: 100,
-                taskPoint: 120
-            }
-            ========================================
-            */
-
-            if (
-                key ===
-                "regataTasks"
-            ) {
-
-                if (
-                    typeof enabled ===
-                    "object"
-                ) {
-
-                    const taskCount =
-                        enabled.taskCount ??
-                        105;
-
-                    const taskPoint =
-                        enabled.taskPoint ??
-                        135;
-
-                    result =
-                        EDITORS[key](
-                            result,
-                            taskCount,
-                            taskPoint
-                        );
-
-                } else {
-
-                    result =
-                        EDITORS[key](
-                            result,
-                            105,
-                            135
-                        );
-                }
-
-                continue;
-            }
-
-
-            /*
-            ========================================
-            باقي الـ Editors
-            ========================================
-            */
-
-            result =
-                EDITORS[key](
-                    result
-                );
         }
     }
 
@@ -1702,20 +1106,11 @@ Exports
 
 module.exports = {
 
-    /*
-    General
-    */
-
     changeVar,
 
     changeDataElem,
 
     changeLevel,
-
-
-    /*
-    Cards / Land / Avatars
-    */
 
     unlockAllCards,
 
@@ -1723,19 +1118,9 @@ module.exports = {
 
     unlockAllAvatars,
 
-
-    /*
-    Helpers
-    */
-
     parseRanges,
 
     escapeXml,
-
-
-    /*
-    Chat Emojis
-    */
 
     parseChatEmojiList,
 
@@ -1751,26 +1136,9 @@ module.exports = {
 
     unlockChatEmojis,
 
-
-    /*
-    Regata
-    */
-
-    changeRegataTasks,
-
-
-    /*
-    Main
-    */
-
     applyEdits,
 
     EDITORS,
-
-
-    /*
-    Constants
-    */
 
     ALL_CHAT_EMOJI_IDS,
 
@@ -1782,14 +1150,6 @@ module.exports = {
 
     UNLOCKED_STYLES_VALUE,
 
-    UNLOCKED_EXP_RANKS_VALUE,
-
-    REGATA_MAX_TASK_COUNT,
-
-    REGATA_MAX_TASK_POINT,
-
-    REGATA_START_REAL_END_TIME,
-
-    REGATA_REAL_END_TIME_STEP
+    UNLOCKED_EXP_RANKS_VALUE
 
 };
