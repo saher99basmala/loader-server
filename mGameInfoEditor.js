@@ -11,24 +11,6 @@ mGameInfoEditor.js
 - فتح جميع الـ Avatars
 - فتح جميع الـ Stickers / Chat Emojis
 - تعديل Regata Tasks
-
-منطق الـ Sticker مستخرج من ItemActivity:
-NewChatEmoji
-UnlockedChatEmoji
-
-IDs المستخرجة:
-sp1
-sp4-sp9
-sp10-sp27
-st1-st19
-st22-st32
-st34-st37
-st39-st80
-v1-v3
-
-Regata:
-taskCount: 1..105
-taskPoint: 1..135
 ========================================
 */
 
@@ -58,23 +40,56 @@ function changeVar(
             "\\$&"
         );
 
-    const regex =
+    const pattern =
         new RegExp(
-            '(<Var\\b[^>]*\\bname="' +
-            escapedName +
-            '"[^>]*\\bv=")[^"]*(")',
-            "i"
+            `<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*>`
         );
 
-    const result =
+    const match =
+        text.match(pattern);
+
+    if (!match) {
+
+        throw new Error(
+            `لم يتم العثور على Var: ${varName}`
+        );
+
+    }
+
+    const oldElement =
+        match[0];
+
+    const newValueString =
+        String(newValue)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+    const newElement =
+        oldElement.replace(
+            /(\bv\s*=\s*)(["'])[^"']*\2/,
+            `$1"${newValueString}"`
+        );
+
+    if (
+        newElement === oldElement
+    ) {
+
+        return Buffer.from(
+            text,
+            "utf8"
+        );
+
+    }
+
+    return Buffer.from(
         text.replace(
-            regex,
-            "$1" +
-            String(newValue) +
-            "$2"
-        );
-
-    return Buffer.from(result, "utf8");
+            oldElement,
+            newElement
+        ),
+        "utf8"
+    );
 }
 
 
@@ -103,29 +118,82 @@ function changeDataElem(
             "\\$&"
         );
 
-    const regex =
+    const pattern =
         new RegExp(
-            '(<DataElem\\b[^>]*\\bname="' +
-            escapedName +
-            '"[^>]*\\bvalue=")[^"]*(")',
-            "i"
+            `<DataElem\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*>`
         );
 
-    const result =
+    const match =
+        text.match(pattern);
+
+    if (!match) {
+
+        throw new Error(
+            `لم يتم العثور على DataElem: ${elemName}`
+        );
+
+    }
+
+    const oldElement =
+        match[0];
+
+    const valuePattern =
+        /(\bvalue\s*=\s*)(["'])([^"']*)\2/;
+
+    const valueMatch =
+        oldElement.match(valuePattern);
+
+    if (!valueMatch) {
+
+        throw new Error(
+            `لم يتم العثور على الخاصية value داخل ${elemName}`
+        );
+
+    }
+
+    const newValueString =
+        String(newValue)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+    const newElement =
+        oldElement.replace(
+            valuePattern,
+            `$1$2${newValueString}$2`
+        );
+
+    if (
+        newElement === oldElement
+    ) {
+
+        return Buffer.from(
+            text,
+            "utf8"
+        );
+
+    }
+
+    return Buffer.from(
         text.replace(
-            regex,
-            "$1" +
-            String(newValue) +
-            "$2"
-        );
-
-    return Buffer.from(result, "utf8");
+            oldElement,
+            newElement
+        ),
+        "utf8"
+    );
 }
 
 
 /*
 ========================================
-تعديل Level
+تعديل المستوى
+========================================
+
+المستوى الحقيقي في الحفظ:
+
+<Var name="levelup" v="1089" t="i"/>
+
 ========================================
 */
 
@@ -134,6 +202,20 @@ function changeLevel(
     newLevel
 ) {
 
+    newLevel =
+        Number(newLevel);
+
+    if (
+        !Number.isInteger(newLevel) ||
+        newLevel < 0
+    ) {
+
+        throw new Error(
+            "المستوى يجب أن يكون رقمًا صحيحًا"
+        );
+
+    }
+
     if (!Buffer.isBuffer(xml)) {
         xml = Buffer.from(xml);
     }
@@ -141,46 +223,88 @@ function changeLevel(
     const text =
         xml.toString("utf8");
 
-    let result = text;
+    /*
+    البحث عن:
 
-    const patterns = [
+    name="levelup"
 
-        /(<Var\b[^>]*\bname="Level"[^>]*\bv=")[^"]*(")/i,
+    سواء كانت علامات الاقتباس
+    " أو '
+    */
 
-        /(<Var\b[^>]*\bname="level"[^>]*\bv=")[^"]*(")/i,
+    const pattern =
+        /<Var\b(?=[^>]*\bname=["']levelup["'])[^>]*>/i;
 
-        /(<DataElem\b[^>]*\bname="Level"[^>]*\bvalue=")[^"]*(")/i,
+    const match =
+        text.match(pattern);
 
-        /(<DataElem\b[^>]*\bname="level"[^>]*\bvalue=")[^"]*(")/i
+    if (!match) {
 
-    ];
+        throw new Error(
+            'لم يتم العثور على عنصر name="levelup"'
+        );
 
-    for (const regex of patterns) {
-
-        if (regex.test(result)) {
-
-            result =
-                result.replace(
-                    regex,
-                    "$1" +
-                    String(newLevel) +
-                    "$2"
-                );
-
-            break;
-        }
     }
 
-    return Buffer.from(result, "utf8");
+    const oldElement =
+        match[0];
+
+    /*
+    تغيير قيمة v فقط
+    */
+
+    const newElement =
+        oldElement.replace(
+            /(\bv\s*=\s*)(["'])[^"']*\2/i,
+            `$1"${newLevel}"`
+        );
+
+    if (
+        newElement === oldElement
+    ) {
+
+        return Buffer.from(
+            text,
+            "utf8"
+        );
+
+    }
+
+    const updated =
+        text.replace(
+            oldElement,
+            newElement
+        );
+
+    /*
+    تأكيد أن القيمة تغيرت فعليًا
+    */
+
+    const verify =
+        updated.match(
+            /<Var\b(?=[^>]*\bname=["']levelup["'])[^>]*>/i
+        );
+
+    if (!verify) {
+
+        throw new Error(
+            'فشل التحقق من تعديل levelup'
+        );
+
+    }
+
+    return Buffer.from(
+        updated,
+        "utf8"
+    );
 }
 
 
 /*
 ========================================
-القيم الأصلية
+القيم الثابتة
 ========================================
 */
-
 
 const UNLOCKED_FRAMES_VALUE =
     "JBsYDjhUWyATVlUjXw==,VEdYLhJsA309Gy0tFgIwCCM=";
@@ -191,7 +315,7 @@ const UNLOCKED_STYLES_VALUE =
 
 
 const UNLOCKED_EXP_RANKS_VALUE =
-    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVgApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVg8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVg4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVgcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
+    "ciIfESAGOAQUVgEpVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0BqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVwApVw84CH0QVzMnERINWg==,PxceLTU3ASA9A0FqCTkMGRU/MSEXEA9UUlE=,ciIfESAGOAQUVw8pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A05qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVw4pVw84CH0QVzMnERINWg==,PxceLTU3ASA9A09qCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVgcpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkZqCTkMGRU/MSEXEA9UlE=,ciIfESAGQUVwYpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkdqCTkMGRU/MSEXEA9UlE=,ciIfESAGOAQUVwUpVw84CH0QVzMnERINWg==,ciIfESAGOAQUVwQpVw84CH0QVzMnERINWg==,PxceLTU3ASA9AkRqCTkMGRU/MSEXEA9UlE=,PxceLTU3ASA9AkVqCTkMGRU/MSEXEA9UlE=";
 
 
 /*
@@ -223,54 +347,145 @@ Cards
 ========================================
 */
 
-function unlockAllCards(xml) {
+function unlockAllCards(
+    xml
+) {
 
     if (!Buffer.isBuffer(xml)) {
         xml = Buffer.from(xml);
     }
 
-    let text =
+    const text =
         xml.toString("utf8");
 
-    const ownedCardsRegex =
-        /(<DataElem\b[^>]*\bname="OwnedCards"[^>]*>)[\s\S]*?(<\/DataElem>)/i;
+    const openPattern =
+        /<DataElem\b(?=[^>]*\bname=["']OwnedCards["'])[^>]*>/i;
 
-    const match =
-        text.match(ownedCardsRegex);
+    const openMatch =
+        text.match(openPattern);
 
-    if (!match) {
-        return Buffer.from(text, "utf8");
-    }
+    if (!openMatch) {
 
-    let cards = "";
-
-    for (let i = 1; i <= 150; i++) {
-
-        const id =
-            "card_" +
-            String(i).padStart(2, "0");
-
-        cards +=
-            '<DataElem type="dataStore">' +
-            '<DataElem name="cardId" type="string" value="' +
-            id +
-            '"/>' +
-            '<DataElem name="generatedCount" type="int" value="1000"/>' +
-            '<DataElem name="inStockCount" type="int" value="1000"/>' +
-            '<DataElem name="isNew" type="bool" value="false"/>' +
-            '<DataElem name="maxInStockCount" type="int" value="1000"/>' +
-            '</DataElem>';
-    }
-
-    text =
-        text.replace(
-            ownedCardsRegex,
-            "$1" +
-            cards +
-            "$2"
+        throw new Error(
+            "لم يتم العثور على OwnedCards"
         );
 
-    return Buffer.from(text, "utf8");
+    }
+
+    const start =
+        openMatch.index;
+
+    const openTag =
+        openMatch[0];
+
+    let position =
+        start + openTag.length;
+
+    let depth =
+        1;
+
+    let end =
+        -1;
+
+    const tagPattern =
+        /<DataElem\b[^>]*>|<\/DataElem\s*>/gi;
+
+    tagPattern.lastIndex =
+        position;
+
+    let tagMatch;
+
+    while (
+        (tagMatch = tagPattern.exec(text)) !== null
+    ) {
+
+        const tag =
+            tagMatch[0];
+
+        if (
+            /^<DataElem\b[^>]*\/\s*>$/i.test(tag)
+        ) {
+
+            continue;
+
+        }
+
+        if (
+            /^<DataElem\b/i.test(tag)
+        ) {
+
+            depth++;
+
+        }
+
+        else if (
+            /^<\/DataElem/i.test(tag)
+        ) {
+
+            depth--;
+
+            if (
+                depth === 0
+            ) {
+
+                end =
+                    tagMatch.index;
+
+                break;
+
+            }
+
+        }
+
+    }
+
+    if (
+        end === -1
+    ) {
+
+        throw new Error(
+            "لم يتم العثور على نهاية OwnedCards"
+        );
+
+    }
+
+    let cards =
+        "";
+
+    for (
+        let i = 1;
+        i <= 150;
+        i++
+    ) {
+
+        const cardId =
+            `card_${String(i).padStart(2, "0")}`;
+
+        cards +=
+            `<DataElem type="dataStore">` +
+            `<DataElem name="cardId" type="string" value="${cardId}"/>` +
+            `<DataElem name="generatedCount" type="int" value="1000"/>` +
+            `<DataElem name="inStockCount" type="int" value="1000"/>` +
+            `<DataElem name="isNew" type="bool" value="false"/>` +
+            `<DataElem name="maxInStockCount" type="int" value="1000"/>` +
+            `</DataElem>`;
+
+    }
+
+    const updated =
+        text.substring(
+            0,
+            start + openTag.length
+        ) +
+        cards +
+        text.substring(
+            end
+        );
+
+    return Buffer.from(
+        updated,
+        "utf8"
+    );
 }
 
 
@@ -280,7 +495,9 @@ Land Expansions
 ========================================
 */
 
-function unlockLandExpansions(xml) {
+function unlockLandExpansions(
+    xml
+) {
 
     if (!Buffer.isBuffer(xml)) {
         xml = Buffer.from(xml);
@@ -289,19 +506,57 @@ function unlockLandExpansions(xml) {
     let text =
         xml.toString("utf8");
 
-    text =
-        text.replace(
-            /<Object\b[^>]*\bdata='[^']*"storeId"\s*:\s*"expandBuy"[^']*'\s*\/>/gi,
-            ""
-        );
+    let removed =
+        0;
+
+    /*
+    الشكل الأساسي
+    */
+
+    const patternSingle =
+        /<Object\b[^>]*\bdata='[^']*"storeId":"expandBuy"[^']*'\s*\/>/gi;
 
     text =
         text.replace(
-            /<Object\b[^>]*\bdata="[^"]*"storeId"\s*:\s*"expandBuy"[^"]*"\s*\/>/gi,
-            ""
+            patternSingle,
+            function() {
+
+                removed++;
+
+                return "";
+
+            }
         );
 
-    return Buffer.from(text, "utf8");
+    /*
+    دعم الشكل باستخدام "
+    */
+
+    const patternDouble =
+        /<Object\b[^>]*\bdata="[^"]*"storeId"\s*:\s*"expandBuy"[^"]*"\s*\/>/gi;
+
+    text =
+        text.replace(
+            patternDouble,
+            function() {
+
+                removed++;
+
+                return "";
+
+            }
+        );
+
+    const result =
+        Buffer.from(
+            text,
+            "utf8"
+        );
+
+    result.removed =
+        removed;
+
+    return result;
 }
 
 
@@ -325,7 +580,9 @@ Parse ranges
 ========================================
 */
 
-function parseRanges(value) {
+function parseRanges(
+    value
+) {
 
     const result = [];
 
@@ -370,13 +627,17 @@ function parseRanges(value) {
                     i += step
                 ) {
 
-                    result.push(String(i));
+                    result.push(
+                        String(i)
+                    );
+
                 }
             }
 
         } else {
 
             result.push(part);
+
         }
     }
 
@@ -390,7 +651,9 @@ XML Escape
 ========================================
 */
 
-function escapeXml(value) {
+function escapeXml(
+    value
+) {
 
     return String(value)
         .replace(/&/g, "&amp;")
@@ -428,16 +691,19 @@ function setAvatarVar(
         );
 
     const replacement =
-        '$1' +
-        '1' +
-        '$2';
+        "$1" +
+        "1" +
+        "$2";
 
-    if (regex.test(text)) {
+    if (
+        regex.test(text)
+    ) {
 
         return text.replace(
             regex,
             replacement
         );
+
     }
 
     const varXml =
@@ -446,23 +712,31 @@ function setAvatarVar(
         '" v="1"' +
         (
             migrate
-                ? ''
+                ? ""
                 : ' t="b"'
         ) +
-        '/>';
+        "/>";
 
     const globalEnd =
         text.search(
             /<\/Global>/i
         );
 
-    if (globalEnd !== -1) {
+    if (
+        globalEnd !== -1
+    ) {
 
         return (
-            text.slice(0, globalEnd) +
+            text.slice(
+                0,
+                globalEnd
+            ) +
             varXml +
-            text.slice(globalEnd)
+            text.slice(
+                globalEnd
+            )
         );
+
     }
 
     return text;
@@ -475,7 +749,9 @@ Unlock All Avatars
 ========================================
 */
 
-function unlockAllAvatars(xml) {
+function unlockAllAvatars(
+    xml
+) {
 
     if (!Buffer.isBuffer(xml)) {
         xml = Buffer.from(xml);
@@ -497,6 +773,7 @@ function unlockAllAvatars(xml) {
                 "Unlocked_ava" + id,
                 false
             );
+
     }
 
     const migrateIds =
@@ -512,9 +789,13 @@ function unlockAllAvatars(xml) {
                 "MigrateUnlocked_ava" + id,
                 true
             );
+
     }
 
-    return Buffer.from(text, "utf8");
+    return Buffer.from(
+        text,
+        "utf8"
+    );
 }
 
 
@@ -524,7 +805,9 @@ Chat Emoji Parser
 ========================================
 */
 
-function parseChatEmojiList(value) {
+function parseChatEmojiList(
+    value
+) {
 
     const result = [];
 
@@ -535,7 +818,9 @@ function parseChatEmojiList(value) {
         value === null ||
         value === undefined
     ) {
+
         return result;
+
     }
 
     const parts =
@@ -555,6 +840,7 @@ function parseChatEmojiList(value) {
             seen.add(item);
 
             result.push(item);
+
         }
     }
 
@@ -595,6 +881,7 @@ function mergeChatEmojiLists(
             seen.add(item);
 
             result.push(item);
+
         }
     }
 
@@ -605,6 +892,7 @@ function mergeChatEmojiLists(
             seen.add(item);
 
             result.push(item);
+
         }
     }
 
@@ -626,7 +914,9 @@ function formatChatEmojiValue(
         value === null ||
         value === undefined
     ) {
+
         return "";
+
     }
 
     return (
@@ -669,7 +959,9 @@ function getVarValue(
         text.match(regex);
 
     if (!match) {
+
         return null;
+
     }
 
     return match[1];
@@ -702,7 +994,9 @@ function setChatEmojiVar(
             "i"
         );
 
-    if (regex.test(text)) {
+    if (
+        regex.test(text)
+    ) {
 
         return text.replace(
             regex,
@@ -710,6 +1004,7 @@ function setChatEmojiVar(
             escapeXml(newValue) +
             "$2"
         );
+
     }
 
     const varXml =
@@ -724,13 +1019,21 @@ function setChatEmojiVar(
             /<\/Global>/i
         );
 
-    if (globalEnd !== -1) {
+    if (
+        globalEnd !== -1
+    ) {
 
         return (
-            text.slice(0, globalEnd) +
+            text.slice(
+                0,
+                globalEnd
+            ) +
             varXml +
-            text.slice(globalEnd)
+            text.slice(
+                globalEnd
+            )
         );
+
     }
 
     return text;
@@ -780,7 +1083,10 @@ function changeChatEmojiVar(
             formatted
         );
 
-    return Buffer.from(text, "utf8");
+    return Buffer.from(
+        text,
+        "utf8"
+    );
 }
 
 
@@ -851,33 +1157,16 @@ function unlockChatEmojis(
             formattedUnlocked
         );
 
-
-    return Buffer.from(text, "utf8");
+    return Buffer.from(
+        text,
+        "utf8"
+    );
 }
 
 
 /*
 ========================================
 REGATA TASKS
-========================================
-
-مطابق لمنطق MainActivity.L0:
-
-taskCount:
-1 .. 105
-
-taskPoint:
-1 .. 135
-
-realEndTime:
-0x692cb050
-step:
-0x7080
-
-أي:
-
-1764522064
-+ 28800 لكل مهمة
 ========================================
 */
 
@@ -912,8 +1201,12 @@ function normalizeRegataInteger(
             10
         );
 
-    if (!Number.isFinite(parsed)) {
+    if (
+        !Number.isFinite(parsed)
+    ) {
+
         return defaultValue;
+
     }
 
     return Math.max(
@@ -945,11 +1238,6 @@ function changeRegataTasks(
     let text =
         xml.toString("utf8");
 
-
-    /*
-    نفس الـ clamp الموجود في L0
-    */
-
     taskCount =
         normalizeRegataInteger(
             taskCount,
@@ -978,12 +1266,12 @@ function changeRegataTasks(
         );
 
     if (!regataMatch) {
-        return Buffer.from(
-            text,
-            "utf8"
-        );
-    }
 
+        throw new Error(
+            "لم يتم العثور على عنصر Regata"
+        );
+
+    }
 
     const originalRegata =
         regataMatch[1];
@@ -1019,10 +1307,7 @@ function changeRegataTasks(
 
 
     /*
-    البحث عن أول FreeTask
-    الذي يبدأ id الخاص به بـ:
-
-    match3_
+    البحث عن FreeTask
     */
 
     const freeTaskRegex =
@@ -1053,20 +1338,17 @@ function changeRegataTasks(
                 id;
 
             break;
+
         }
     }
 
 
-    /*
-    إذا لم نجد FreeTask مناسب
-    لا نعدّل الملف
-    */
-
     if (!freeTaskId) {
-        return Buffer.from(
-            text,
-            "utf8"
+
+        throw new Error(
+            "لم يتم العثور على FreeTask يبدأ بـ match3_"
         );
+
     }
 
 
@@ -1080,10 +1362,11 @@ function changeRegataTasks(
         );
 
     if (!varsMatch) {
-        return Buffer.from(
-            text,
-            "utf8"
+
+        throw new Error(
+            "لم يتم العثور على Vars داخل Regata"
         );
+
     }
 
     const varsIndex =
@@ -1092,13 +1375,6 @@ function changeRegataTasks(
 
     /*
     استخراج target
-
-    L0:
-
-    substring(7)
-
-    ثم حذف كل ما بعد
-    آخر underscore
     */
 
     let target =
@@ -1116,6 +1392,7 @@ function changeRegataTasks(
                 0,
                 lastUnderscore
             );
+
     }
 
 
@@ -1125,7 +1402,6 @@ function changeRegataTasks(
 
     let tasks =
         "";
-
 
     for (
         let i = 0;
@@ -1139,7 +1415,6 @@ function changeRegataTasks(
                 i *
                 REGATA_REAL_END_TIME_STEP
             );
-
 
         tasks +=
             '<MyOldTask' +
@@ -1168,11 +1443,12 @@ function changeRegataTasks(
             String(realEndTime) +
             '"' +
             '/>';
+
     }
 
 
     /*
-    إدخال المهام مباشرة قبل Vars
+    إدخال المهام قبل Vars
     */
 
     regata =
@@ -1187,12 +1463,7 @@ function changeRegataTasks(
 
 
     /*
-    مهم:
-    Java String.replace(CharSequence,...)
-    يستبدل كل التطابقات.
-
-    لذلك نستخدم split/join
-    بدلاً من replace العادي.
+    استبدال Regata
     */
 
     text =
@@ -1202,7 +1473,7 @@ function changeRegataTasks(
 
 
     /*
-    نفس تنظيف L0
+    تنظيف
     */
 
     text =
@@ -1230,23 +1501,180 @@ function changeRegataTasks(
 
 /*
 ========================================
-Editors
+EDITORS
 ========================================
 */
 
 const EDITORS = {
+
+
+    /*
+    Level
+    */
+
+    level:
+        function(
+            xml,
+            value
+        ) {
+
+            return changeLevel(
+                xml,
+                value
+            );
+
+        },
+
+
+    /*
+    Town Name
+    */
+
+    townName:
+        function(
+            xml,
+            value
+        ) {
+
+            return changeVar(
+                xml,
+                "townName",
+                value
+            );
+
+        },
+
+
+    /*
+    Achievement Teamwork
+    */
+
+    achievementTeamwork:
+        function(
+            xml,
+            value
+        ) {
+
+            return changeVar(
+                xml,
+                "Achievement_Teamwork",
+                value
+            );
+
+        },
+
+
+    /*
+    First Attempt M3 Levels
+    */
+
+    firstAttemptM3Levels:
+        function(
+            xml,
+            value
+        ) {
+
+            return changeVar(
+                xml,
+                "FirstAttemptM3Levels",
+                value
+            );
+
+        },
+
+
+    /*
+    Full Card Collections
+    */
+
+    fullCardCollections:
+        function(
+            xml,
+            value
+        ) {
+
+            return changeVar(
+                xml,
+                "FullCardCollections",
+                value
+            );
+
+        },
+
+
+    /*
+    Lives Sent
+    */
+
+    livesSent:
+        function(
+            xml,
+            value
+        ) {
+
+            return changeVar(
+                xml,
+                "LivesSent",
+                value
+            );
+
+        },
+
+
+    /*
+    M3 Completed Levels
+    */
+
+    m3CompLvls:
+        function(
+            xml,
+            value
+        ) {
+
+            return changeVar(
+                xml,
+                "m3_comp_lvls",
+                value
+            );
+
+        },
+
+
+    /*
+    Regata Tasks Completed
+    */
+
+    regataTasksCompleted:
+        function(
+            xml,
+            value
+        ) {
+
+            return changeVar(
+                xml,
+                "RegataTasksCompleted",
+                value
+            );
+
+        },
+
 
     /*
     Frames
     */
 
     unlockedFrames:
-        (xml) =>
-            changeVar(
+        function(
+            xml
+        ) {
+
+            return changeDataElem(
                 xml,
                 "UnlockedFrames",
                 UNLOCKED_FRAMES_VALUE
-            ),
+            );
+
+        },
 
 
     /*
@@ -1254,125 +1682,189 @@ const EDITORS = {
     */
 
     unlockedStyles:
-        (xml) =>
-            changeVar(
+        function(
+            xml
+        ) {
+
+            return changeDataElem(
                 xml,
                 "UnlockedStyles",
                 UNLOCKED_STYLES_VALUE
-            ),
+            );
+
+        },
 
 
     /*
-    Experience ranks
+    Experience Ranks
     */
 
     unlockedExpRanks:
-        (xml) =>
-            changeVar(
+        function(
+            xml
+        ) {
+
+            return changeDataElem(
                 xml,
                 "UnlockedExpRanks",
                 UNLOCKED_EXP_RANKS_VALUE
-            ),
+            );
+
+        },
 
 
     /*
     Cards
     */
 
-    cards:
-        (xml) =>
-            unlockAllCards(xml),
+    unlockAllCards:
+        function(
+            xml
+        ) {
+
+            return unlockAllCards(
+                xml
+            );
+
+        },
 
 
     /*
     Land
     */
 
-    land:
-        (xml) =>
-            unlockLandExpansions(xml),
+    unlockLandExpansions:
+        function(
+            xml
+        ) {
+
+            return unlockLandExpansions(
+                xml
+            );
+
+        },
 
 
     /*
     Avatars
     */
 
-    avatars:
-        (xml) =>
-            unlockAllAvatars(xml),
+    unlockAllAvatars:
+        function(
+            xml
+        ) {
+
+            return unlockAllAvatars(
+                xml
+            );
+
+        },
 
 
     /*
-    Chat Emojis / Stickers
+    Stickers
     */
 
     chatEmojis:
-        (xml) =>
-            unlockChatEmojis(
+        function(
+            xml
+        ) {
+
+            return unlockChatEmojis(
                 xml,
                 ALL_CHAT_EMOJI_IDS
-            ),
+            );
+
+        },
 
 
     /*
-    NewChatEmoji فقط
+    NewChatEmoji
     */
 
     newChatEmoji:
-        (xml) =>
-            changeChatEmojiVar(
+        function(
+            xml
+        ) {
+
+            return changeChatEmojiVar(
                 xml,
                 "NewChatEmoji",
                 ALL_CHAT_EMOJI_IDS
-            ),
+            );
+
+        },
 
 
     /*
-    UnlockedChatEmoji فقط
+    UnlockedChatEmoji
     */
 
     unlockedChatEmoji:
-        (xml) =>
-            changeChatEmojiVar(
+        function(
+            xml
+        ) {
+
+            return changeChatEmojiVar(
                 xml,
                 "UnlockedChatEmoji",
                 ALL_CHAT_EMOJI_IDS
-            ),
+            );
+
+        },
 
 
     /*
-    ========================================
-    REGATA TASKS
-    ========================================
-
-    الاستخدام:
-
-    {
-        "regataTasks": {
-            "taskCount": 105,
-            "taskPoint": 135
-        }
-    }
+    Regata Tasks
     */
 
     regataTasks:
-        (
+        function(
             xml,
-            taskCount = 105,
-            taskPoint = 135
-        ) =>
-            changeRegataTasks(
+            value
+        ) {
+
+            /*
+            دعم الشكل الجديد:
+
+            {
+                taskCount: 105,
+                taskPoint: 135
+            }
+            */
+
+            if (
+                value &&
+                typeof value === "object" &&
+                !Array.isArray(value)
+            ) {
+
+                return changeRegataTasks(
+                    xml,
+                    value.taskCount,
+                    value.taskPoint
+                );
+
+            }
+
+            /*
+            إذا تم إرسال قيمة واحدة
+            */
+
+            return changeRegataTasks(
                 xml,
-                taskCount,
-                taskPoint
-            )
+                value,
+                135
+            );
+
+        }
 
 };
 
 
 /*
 ========================================
-Apply Edits
+APPLY EDITS
 ========================================
 */
 
@@ -1386,39 +1878,52 @@ function applyEdits(
             ? xml
             : Buffer.from(xml);
 
+
     if (!edits) {
+
         return result;
+
     }
 
 
     /*
     ========================================
-    إذا كانت edits Array
+    Array
     ========================================
 
     مثال:
 
     [
-        "cards",
-        "avatars",
+        "unlockAllCards",
+        "unlockAllAvatars",
         "chatEmojis"
     ]
     */
 
-    if (Array.isArray(edits)) {
+    if (
+        Array.isArray(edits)
+    ) {
 
-        for (const key of edits) {
+        for (
+            const key of edits
+        ) {
 
             if (
-                typeof EDITORS[key] ===
+                typeof EDITORS[key] !==
                 "function"
             ) {
 
-                result =
-                    EDITORS[key](
-                        result
-                    );
+                throw new Error(
+                    `تعديل غير معروف: ${key}`
+                );
+
             }
+
+            result =
+                EDITORS[key](
+                    result
+                );
+
         }
 
         return result;
@@ -1427,74 +1932,107 @@ function applyEdits(
 
     /*
     ========================================
-    إذا كانت edits Object
+    Object
     ========================================
-
-    مثال قديم:
-
-    {
-        "cards": true,
-        "avatars": true
-    }
-
-    ومثال Regata:
-
-    {
-        "regataTasks": {
-            "taskCount": 105,
-            "taskPoint": 135
-        }
-    }
     */
 
     if (
-        typeof edits === "object"
+        typeof edits !== "object"
     ) {
 
-        for (
-            const [key, enabled]
-            of Object.entries(edits)
+        throw new Error(
+            "صيغة التعديلات غير صحيحة"
+        );
+
+    }
+
+
+    for (
+        const [
+            key,
+            enabled
+        ]
+        of Object.entries(edits)
+    ) {
+
+        const editor =
+            EDITORS[key];
+
+        if (!editor) {
+
+            throw new Error(
+                `تعديل غير معروف: ${key}`
+            );
+
+        }
+
+
+        /*
+        ====================================
+        Regata
+        ====================================
+        */
+
+        if (
+            key === "regataTasks" &&
+            enabled &&
+            typeof enabled === "object" &&
+            !Array.isArray(enabled)
         ) {
 
-            if (
-                !enabled ||
-                typeof EDITORS[key] !==
-                "function"
-            ) {
-                continue;
-            }
+            result =
+                editor(
+                    result,
+                    enabled
+                );
+
+            continue;
+
+        }
 
 
-            /*
-            Regata له قيمتان
-            */
+        /*
+        ====================================
+        Boolean
+        ====================================
+        */
 
-            if (
-                key === "regataTasks" &&
-                typeof enabled === "object"
-            ) {
-
-                result =
-                    EDITORS[key](
-                        result,
-                        enabled.taskCount,
-                        enabled.taskPoint
-                    );
-
-                continue;
-            }
-
-
-            /*
-            جميع التعديلات القديمة
-            */
+        if (
+            enabled === true
+        ) {
 
             result =
-                EDITORS[key](
+                editor(
                     result
                 );
+
+            continue;
+
         }
+
+
+        /*
+        ====================================
+        قيمة عادية
+        ====================================
+        */
+
+        if (
+            enabled !== false &&
+            enabled !== null &&
+            enabled !== undefined
+        ) {
+
+            result =
+                editor(
+                    result,
+                    enabled
+                );
+
+        }
+
     }
+
 
     return result;
 }
@@ -1502,11 +2040,13 @@ function applyEdits(
 
 /*
 ========================================
-Exports
+EXPORTS
 ========================================
 */
 
 module.exports = {
+
+    applyEdits,
 
     changeVar,
 
@@ -1538,10 +2078,6 @@ module.exports = {
 
     unlockChatEmojis,
 
-    /*
-    Regata
-    */
-
     changeRegataTasks,
 
     normalizeRegataInteger,
@@ -1553,8 +2089,6 @@ module.exports = {
     REGATA_START_REAL_END_TIME,
 
     REGATA_REAL_END_TIME_STEP,
-
-    applyEdits,
 
     EDITORS,
 
