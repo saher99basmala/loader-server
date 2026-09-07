@@ -1328,195 +1328,109 @@ async function requestFetchCity(
 }
 
 // ============================================================
-// FETCHCITY API - RAW TEST
+// FETCHCITY API
 // ============================================================
 
-async function handleFetchCity(
-    req,
-    res
-) {
-
+async function handleFetchCity(req, res) {
     try {
+        const body = req.body || {};
 
-        const body =
-            req.body || {};
-
-        // ====================================================
-        // الاختبار:
-        // Lua يرسل فقط:
-        //
-        // {
-        //   "city_id": "9HkilUfBjJ",
-        //   "city_name": "Pippi",
-        //   "level": "16"
-        // }
-        //
-        // city_id = saveId
-        // ====================================================
-
-        const cityId =
-            String(
-                body.city_id ||
-                ""
-            ).trim();
-
-        const cityName =
-            String(
-                body.city_name ||
-                ""
-            ).trim();
-
-        const level =
-            String(
-                body.level ||
-                ""
-            ).trim();
+        // Lua يرسل saveId تحت اسم city_id
+        const cityId = String(body.city_id || "").trim();
+        const cityName = String(body.city_name || "").trim();
+        const level = String(body.level || "").trim();
 
         if (!cityId) {
-
-            return res
-                .status(400)
-                .json({
-                    ok: false,
-                    error:
-                        "city_id مطلوب"
-                });
+            return res.status(400).json({
+                ok: false,
+                error: "city_id مطلوب"
+            });
         }
 
-        // ====================================================
-        // cityVer داخلي فقط
-        // ====================================================
+        console.log(
+            `[FetchCity] requested saveId=${cityId} name=${cityName} level=${level}`
+        );
 
+        // saveId هو fetchCityId عند الاتصال بـ Playrix
         const cityVer = 0;
 
+        // جلب المدينة من Playrix
+        const result = await requestFetchCity(cityId, cityVer);
+
+        if (!result || !result.result || !result.result.data) {
+            console.log("[FetchCity] Playrix response has no result.data");
+            return res.status(502).json({
+                ok: false,
+                error: "Playrix لم يرجع بيانات المدينة"
+            });
+        }
+
+        // البيانات التي ترجع من Playrix هي Base64
+        const base64 = String(result.result.data);
+
         console.log(
-            "[FetchCity TEST] incoming:",
-            {
-                city_id:
-                    cityId,
-
-                city_name:
-                    cityName,
-
-                level:
-                    level,
-
-                cityVer:
-                    cityVer
-            }
+            `[FetchCity] Base64 length=${base64.length}`
         );
 
-        // ====================================================
-        // طلب FetchCity الحقيقي إلى Playrix
-        // ====================================================
+        // Base64 -> raw .city bytes
+        let cityBytes;
 
-        const json =
-            await requestFetchCity(
-                cityId,
-                cityVer
-            );
-
-        // ====================================================
-        // التحقق من استجابة Playrix
-        // ====================================================
-
-        if (
-            !json ||
-            !json.result ||
-            typeof json.result.data !==
-                "string"
-        ) {
-
+        try {
+            cityBytes = Buffer.from(base64, "base64");
+        } catch (e) {
             throw new Error(
-                "Upstream JSON لا يحتوي result.data"
+                "فشل فك Base64: " + e.message
             );
         }
 
-        // ====================================================
-        // Base64
-        // ====================================================
-
-        const base64 =
-            json.result.data;
-
         console.log(
-            `[FetchCity TEST] Base64 length=${base64.length}`
+            `[FetchCity] decoded city bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
         );
 
-        // ====================================================
-        // فك Base64 فقط
-        //
-        // مهم:
-        // لا نفك 0x54
-        // لا نفك GZIP
-        // لا نفك أي طبقة أخرى
-        // ====================================================
+        // -----------------------------------------
+        // فك طبقات ملف المدينة
+        // -----------------------------------------
 
-        const cityBytes =
-            Buffer.from(
-                base64,
-                "base64"
-            );
+        const xml = decodeSaveCity(cityBytes);
+
+        if (!xml) {
+            throw new Error("فشل فك ملف المدينة");
+        }
 
         console.log(
-            `[FetchCity TEST] RAW city bytes=${cityBytes.length}`
+            `[FetchCity] OPEN XML size=${Buffer.byteLength(xml, "utf8")}`
         );
 
         console.log(
-            `[FetchCity TEST] RAW magic=${bufferMagic(cityBytes)}`
+            `[FetchCity] XML magic=${bufferMagic(Buffer.from(xml, "utf8"))}`
         );
 
-        // ====================================================
-        // إرجاع الملف الخام مباشرة
-        // ====================================================
+        // -----------------------------------------
+        // إرسال XML مفتوح
+        // -----------------------------------------
 
-        res.status(200);
+        res.set("Content-Type", "application/xml; charset=utf-8");
+        res.set("Content-Disposition", "inline");
+        res.set("Cache-Control", "no-store");
 
-        res.set(
-            "Content-Type",
-            "application/octet-stream"
-        );
-
-        res.set(
-            "Content-Disposition",
-            `attachment; filename="test_${cityId}.city"`
-        );
-
-        res.set(
-            "Cache-Control",
-            "no-store"
-        );
-
-        return res.send(
-            cityBytes
-        );
+        return res.send(xml);
 
     } catch (err) {
-
         console.error(
-            "[FetchCity TEST] ERROR:",
-            err &&
-            err.stack
-                ? err.stack
-                : err
+            "[FetchCity] ERROR:",
+            err && err.stack ? err.stack : err
         );
 
-        return res
-            .status(500)
-            .json({
-
-                ok: false,
-
-                error:
-                    String(
-                        err &&
-                        err.message
-                            ? err.message
-                            : err
-                    )
-            });
+        return res.status(500).json({
+            ok: false,
+            error: err && err.message
+                ? err.message
+                : String(err)
+        });
     }
 }
+
+
 // ============================================================
 // ============================================================
 // FRIEND FILE DECODER - EXACT decodeFile.js
