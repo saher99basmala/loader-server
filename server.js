@@ -28,6 +28,14 @@ const cityCache =
     require("./cityCache");
 
 
+// ============================================================
+// Independent XML Server
+// ============================================================
+
+const independentServer =
+    require("./independentServer");
+
+
 const PORT =
     process.env.PORT || 3000;
 
@@ -101,6 +109,20 @@ app.use(
 app.use(
     "/api",
     cityCache
+);
+
+
+// ============================================================
+// Independent XML Processor
+// ============================================================
+
+console.log(
+    "[Independent] module loaded"
+);
+
+app.use(
+    "/api/independent",
+    independentServer
 );
 
 
@@ -572,6 +594,10 @@ app.listen(
 
         console.log(
             `[FetchCity] POST /api/fetch-city`
+        );
+
+        console.log(
+            `[Independent] POST /api/independent/process-xml`
         );
     }
 );
