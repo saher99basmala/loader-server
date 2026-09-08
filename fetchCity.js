@@ -2869,4 +2869,5 @@ console.log(
     "[FetchCity] module loaded"
 );
 
-module.exports = router;
+module.exports.requestFetchCity = requestFetchCity;
+module.exports.decodeSaveCity = decodeSaveCity;
