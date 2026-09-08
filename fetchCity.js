@@ -2984,5 +2984,3 @@ console.log(
 );
 
 module.exports = router;
-
-الإضافة الفعلية فقط هي القسم "XML CLEANER" واستدعاؤه داخل "editCityXml()". أما فك FetchCity، AES، LZ4، Friends والـ routes فبقيت كما في الكود الذي أرسلته.
