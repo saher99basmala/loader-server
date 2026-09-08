@@ -13,7 +13,7 @@ const router =
 
 
 // ============================================================
-// Independent FetchCity
+// Independent FetchCity - POST
 // ============================================================
 
 router.post(
@@ -132,6 +132,133 @@ router.post(
                 error:
                     error.message ||
                     "Independent FetchCity failed"
+
+            });
+        }
+    }
+);
+
+
+// ============================================================
+// TEMP GET TEST
+// ============================================================
+
+router.get(
+    "/test-fetch-city",
+    async (req, res) => {
+
+        try {
+
+            const cityId =
+                String(
+                    req.query.city_id ||
+                    ""
+                ).trim();
+
+            const cityVer =
+                Number(
+                    req.query.city_ver || 0
+                );
+
+            if (!cityId) {
+
+                return res.status(400).json({
+                    ok: false,
+                    error: "ضع city_id في الرابط"
+                });
+            }
+
+
+            console.log(
+                "[TestFetchCity] request:",
+                cityId
+            );
+
+
+            // ------------------------------------------------
+            // Fetch من خادم اللعبة
+            // ------------------------------------------------
+
+            const json =
+                await fetchCity.requestFetchCity(
+                    cityId,
+                    cityVer
+                );
+
+
+            if (
+                !json ||
+                !json.result ||
+                !json.result.data
+            ) {
+
+                throw new Error(
+                    "FetchCity result.data غير موجود"
+                );
+            }
+
+
+            // ------------------------------------------------
+            // فك بيانات FetchCity
+            // ------------------------------------------------
+
+            const xml =
+                await fetchCity.decodeSaveCity(
+                    json.result.data
+                );
+
+
+            if (!xml) {
+
+                throw new Error(
+                    "لم يتم الحصول على XML"
+                );
+            }
+
+
+            // ------------------------------------------------
+            // تنظيف XML
+            // ------------------------------------------------
+
+            const cleaned =
+                cleaner.cleanFetchCityXml(
+                    xml
+                );
+
+
+            console.log(
+                "[TestFetchCity] cleaned size:",
+                cleaned.length
+            );
+
+
+            // ------------------------------------------------
+            // إرسال XML
+            // ------------------------------------------------
+
+            res.set(
+                "Content-Type",
+                "application/xml; charset=utf-8"
+            );
+
+            return res.send(
+                cleaned
+            );
+
+        } catch (error) {
+
+            console.error(
+                "[TestFetchCity] ERROR:",
+                error
+            );
+
+            return res.status(500).json({
+
+                ok: false,
+
+                error:
+                    error.message ||
+                    "Test FetchCity failed"
 
             });
         }
