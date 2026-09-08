@@ -6,6 +6,10 @@ const express = require("express");
 const crypto = require("crypto");
 const zlib = require("zlib");
 const fetch = require("node-fetch");
+const fs = require("fs");
+const path = require("path");
+
+const fsp = fs.promises;
 
 const router = express.Router();
 
@@ -474,7 +478,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: literal length خارج البيانات"
+                        "LZ4: literal length خارج حدود البيانات"
                     );
                 }
 
@@ -496,7 +500,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: literals خارج البيانات"
+                "LZ4: literals خارج حدود البيانات"
             );
         }
 
@@ -586,7 +590,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: match length خارج البيانات"
+                        "LZ4: match length خارج حدود البيانات"
                     );
                 }
 
@@ -755,136 +759,52 @@ function trimXml(buf) {
 }
 
 // ============================================================
-// XML CLEANER
-// مطابق لحقول الحذف الموجودة في MainActivity
+// XML CLEANER - مطابق U0 في التطبيق
 // ============================================================
 
-function removeXmlVar(
+function escapeRegExp(value) {
+
+    return String(
+        value
+    ).replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+    );
+}
+
+function removeXmlVarU0(
     xml,
-    field,
-    flexibleValue = false
+    fieldName
 ) {
 
-    if (
-        typeof xml !== "string" ||
-        !xml
-    ) {
-        return xml;
-    }
+    try {
 
-    const escapedField =
-        String(field)
-            .replace(
-                /[.*+?^${}()|[\]\\]/g,
-                "\\$&"
-            );
-
-    let pattern;
-
-    if (
-        flexibleValue
-    ) {
-
-        pattern =
+        const pattern =
             new RegExp(
-                "\\s*<Var\\b[^>]*name\\s*=\\s*[\"']" +
-                escapedField +
-                "[^\"']*[\"'][^>]*/>\\s*",
+                "\\s*<Var\\b[^>]*name\\s*=\\s*['\"]" +
+                escapeRegExp(fieldName) +
+                "['\"][^>]*/>\\s*",
                 "gis"
             );
 
-    } else {
+        return xml.replace(
+            pattern,
+            "\n"
+        );
 
-        pattern =
-            new RegExp(
-                "\\s*<Var\\b[^>]*name\\s*=\\s*[\"']" +
-                escapedField +
-                "[\"'][^>]*/>\\s*",
-                "gis"
-            );
-    }
+    } catch (err) {
 
-    return xml.replace(
-        pattern,
-        "\n"
-    );
-}
+        console.error(
+            `[XML CLEANER] ${fieldName} failed:`,
+            err.message
+        );
 
-// ============================================================
-// XML CLEANER - حقول J0()
-// ============================================================
-
-function cleanXmlLikeApp(
-    xml
-) {
-
-    if (
-        typeof xml !== "string" ||
-        !xml
-    ) {
         return xml;
     }
-
-    const before =
-        xml.length;
-
-    // U0()
-    xml =
-        removeXmlVar(
-            xml,
-            "CeReas"
-        );
-
-    // V0()
-    xml =
-        removeXmlVar(
-            xml,
-            "CeReas",
-            true
-        );
-
-    // U0()
-    xml =
-        removeXmlVar(
-            xml,
-            "ServerCeReas"
-        );
-
-    // V0()
-    xml =
-        removeXmlVar(
-            xml,
-            "ServerCeReas",
-            true
-        );
-
-    // U0()
-    xml =
-        removeXmlVar(
-            xml,
-            "CCSecretApps"
-        );
-
-    // U0()
-    xml =
-        removeXmlVar(
-            xml,
-            "CCSecretC"
-        );
-
-    console.log(
-        `[FetchCity] XML cleaner: ${before} -> ${xml.length}`
-    );
-
-    console.log(
-        "[FetchCity] XML cleaner fields: CeReas, ServerCeReas, CCSecretApps, CCSecretC"
-    );
-
-    return xml;
 }
 
 // ============================================================
-// EDIT CITY XML
+// MODIFY FETCHCITY XML
 // ============================================================
 
 function editCityXml(xml) {
@@ -898,10 +818,19 @@ function editCityXml(xml) {
             "utf8"
         );
 
+    // ========================================================
+    // cityId = فارغ
+    // Device = ASUS_Z01QD
+    // ========================================================
+
     text =
         text.replace(
             /<Var\b[^>]*\/?>/gi,
             function(tag) {
+
+                // ------------------------------------------------
+                // cityId
+                // ------------------------------------------------
 
                 if (
                     /\bname\s*=\s*["']cityId["']/i
@@ -926,6 +855,10 @@ function editCityXml(xml) {
                         ' v=""/>'
                     );
                 }
+
+                // ------------------------------------------------
+                // Device
+                // ------------------------------------------------
 
                 if (
                     /\bname\s*=\s*["']Device["']/i
@@ -955,6 +888,46 @@ function editCityXml(xml) {
             }
         );
 
+    // ========================================================
+    // الحقول التي يتم حذفها
+    // ========================================================
+
+    const fieldsToRemove = [
+        "CeReas",
+        "ServerCeReas",
+        "CCSecretApps",
+        "CCSecretC"
+    ];
+
+    for (
+        const fieldName of fieldsToRemove
+    ) {
+
+        const before =
+            text;
+
+        text =
+            removeXmlVarU0(
+                text,
+                fieldName
+            );
+
+        if (
+            before !== text
+        ) {
+
+            console.log(
+                `[XML CLEANER] removed: ${fieldName}`
+            );
+
+        } else {
+
+            console.log(
+                `[XML CLEANER] not found: ${fieldName}`
+            );
+        }
+    }
+
     console.log(
         "[FetchCity] XML modifications applied"
     );
@@ -967,15 +940,6 @@ function editCityXml(xml) {
         "[FetchCity] Device = ASUS_Z01QD"
     );
 
-    // ========================================================
-    // تنظيف XML المطابق للتطبيق
-    // ========================================================
-
-    text =
-        cleanXmlLikeApp(
-            text
-        );
-
     return Buffer.from(
         text,
         "utf8"
@@ -983,10 +947,165 @@ function editCityXml(xml) {
 }
 
 // ============================================================
+// SAVE CLEANED XML
+// ============================================================
+
+function safeFilePart(
+    value
+) {
+
+    return String(
+        value
+    )
+        .replace(
+            /[^a-zA-Z0-9._-]/g,
+            "_"
+        )
+        .slice(
+            0,
+            120
+        ) ||
+        "unknown";
+}
+
+async function saveCleanedXmlFirst(
+    xmlBuffer,
+    cityId
+) {
+
+    const dir =
+        process.env.CLEANED_XML_DIR ||
+        path.join(
+            process.cwd(),
+            "cleaned-xml"
+        );
+
+    // إنشاء مجلد الحفظ إن لم يكن موجوداً
+    await fsp.mkdir(
+        dir,
+        {
+            recursive: true
+        }
+    );
+
+    const stamp =
+        new Date()
+            .toISOString()
+            .replace(
+                /[:.]/g,
+                "-"
+            );
+
+    const base =
+        `${safeFilePart(cityId)}-${stamp}`;
+
+    const finalPath =
+        path.join(
+            dir,
+            `${base}.xml`
+        );
+
+    const tempPath =
+        `${finalPath}.tmp-${process.pid}-${Date.now()}`;
+
+    try {
+
+        // ====================================================
+        // 1. الحفظ في ملف مؤقت
+        // ====================================================
+
+        await fsp.writeFile(
+            tempPath,
+            xmlBuffer
+        );
+
+        console.log(
+            `[FetchCity] temporary XML saved: ${tempPath}`
+        );
+
+        // ====================================================
+        // 2. التحقق من الملف المؤقت
+        // ====================================================
+
+        const tempStat =
+            await fsp.stat(
+                tempPath
+            );
+
+        if (
+            tempStat.size !==
+            xmlBuffer.length
+        ) {
+
+            throw new Error(
+                `Saved XML size mismatch: ${tempStat.size} != ${xmlBuffer.length}`
+            );
+        }
+
+        console.log(
+            `[FetchCity] temporary XML verified: ${tempStat.size} bytes`
+        );
+
+        // ====================================================
+        // 3. نقل الملف إلى الاسم النهائي
+        // ====================================================
+
+        await fsp.rename(
+            tempPath,
+            finalPath
+        );
+
+        // ====================================================
+        // 4. التحقق النهائي من الملف
+        // ====================================================
+
+        const finalStat =
+            await fsp.stat(
+                finalPath
+            );
+
+        if (
+            finalStat.size !==
+            xmlBuffer.length
+        ) {
+
+            throw new Error(
+                `Final XML size mismatch: ${finalStat.size} != ${xmlBuffer.length}`
+            );
+        }
+
+        console.log(
+            `[FetchCity] cleaned XML saved successfully: ${finalPath}`
+        );
+
+        console.log(
+            `[FetchCity] saved bytes: ${finalStat.size}`
+        );
+
+        return finalPath;
+
+    } catch (err) {
+
+        // تنظيف الملف المؤقت إذا حدث خطأ
+        try {
+
+            await fsp.unlink(
+                tempPath
+            );
+
+        } catch (_) {}
+
+        throw err;
+    }
+}
+
+// ============================================================
 // COMPLETE FETCHCITY SAVE DECODER
 // ============================================================
 
-function decodeSaveCity(cityBytes) {
+function decodeSaveCity(
+    cityBytes
+) {
 
     let data =
         Buffer.from(
@@ -1006,6 +1125,10 @@ function decodeSaveCity(cityBytes) {
 
         rounds++;
 
+        // ====================================================
+        // XML
+        // ====================================================
+
         if (
             looksLikeXml(data)
         ) {
@@ -1018,6 +1141,10 @@ function decodeSaveCity(cityBytes) {
                 data
             );
         }
+
+        // ====================================================
+        // LZ4
+        // ====================================================
 
         if (
             isLz4Magic(data)
@@ -1034,6 +1161,10 @@ function decodeSaveCity(cityBytes) {
 
             continue;
         }
+
+        // ====================================================
+        // GZIP
+        // ====================================================
 
         if (
             isGzip(data)
@@ -1053,6 +1184,10 @@ function decodeSaveCity(cityBytes) {
 
         const type =
             data[0];
+
+        // ====================================================
+        // Transport layers
+        // ====================================================
 
         if (
             type === 0x79 ||
@@ -1240,6 +1375,10 @@ function decompressResponse(
         `[FetchCity] decrypted magic=${bufferMagic(decrypted)}`
     );
 
+    // ========================================================
+    // GZIP
+    // ========================================================
+
     try {
 
         const result =
@@ -1259,6 +1398,10 @@ function decompressResponse(
             "[FetchCity] GZIP failed"
         );
     }
+
+    // ========================================================
+    // ZLIB
+    // ========================================================
 
     try {
 
@@ -1280,6 +1423,10 @@ function decompressResponse(
         );
     }
 
+    // ========================================================
+    // RAW DEFLATE
+    // ========================================================
+
     try {
 
         const result =
@@ -1299,6 +1446,10 @@ function decompressResponse(
             "[FetchCity] RAW DEFLATE failed"
         );
     }
+
+    // ========================================================
+    // Plain JSON
+    // ========================================================
 
     const text =
         decrypted
@@ -1521,6 +1672,10 @@ async function handleFetchCity(
             `[FetchCity] incoming cityId=${cityId} cityVer=${cityVer}`
         );
 
+        // ====================================================
+        // 1. جلب المدينة من Upstream
+        // ====================================================
+
         const json =
             await requestFetchCity(
                 cityId,
@@ -1556,6 +1711,10 @@ async function handleFetchCity(
             `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
         );
 
+        // ====================================================
+        // 2. فك المدينة إلى XML
+        // ====================================================
+
         const xml =
             decodeSaveCity(
                 cityBytes
@@ -1565,6 +1724,10 @@ async function handleFetchCity(
             `[FetchCity] XML size=${xml.length}`
         );
 
+        // ====================================================
+        // 3. تعديل وتنظيف XML
+        // ====================================================
+
         const modifiedXml =
             editCityXml(
                 xml
@@ -1573,6 +1736,24 @@ async function handleFetchCity(
         console.log(
             `[FetchCity] Modified XML size=${modifiedXml.length}`
         );
+
+        // ====================================================
+        // 4. حفظ XML المنظف على السيرفر أولاً
+        // ====================================================
+
+        const savedPath =
+            await saveCleanedXmlFirst(
+                modifiedXml,
+                cityId
+            );
+
+        console.log(
+            `[FetchCity] SAVE COMPLETE: ${savedPath}`
+        );
+
+        // ====================================================
+        // 5. الإرسال للجهاز بعد نجاح الحفظ والتحقق
+        // ====================================================
 
         res.status(200);
 
@@ -1586,8 +1767,17 @@ async function handleFetchCity(
             "no-store"
         );
 
-        return res.send(
-            modifiedXml
+        res.set(
+            "X-Cleaned-File-Saved",
+            "true"
+        );
+
+        console.log(
+            "[FetchCity] sending saved XML to device"
+        );
+
+        return res.sendFile(
+            savedPath
         );
 
     } catch (err) {
@@ -2687,6 +2877,7 @@ function attachSaveIdsToFriends(
             continue;
         }
 
+        // أول saveId لنفس الاسم يبقى هو المستخدم
         if (
             !profileMap.has(key)
         ) {
@@ -2716,6 +2907,7 @@ function attachSaveIdsToFriends(
 
         let saveId = "";
 
+        // المطابقة الأساسية: city_name
         if (
             cityNameKey &&
             profileMap.has(
@@ -2729,6 +2921,7 @@ function attachSaveIdsToFriends(
                 );
         }
 
+        // احتياطياً: name
         if (
             !saveId &&
             friendNameKey &&
@@ -2815,6 +3008,10 @@ async function handleDecodeFriends(
             `[Friends] encrypted magic=${bufferMagic(encryptedFile)}`
         );
 
+        // ====================================================
+        // decodeFile الحقيقي
+        // ====================================================
+
         const xmlBuffer =
             decodeFriendFile(
                 encryptedFile
@@ -2865,15 +3062,27 @@ async function handleDecodeFriends(
             );
         }
 
+        // ====================================================
+        // استخراج friends
+        // ====================================================
+
         const friends =
             parseFriends(
                 xml
             );
 
+        // ====================================================
+        // استخراج saveId من ProfilesCache
+        // ====================================================
+
         const saveProfiles =
             parseSaveProfiles(
                 xml
             );
+
+        // ====================================================
+        // ربط saveId مع friends
+        // ====================================================
 
         attachSaveIdsToFriends(
             friends,
@@ -2896,6 +3105,10 @@ async function handleDecodeFriends(
             `[Friends] saveProfiles=${saveProfiles.length}`
         );
 
+        // ====================================================
+        // طباعة نتيجة الربط
+        // ====================================================
+
         for (
             const friend of friends
         ) {
@@ -2909,6 +3122,10 @@ async function handleDecodeFriends(
                 );
             }
         }
+
+        // ====================================================
+        // RESPONSE
+        // ====================================================
 
         return res
             .status(200)
