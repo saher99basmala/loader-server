@@ -58,7 +58,7 @@ function u32le(buf, offset) {
 
     if (offset + 4 > buf.length) {
         throw new Error(
-            "u32le ط®ط§ط±ط¬ ط­ط¯ظˆط¯ ط§ظ„ط¨ظٹط§ظ†ط§طھ"
+            "u32le ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ­ط·آ¯ط¸ث†ط·آ¯ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
         );
     }
 
@@ -190,7 +190,7 @@ function xorDecode79(raw) {
     if (raw.length < 8) {
 
         throw new Error(
-            `ط¨ظٹط§ظ†ط§طھ 0x79 ظ‚طµظٹط±ط©: ${raw.length}`
+            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x79 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
         );
     }
 
@@ -311,14 +311,14 @@ function decode54Layer(raw) {
     if (raw.length < 4) {
 
         throw new Error(
-            `ط¨ظٹط§ظ†ط§طھ 0x54 ظ‚طµظٹط±ط©: ${raw.length}`
+            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
         );
     }
 
     if (raw[0] !== 0x54) {
 
         throw new Error(
-            `ط¨ظٹط§ظ†ط§طھ 0x54 ط؛ظٹط± طµط­ظٹط­ط©. Magic=${bufferMagic(raw)}`
+            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­ط·آ©. Magic=${bufferMagic(raw)}`
         );
     }
 
@@ -425,7 +425,7 @@ function decodeTransport(raw) {
         default:
 
             throw new Error(
-                `ظ†ظˆط¹ FetchCity ط؛ظٹط± ظ…ط¯ط¹ظˆظ… ط­ط§ظ„ظٹط§ظ‹: 0x${type
+                `ط¸â€ ط¸ث†ط·آ¹ FetchCity ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦ ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹: 0x${type
                     .toString(16)
                     .padStart(2, "0")}`
             );
@@ -474,7 +474,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: literal length ط®ط§ط±ط¬ ط§ظ„ط¨ظٹط§ظ†ط§طھ"
+                        "LZ4: literal length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
                     );
                 }
 
@@ -496,7 +496,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: literals ط®ط§ط±ط¬ ط§ظ„ط¨ظٹط§ظ†ط§طھ"
+                "LZ4: literals ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
             );
         }
 
@@ -507,7 +507,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: output overflow ط£ط«ظ†ط§ط، literals"
+                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ literals"
             );
         }
 
@@ -538,7 +538,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: offset ظ†ط§ظ‚طµ"
+                "LZ4: offset ط¸â€ ط·آ§ط¸â€ڑط·آµ"
             );
         }
 
@@ -565,7 +565,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                `LZ4: offset ط£ظƒط¨ط± ظ…ظ† output: ${offset} > ${dstPos}`
+                `LZ4: offset ط·آ£ط¸ئ’ط·آ¨ط·آ± ط¸â€¦ط¸â€  output: ${offset} > ${dstPos}`
             );
         }
 
@@ -586,7 +586,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: match length ط®ط§ط±ط¬ ط§ظ„ط¨ظٹط§ظ†ط§طھ"
+                        "LZ4: match length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
                     );
                 }
 
@@ -610,7 +610,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: output overflow ط£ط«ظ†ط§ط، match"
+                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ match"
             );
         }
 
@@ -640,7 +640,7 @@ function lz4DecompressBlock(
     ) {
 
         throw new Error(
-            `LZ4: ط§ظ„ط­ط¬ظ… ط§ظ„ظ†ط§طھط¬ ط؛ظٹط± ظ…ط·ط§ط¨ظ‚. expected=${expectedSize}, actual=${dstPos}`
+            `LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑ. expected=${expectedSize}, actual=${dstPos}`
         );
     }
 
@@ -654,7 +654,7 @@ function decodeLz4Container(raw) {
     ) {
 
         throw new Error(
-            `LZ4 magic ط؛ظٹط± طµط­ظٹط­: ${bufferMagic(raw)}`
+            `LZ4 magic ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­: ${bufferMagic(raw)}`
         );
     }
 
@@ -663,7 +663,7 @@ function decodeLz4Container(raw) {
     ) {
 
         throw new Error(
-            "LZ4 container ظ‚طµظٹط±"
+            "LZ4 container ط¸â€ڑط·آµط¸ظ¹ط·آ±"
         );
     }
 
@@ -934,7 +934,7 @@ function decodeSaveCity(cityBytes) {
         }
 
         throw new Error(
-            `طھظ… ظپظƒ ط·ط¨ظ‚ط§طھ FetchCity ظ„ظƒظ† ط§ظ„ظ…ط±ط­ظ„ط© ط§ظ„طھط§ظ„ظٹط© ط؛ظٹط± ظ…ط¹ط±ظˆظپط©. Magic=${bufferMagic(data)}`
+            `ط·ع¾ط¸â€¦ ط¸ظ¾ط¸ئ’ ط·آ·ط·آ¨ط¸â€ڑط·آ§ط·ع¾ FetchCity ط¸â€‍ط¸ئ’ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط·آ­ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ط·آ© ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¹ط·آ±ط¸ث†ط¸ظ¾ط·آ©. Magic=${bufferMagic(data)}`
         );
     }
 
@@ -948,7 +948,7 @@ function decodeSaveCity(cityBytes) {
     }
 
     throw new Error(
-        `طھط¹ط°ط± ط§ظ„ظˆطµظˆظ„ ط¥ظ„ظ‰ XML. Magic=${bufferMagic(data)}`
+        `ط·ع¾ط·آ¹ط·آ°ط·آ± ط·آ§ط¸â€‍ط¸ث†ط·آµط¸ث†ط¸â€‍ ط·آ¥ط¸â€‍ط¸â€° XML. Magic=${bufferMagic(data)}`
     );
 }
 
@@ -1012,7 +1012,7 @@ function decryptResponse(
     if (!tsId) {
 
         throw new Error(
-            "ط§ط³طھط¬ط§ط¨ط© FetchCity ظ„ط§ طھط­طھظˆظٹ ts-id"
+            "ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity ط¸â€‍ط·آ§ ط·ع¾ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ ts-id"
         );
     }
 
@@ -1022,7 +1022,7 @@ function decryptResponse(
     ) {
 
         throw new Error(
-            `ts-id ط؛ظٹط± طµط§ظ„ط­: ${tsId}`
+            `ts-id ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­: ${tsId}`
         );
     }
 
@@ -1035,7 +1035,7 @@ function decryptResponse(
     ) {
 
         throw new Error(
-            `ts-id ظ‚طµظٹط±: ${tsId}`
+            `ts-id ط¸â€ڑط·آµط¸ظ¹ط·آ±: ${tsId}`
         );
     }
 
@@ -1176,7 +1176,7 @@ function decompressResponse(
     }
 
     throw new Error(
-        "طھط¹ط°ط± ظپظƒ ط¶ط؛ط· ط§ط³طھط¬ط§ط¨ط© FetchCity. " +
+        "ط·ع¾ط·آ¹ط·آ°ط·آ± ط¸ظ¾ط¸ئ’ ط·آ¶ط·ط›ط·آ· ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity. " +
         `magic=${bufferMagic(decrypted)} ` +
         `size=${decrypted.length}`
     );
@@ -1357,7 +1357,7 @@ async function handleFetchCity(
             return res
                 .status(400)
                 .send(
-                    "cityId ظ…ط·ظ„ظˆط¨"
+                    "cityId ط¸â€¦ط·آ·ط¸â€‍ط¸ث†ط·آ¨"
                 );
         }
 
@@ -1371,7 +1371,7 @@ async function handleFetchCity(
             return res
                 .status(400)
                 .send(
-                    "cityVer ط؛ظٹط± طµط§ظ„ط­"
+                    "cityVer ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
                 );
         }
 
@@ -1393,7 +1393,7 @@ async function handleFetchCity(
         ) {
 
             throw new Error(
-                "Upstream JSON ظ„ط§ ظٹط­طھظˆظٹ result.data"
+                "Upstream JSON ط¸â€‍ط·آ§ ط¸ظ¹ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ result.data"
             );
         }
 
@@ -1493,7 +1493,7 @@ function friendReadU32(
     ) {
 
         throw new Error(
-            "ط¨ظٹط§ظ†ط§طھ ط؛ظٹط± ظƒط§ظپظٹط© ظ„ظ‚ط±ط§ط،ط© UInt32"
+            "ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸ئ’ط·آ§ط¸ظ¾ط¸ظ¹ط·آ© ط¸â€‍ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© UInt32"
         );
     }
 
@@ -1705,7 +1705,7 @@ function friendXorDecode(
     ) {
 
         throw new Error(
-            "ط§ظ„ظ…ظ„ظپ طµط؛ظٹط± ط¬ط¯ط§ظ‹"
+            "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط·آµط·ط›ط¸ظ¹ط·آ± ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
         );
     }
 
@@ -1825,7 +1825,7 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            "LZ4: ط§ظ„ط¨ظٹط§ظ†ط§طھ طµط؛ظٹط±ط© ط¬ط¯ط§ظ‹"
+            "LZ4: ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·آµط·ط›ط¸ظ¹ط·آ±ط·آ© ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
         );
     }
 
@@ -1852,7 +1852,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: ظ†ظ‡ط§ظٹط© ط¨ظٹط§ظ†ط§طھ ط؛ظٹط± ظ…طھظˆظ‚ط¹ط©"
+                "LZ4: ط¸â€ ط¸â€،ط·آ§ط¸ظ¹ط·آ© ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹ط·آ©"
             );
         }
 
@@ -1900,7 +1900,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: Literal ط®ط§ط±ط¬ ط§ظ„ظ†ط·ط§ظ‚"
+                "LZ4: Literal ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
             );
         }
 
@@ -1911,7 +1911,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: ط­ط¬ظ… Literal ط؛ظٹط± طµط­ظٹط­"
+                "LZ4: ط·آ­ط·آ¬ط¸â€¦ Literal ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­"
             );
         }
 
@@ -1942,7 +1942,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: ظ„ط§ ظٹظˆط¬ط¯ Offset"
+                "LZ4: ط¸â€‍ط·آ§ ط¸ظ¹ط¸ث†ط·آ¬ط·آ¯ Offset"
             );
         }
 
@@ -1957,7 +1957,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: Offset ط؛ظٹط± طµط§ظ„ط­"
+                "LZ4: Offset ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
             );
         }
 
@@ -1994,7 +1994,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: Offset ط®ط§ط±ط¬ ط§ظ„ظ†ط·ط§ظ‚"
+                "LZ4: Offset ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
             );
         }
 
@@ -2010,7 +2010,7 @@ function friendLz4Decompress(
             ) {
 
                 throw new Error(
-                    "LZ4: ط§ظ„ط­ط¬ظ… ط§ظ„ظ†ط§طھط¬ طھط¬ط§ظˆط² ط§ظ„ظ…طھظˆظ‚ط¹"
+                    "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ع¾ط·آ¬ط·آ§ط¸ث†ط·آ² ط·آ§ط¸â€‍ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹"
                 );
             }
 
@@ -2030,7 +2030,7 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            "LZ4: ط§ظ„ط­ط¬ظ… ط§ظ„ظ†ط§طھط¬ ط؛ظٹط± طµط­ظٹط­\n" +
+            "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­\n" +
             "Expected: " +
             size +
             "\nActual: " +
@@ -2106,11 +2106,11 @@ function decodeFriendFile(
     ) {
 
         throw new Error(
-            "ظ…ظ„ظپ ظپط§ط±ط؛"
+            "ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
         );
     }
 
-    // XML ط£طµظ„ط§ظ‹
+    // XML ط·آ£ط·آµط¸â€‍ط·آ§ط¸â€¹
     if (
         data[0] === 0x3C
     ) {
@@ -2118,13 +2118,13 @@ function decodeFriendFile(
         return data;
     }
 
-    // ظٹط¬ط¨ ط£ظ† ظٹط¨ط¯ط£ ط¨ظ€ 0x79
+    // ط¸ظ¹ط·آ¬ط·آ¨ ط·آ£ط¸â€  ط¸ظ¹ط·آ¨ط·آ¯ط·آ£ ط·آ¨ط¸â‚¬ 0x79
     if (
         data[0] !== 0x79
     ) {
 
         throw new Error(
-            "ظ†ظˆط¹ ط؛ظٹط± ظ…ط¯ط¹ظˆظ…\nMagic: 0x" +
+            "ط¸â€ ط¸ث†ط·آ¹ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦\nMagic: 0x" +
             data[0]
                 .toString(16)
                 .padStart(
@@ -2359,7 +2359,7 @@ function parseFriends(
                     "bc"
                 ),
 
-            // ط³ظٹط¶ط§ظپ saveId ط¨ط¹ط¯ ظ‚ط±ط§ط،ط© ProfilesCache
+            // ط·آ³ط¸ظ¹ط·آ¶ط·آ§ط¸ظ¾ saveId ط·آ¨ط·آ¹ط·آ¯ ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© ProfilesCache
             saveId: ""
         });
     }
@@ -2520,7 +2520,7 @@ function attachSaveIdsToFriends(
     ) {
 
         console.log(
-            "[Friends] ظ„ط§ طھظˆط¬ط¯ saveProfiles ظ„ط±ط¨ط·ظ‡ط§"
+            "[Friends] ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ saveProfiles ط¸â€‍ط·آ±ط·آ¨ط·آ·ط¸â€،ط·آ§"
         );
 
         return friends;
@@ -2546,7 +2546,7 @@ function attachSaveIdsToFriends(
             continue;
         }
 
-        // ط£ظˆظ„ saveId ظ„ظ†ظپط³ ط§ظ„ط§ط³ظ… ظٹط¨ظ‚ظ‰ ظ‡ظˆ ط§ظ„ظ…ط³طھط®ط¯ظ…
+        // ط·آ£ط¸ث†ط¸â€‍ saveId ط¸â€‍ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط¸ظ¹ط·آ¨ط¸â€ڑط¸â€° ط¸â€،ط¸ث† ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦
         if (
             !profileMap.has(key)
         ) {
@@ -2576,7 +2576,7 @@ function attachSaveIdsToFriends(
 
         let saveId = "";
 
-        // ط§ظ„ظ…ط·ط§ط¨ظ‚ط© ط§ظ„ط£ط³ط§ط³ظٹط©: city_name
+        // ط·آ§ط¸â€‍ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹ط·آ©: city_name
         if (
             cityNameKey &&
             profileMap.has(
@@ -2590,7 +2590,7 @@ function attachSaveIdsToFriends(
                 );
         }
 
-        // ط§ط­طھظٹط§ط·ظٹط§ظ‹: name
+        // ط·آ§ط·آ­ط·ع¾ط¸ظ¹ط·آ§ط·آ·ط¸ظ¹ط·آ§ط¸â€¹: name
         if (
             !saveId &&
             friendNameKey &&
@@ -2650,7 +2650,7 @@ async function handleDecodeFriends(
                     ok: false,
 
                     error:
-                        "ظٹط¬ط¨ ط¥ط±ط³ط§ظ„ .123.xml ط¨طµظٹط؛ط© application/octet-stream"
+                        "ط¸ظ¹ط·آ¬ط·آ¨ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ .123.xml ط·آ¨ط·آµط¸ظ¹ط·ط›ط·آ© application/octet-stream"
                 });
         }
 
@@ -2665,7 +2665,7 @@ async function handleDecodeFriends(
                     ok: false,
 
                     error:
-                        "ط§ظ„ظ…ظ„ظپ ظپط§ط±ط؛"
+                        "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
                 });
         }
 
@@ -2678,7 +2678,7 @@ async function handleDecodeFriends(
         );
 
         // ====================================================
-        // decodeFile ط§ظ„ط­ظ‚ظٹظ‚ظٹ
+        // decodeFile ط·آ§ط¸â€‍ط·آ­ط¸â€ڑط¸ظ¹ط¸â€ڑط¸ظ¹
         // ====================================================
 
         const xmlBuffer =
@@ -2704,7 +2704,7 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ط¨ط¹ط¯ ظپظƒ .123.xml ظ„ظ… ظٹطھظ… ط§ظ„ط­طµظˆظ„ ط¹ظ„ظ‰ XML"
+                "ط·آ¨ط·آ¹ط·آ¯ ط¸ظ¾ط¸ئ’ .123.xml ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آµط¸ث†ط¸â€‍ ط·آ¹ط¸â€‍ط¸â€° XML"
             );
         }
 
@@ -2718,7 +2718,7 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ Version.version"
+                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.version"
             );
         }
 
@@ -2727,12 +2727,12 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ Version.FVer"
+                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.FVer"
             );
         }
 
         // ====================================================
-        // ط§ط³طھط®ط±ط§ط¬ friends
+        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ friends
         // ====================================================
 
         const friends =
@@ -2741,7 +2741,7 @@ async function handleDecodeFriends(
             );
 
         // ====================================================
-        // ط§ط³طھط®ط±ط§ط¬ saveId ظ…ظ† ProfilesCache
+        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ saveId ط¸â€¦ط¸â€  ProfilesCache
         // ====================================================
 
         const saveProfiles =
@@ -2750,7 +2750,7 @@ async function handleDecodeFriends(
             );
 
         // ====================================================
-        // ط±ط¨ط· saveId ظ…ط¹ friends
+        // ط·آ±ط·آ¨ط·آ· saveId ط¸â€¦ط·آ¹ friends
         // ====================================================
 
         attachSaveIdsToFriends(
@@ -2775,7 +2775,7 @@ async function handleDecodeFriends(
         );
 
         // ====================================================
-        // ط·ط¨ط§ط¹ط© ظ†طھظٹط¬ط© ط§ظ„ط±ط¨ط·
+        // ط·آ·ط·آ¨ط·آ§ط·آ¹ط·آ© ط¸â€ ط·ع¾ط¸ظ¹ط·آ¬ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ·
         // ====================================================
 
         for (
@@ -2869,5 +2869,4 @@ console.log(
     "[FetchCity] module loaded"
 );
 
-module.exports.requestFetchCity = requestFetchCity;
-module.exports.decodeSaveCity = decodeSaveCity;
+module.exports = router;
