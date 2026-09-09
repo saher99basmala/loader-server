@@ -414,23 +414,6 @@ function decode54LayerOriginal(raw) {
         return out;
     }
 
-    /*
-     * IMPORTANT:
-     *
-     * This is the original algorithm.
-     *
-     * encoded[0] = decoded[0] + 0x54
-     * decoded[0] = (encoded[0] - 0x54) ^ table[0]
-     *
-     * encoded[i] =
-     *      (decoded[i] ^ table[i]) + decoded[i - 1]
-     *
-     * therefore:
-     *
-     * decoded[i] =
-     *      ((encoded[i] - decoded[i-1]) ^ table[i])
-     */
-
     out[0] =
         (
             out[0] -
@@ -661,11 +644,6 @@ function decode54Layer(raw) {
         `[FetchCity] 0x54 encodedLength=${encodedLength} payloadLength=${payloadLength} processLen=${processLen}`
     );
 
-    /*
-     * Candidate 1:
-     * Exact original decoder.
-     */
-
     const candidates = [];
 
     function addCandidate(
@@ -703,11 +681,6 @@ function decode54Layer(raw) {
         );
     }
 
-    /*
-     * Candidate 2:
-     * Decode entire payload.
-     */
-
     if (
         processLen !== payloadLength
     ) {
@@ -729,12 +702,6 @@ function decode54Layer(raw) {
         }
     }
 
-    /*
-     * Candidate 3:
-     * Decode only the first processLen bytes,
-     * preserving the remaining payload.
-     */
-
     try {
 
         const data =
@@ -754,14 +721,6 @@ function decode54Layer(raw) {
             `[FetchCity] 0x54 process-length failed: ${err.message}`
         );
     }
-
-    /*
-     * Candidate 4:
-     * Try payload length minus common framing sizes.
-     *
-     * This is only used if the normal candidate
-     * does not produce a valid gzip stream.
-     */
 
     const alternateLengths = [
         payloadLength,
@@ -813,11 +772,6 @@ function decode54Layer(raw) {
         }
     }
 
-    /*
-     * First priority:
-     * Candidate that decompresses successfully.
-     */
-
     for (
         const candidate of candidates
     ) {
@@ -842,12 +796,6 @@ function decode54Layer(raw) {
                     `[FetchCity] 0x54 SELECTED=${candidate.name} -> GZIP OK (${inflated.length} bytes)`
                 );
 
-                /*
-                 * We return the decompressed data directly.
-                 *
-                 * This prevents the caller from attempting
-                 * the same GZIP operation again.
-                 */
                 return inflated;
             }
         }
@@ -865,14 +813,6 @@ function decode54Layer(raw) {
             return candidate.data;
         }
     }
-
-    /*
-     * If none produced valid gzip/XML,
-     * return the exact original result.
-     *
-     * This preserves the old behavior and allows
-     * decodeSaveCity() to handle another layer.
-     */
 
     console.log(
         "[FetchCity] 0x54 no candidate produced valid GZIP/XML; using original candidate"
@@ -1420,14 +1360,6 @@ function decodeSaveCity(cityBytes) {
                     `[FetchCity] GZIP ERROR: ${err.message}`
                 );
 
-                /*
-                 * Do not silently continue.
-                 *
-                 * A gzip stream beginning with 1F 8B
-                 * but failing here means the bytes themselves
-                 * are not a valid gzip stream.
-                 */
-
                 throw new Error(
                     `GZIP decode failed: ${err.message}. magic=${bufferMagic(data)} size=${data.length}`
                 );
@@ -1469,9 +1401,7 @@ function decodeSaveCity(cityBytes) {
         looksLikeXml(data)
     ) {
 
-        return trimXml(
-            data
-        );
+        return trimXml(data);
     }
 
     throw new Error(
@@ -1889,11 +1819,6 @@ async function handleFetchCity(
                 body.fetchCityId ||
                 ""
             ).trim();
-
-        /*
-         * Support all possible field names used
-         * by the Lua client.
-         */
 
         const rawCityVer =
             body.cityVer ??
@@ -4938,9 +4863,28 @@ async function handleCopyFarmInfo(
             saveProfiles
         );
 
+        // ====================================================
+        // COMPATIBILITY RESPONSE
+        // ====================================================
+        //
+        // Return both old and new property names:
+        //
+        // cityId / city_id
+        // saveId / save_id
+        //
+        // Also keep:
+        // friends
+        // saveProfiles
+        //
+        // This prevents old Lua clients from breaking.
+        // ====================================================
+
         const cities =
             friends.map(
                 friend => ({
+
+                    cityId:
+                        friend.city_id,
 
                     city_id:
                         friend.city_id,
@@ -4966,6 +4910,9 @@ async function handleCopyFarmInfo(
                     fetched_city_ver:
                         friend.fetched_city_ver,
 
+                    saveId:
+                        friend.saveId || "",
+
                     save_id:
                         friend.saveId || ""
                 })
@@ -4974,6 +4921,15 @@ async function handleCopyFarmInfo(
         console.log(
             `[CopyFarm] cities=${cities.length}`
         );
+
+        for (
+            const city of cities
+        ) {
+
+            console.log(
+                `[CopyFarm] CITY cityId="${city.cityId}" saveId="${city.saveId}" name="${city.name}" city_name="${city.city_name}"`
+            );
+        }
 
         return res
             .status(200)
@@ -4986,7 +4942,14 @@ async function handleCopyFarmInfo(
                     cities.length,
 
                 cities:
-                    cities
+                    cities,
+
+                // Old API compatibility
+                friends:
+                    friends,
+
+                saveProfiles:
+                    saveProfiles
             });
 
     } catch (err) {
@@ -5212,21 +5175,38 @@ async function handleCopyFarm(
             );
 
         // ====================================================
-        // RE-ENCODE
+        // IMPORTANT:
+        // DO NOT RE-ENCODE THE SAVE
+        // ====================================================
+        //
+        // The main save was decoded only so that the XML
+        // sections could be modified.
+        //
+        // The final result MUST remain an OPEN XML file.
+        //
+        // Do NOT call:
+        //
+        // encodeSaveWithLayers(...)
+        //
+        // here.
         // ====================================================
 
-        const encoded =
-            encodeSaveWithLayers(
+        const outputXml =
+            Buffer.from(
                 finalXml,
-                mainDecoded.layers
+                "utf8"
             );
 
         console.log(
-            `[CopyFarm] final encoded size=${encoded.length}`
+            `[CopyFarm] final OPEN XML size=${outputXml.length}`
         );
 
         console.log(
-            `[CopyFarm] final magic=${bufferMagic(encoded)}`
+            `[CopyFarm] final magic=${bufferMagic(outputXml)}`
+        );
+
+        console.log(
+            `[CopyFarm] final startsWithXML=${looksLikeXml(outputXml)}`
         );
 
         res.status(
@@ -5235,7 +5215,7 @@ async function handleCopyFarm(
 
         res.set(
             "Content-Type",
-            "application/octet-stream"
+            "application/xml; charset=utf-8"
         );
 
         res.set(
@@ -5249,7 +5229,7 @@ async function handleCopyFarm(
         );
 
         return res.send(
-            encoded
+            outputXml
         );
 
     } catch (err) {
