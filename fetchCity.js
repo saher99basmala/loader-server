@@ -46,7 +46,7 @@ const LZ4_MAGIC = Buffer.from([
 // ============================================================
 
 const FETCH54_TABLE = Buffer.from(
-    "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82bG5bc1lkczpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGJmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
+    "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlLZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82bG5bc1lkczpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGJmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
     "base64"
 );
 
@@ -640,7 +640,7 @@ function lz4DecompressBlock(
     ) {
 
         throw new Error(
-            `LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑ. expected=${expectedSize}, actual=${dstPos}`
+            `LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑ. expected=${expectedSize}, actual=${dstPos}`
         );
     }
 
@@ -934,7 +934,7 @@ function decodeSaveCity(cityBytes) {
         }
 
         throw new Error(
-            `ط·ع¾ط¸â€¦ ط¸ظ¾ط¸ئ’ ط·آ·ط·آ¨ط¸â€ڑط·آ§ط·ع¾ FetchCity ط¸â€‍ط¸ئ’ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط·آ­ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ط·آ© ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¹ط·آ±ط¸ث†ط¸ظ¾ط·آ©. Magic=${bufferMagic(data)}`
+            `ط·ع¾ط¸â€¦ ط¸ظ¾ط¸ئ’ ط·آ·ط·آ¨ط¸â€ڑط·آ§ط·ع¾ FetchCity ط¸â€‍ط¸ئ’ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط·آ­ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ط·آ© ط·ط›ط¸ظ¹ط·آ±ط¸â€¦ط·آ¹ط·آ±ط¸ث†ط¸ظ¾ط·آ©. Magic=${bufferMagic(data)}`
         );
     }
 
@@ -2030,7 +2030,7 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­\n" +
+            "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­\n" +
             "Expected: " +
             size +
             "\nActual: " +
@@ -2118,7 +2118,7 @@ function decodeFriendFile(
         return data;
     }
 
-    // ط¸ظ¹ط·آ¬ط·آ¨ ط·آ£ط¸â€  ط¸ظ¹ط·آ¨ط·آ¯ط·آ£ ط·آ¨ط¸â‚¬ 0x79
+    // ط¸ظ¹ط·آ¬ط·آ¨ ط·آ£ط¸ث† ط¸ظ¹ط·آ¨ط·آ¯ط·آ£ ط·آ¨ط¸â‚¬ 0x79
     if (
         data[0] !== 0x79
     ) {
@@ -2576,7 +2576,7 @@ function attachSaveIdsToFriends(
 
         let saveId = "";
 
-        // ط·آ§ط¸â€‍ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹ط·آ©: city_name
+        // ط·آ§ط¸â€‍ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑط¸â€° ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹ط·آ©: city_name
         if (
             cityNameKey &&
             profileMap.has(
@@ -2843,6 +2843,1923 @@ async function handleDecodeFriends(
 }
 
 // ============================================================
+// ============================================================
+// COPY FARM ENGINE - NEW
+// ============================================================
+// ============================================================
+
+// هذه الأقسام تبقى من الحفظ الرئيسي ولا يتم استبدالها
+// حتى لا يتم نقل بيانات الجهاز/الحساب/المشتريات/الجلسات
+// الخاصة بالمزرعة الأخرى.
+
+const COPY_FARM_KEEP_MAIN = new Set([
+
+    "Devices",
+    "DeviceCompatibility",
+    "FriendsReferralSystem",
+    "ACService",
+    "Sessions",
+    "ChatLivesInbox",
+
+    "FriendIds",
+    "FollowedFriendIds",
+    "FollowerIds",
+    "NewFollowerIds",
+    "InvitedFriends",
+    "LastHelperIds",
+
+    "SentGifts",
+    "ReceivedGifts",
+    "ReceivedBoxes",
+    "OfflineBoxes",
+    "ComingLetters",
+
+    "ClanMail",
+    "MyClan",
+
+    "incompleteIAP",
+    "incompletePurchases",
+    "consumedPurchases",
+    "AlternativePaymentsTransactions",
+    "PurchaseAttempts",
+
+    "BankManager",
+    "coupons",
+
+    "Local",
+    "GameInfoPatcher",
+
+    "OtherPlayerProfilesLogicFeatureComponent",
+    "PushNotifDeviceInfo",
+
+    "IdfaAction",
+    "AgeRestrictionsManager"
+]);
+
+// ============================================================
+// COPY FARM XML TOP LEVEL PARSER
+// ============================================================
+
+function copyFarmGetTagName(
+    token
+) {
+
+    const match =
+        token.match(
+            /^<\s*([A-Za-z_][A-Za-z0-9_.:-]*)/
+        );
+
+    return match
+        ? match[1]
+        : "";
+}
+
+function copyFarmIsClosingTag(
+    token
+) {
+
+    return /^<\s*\//.test(
+        token
+    );
+}
+
+function copyFarmIsOpeningTag(
+    token
+) {
+
+    return (
+        /^<\s*[A-Za-z_][A-Za-z0-9_.:-]*/.test(
+            token
+        ) &&
+        !/^<\s*\//.test(token) &&
+        !/^<\s*!/.test(token) &&
+        !/^<\s*\?/.test(token)
+    );
+}
+
+function copyFarmIsSelfClosingTag(
+    token
+) {
+
+    return /\/\s*>$/.test(
+        token
+    );
+}
+
+function copyFarmFindTopLevelSections(
+    xml
+) {
+
+    const sections = [];
+
+    const rootMatch =
+        xml.match(
+            /<root\b[^>]*>/i
+        );
+
+    if (!rootMatch) {
+
+        throw new Error(
+            "COPY FARM: root XML غير موجود"
+        );
+    }
+
+    const rootStart =
+        rootMatch.index;
+
+    const rootEnd =
+        xml.lastIndexOf(
+            "</root>"
+        );
+
+    if (
+        rootEnd === -1 ||
+        rootEnd <= rootStart
+    ) {
+
+        throw new Error(
+            "COPY FARM: </root> غير موجود"
+        );
+    }
+
+    const bodyStart =
+        rootStart +
+        rootMatch[0].length;
+
+    const body =
+        xml.slice(
+            bodyStart,
+            rootEnd
+        );
+
+    const tokenRegex =
+        /<[^>]+>/g;
+
+    const stack = [];
+
+    let match;
+
+    while (
+        (match =
+            tokenRegex.exec(body)) !== null
+    ) {
+
+        const token =
+            match[0];
+
+        const tokenStart =
+            match.index;
+
+        const absoluteStart =
+            bodyStart +
+            tokenStart;
+
+        if (
+            /^<\s*(\?|!)/.test(
+                token
+            )
+        ) {
+
+            continue;
+        }
+
+        if (
+            copyFarmIsClosingTag(
+                token
+            )
+        ) {
+
+            const closingName =
+                copyFarmGetTagName(
+                    token
+                );
+
+            const open =
+                stack.pop();
+
+            if (
+                open &&
+                open.name ===
+                    closingName
+            ) {
+
+                if (
+                    open.depth === 1
+                ) {
+
+                    sections.push({
+
+                        name:
+                            open.name,
+
+                        start:
+                            open.start,
+
+                        end:
+                            absoluteStart +
+                            token.length,
+
+                        xml:
+                            xml.slice(
+                                open.start,
+                                absoluteStart +
+                                token.length
+                            )
+                    });
+                }
+            }
+
+            continue;
+        }
+
+        if (
+            copyFarmIsOpeningTag(
+                token
+            )
+        ) {
+
+            const name =
+                copyFarmGetTagName(
+                    token
+                );
+
+            if (
+                !name
+            ) {
+
+                continue;
+            }
+
+            if (
+                copyFarmIsSelfClosingTag(
+                    token
+                )
+            ) {
+
+                if (
+                    stack.length === 0
+                ) {
+
+                    sections.push({
+
+                        name:
+                            name,
+
+                        start:
+                            absoluteStart,
+
+                        end:
+                            absoluteStart +
+                            token.length,
+
+                        xml:
+                            token
+                    });
+                }
+
+                continue;
+            }
+
+            stack.push({
+
+                name:
+                    name,
+
+                start:
+                    absoluteStart,
+
+                depth:
+                    stack.length + 1
+            });
+        }
+    }
+
+    return sections;
+}
+
+// ============================================================
+// FIND TOP LEVEL SECTION
+// ============================================================
+
+function copyFarmFindSection(
+    xml,
+    sectionName
+) {
+
+    const sections =
+        copyFarmFindTopLevelSections(
+            xml
+        );
+
+    for (
+        const section of sections
+    ) {
+
+        if (
+            section.name ===
+            sectionName
+        ) {
+
+            return section;
+        }
+    }
+
+    return null;
+}
+
+// ============================================================
+// REPLACE TOP LEVEL SECTION
+// ============================================================
+
+function copyFarmReplaceSection(
+    xml,
+    sectionName,
+    replacement
+) {
+
+    const existing =
+        copyFarmFindSection(
+            xml,
+            sectionName
+        );
+
+    if (
+        existing
+    ) {
+
+        return (
+            xml.slice(
+                0,
+                existing.start
+            ) +
+            replacement +
+            xml.slice(
+                existing.end
+            )
+        );
+    }
+
+    const rootEnd =
+        xml.lastIndexOf(
+            "</root>"
+        );
+
+    if (
+        rootEnd === -1
+    ) {
+
+        throw new Error(
+            "COPY FARM: root end غير موجود أثناء الإضافة"
+        );
+    }
+
+    return (
+        xml.slice(
+            0,
+            rootEnd
+        ) +
+        "\n" +
+        replacement +
+        "\n" +
+        xml.slice(
+            rootEnd
+        )
+    );
+}
+
+// ============================================================
+// COPY TOP LEVEL SECTIONS
+// ============================================================
+
+function copyFarmReplaceTopLevelSections(
+    mainXml,
+    friendXml
+) {
+
+    let result =
+        mainXml;
+
+    const friendSections =
+        copyFarmFindTopLevelSections(
+            friendXml
+        );
+
+    let copied = 0;
+    let skipped = 0;
+
+    for (
+        const section of friendSections
+    ) {
+
+        const name =
+            section.name;
+
+        if (
+            COPY_FARM_KEEP_MAIN.has(
+                name
+            )
+        ) {
+
+            skipped++;
+
+            console.log(
+                `[CopyFarm] KEEP MAIN: ${name}`
+            );
+
+            continue;
+        }
+
+        if (
+            !section.xml ||
+            section.xml.length === 0
+        ) {
+
+            continue;
+        }
+
+        result =
+            copyFarmReplaceSection(
+                result,
+                name,
+                section.xml
+            );
+
+        copied++;
+
+        console.log(
+            `[CopyFarm] COPIED: ${name}`
+        );
+    }
+
+    console.log(
+        `[CopyFarm] top-level copied=${copied} skipped=${skipped}`
+    );
+
+    return result;
+}
+
+// ============================================================
+// DECODE SAVE WITH LAYERS
+// ============================================================
+
+function decodeSaveWithLayers(
+    input
+) {
+
+    let data =
+        Buffer.from(
+            input
+        );
+
+    const layers = [];
+
+    let rounds = 0;
+
+    while (
+        data.length > 0 &&
+        rounds < 12
+    ) {
+
+        rounds++;
+
+        if (
+            looksLikeXml(
+                data
+            )
+        ) {
+
+            return {
+
+                xml:
+                    trimXml(
+                        data
+                    ),
+
+                layers:
+                    layers
+            };
+        }
+
+        if (
+            isGzip(
+                data
+            )
+        ) {
+
+            layers.push({
+
+                type:
+                    "gzip"
+            });
+
+            data =
+                zlib.gunzipSync(
+                    data
+                );
+
+            continue;
+        }
+
+        if (
+            isLz4Magic(
+                data
+            )
+        ) {
+
+            layers.push({
+
+                type:
+                    "lz4"
+            });
+
+            data =
+                decodeLz4Container(
+                    data
+                );
+
+            continue;
+        }
+
+        if (
+            data[0] === 0x79
+        ) {
+
+            if (
+                data.length < 8
+            ) {
+
+                throw new Error(
+                    "COPY FARM: 0x79 layer قصيرة"
+                );
+            }
+
+            const headerValue =
+                u32le(
+                    data,
+                    1
+                );
+
+            const total =
+                data.length >>> 0;
+
+            const derived =
+                xor32(
+                    TOTAL_XOR,
+                    total
+                );
+
+            const processLenU32 =
+                xor32(
+                    sub32(
+                        headerValue,
+                        derived
+                    ),
+                    PROCESS_XOR
+                );
+
+            const processLen =
+                Math.min(
+                    Math.max(
+                        0,
+                        total - 8
+                    ),
+                    processLenU32 >>> 0
+                );
+
+            const rawSeed =
+                u32le(
+                    data,
+                    4
+                );
+
+            layers.push({
+
+                type:
+                    "79",
+
+                rawSeed:
+                    rawSeed,
+
+                processLen:
+                    processLen
+            });
+
+            data =
+                xorDecode79(
+                    data
+                );
+
+            continue;
+        }
+
+        if (
+            data[0] === 0x54
+        ) {
+
+            if (
+                data.length < 3
+            ) {
+
+                throw new Error(
+                    "COPY FARM: 0x54 layer قصيرة"
+                );
+            }
+
+            const processLen =
+                (
+                    (
+                        (
+                            data[1] ^
+                            FETCH54_TABLE[0]
+                        ) & 0xff
+                    ) |
+                    (
+                        data[2] << 8
+                    )
+                ) >>> 0;
+
+            layers.push({
+
+                type:
+                    "54",
+
+                processLen:
+                    Math.min(
+                        processLen,
+                        data.length - 3
+                    )
+            });
+
+            data =
+                decode54Layer(
+                    data
+                );
+
+            continue;
+        }
+
+        if (
+            data[0] === 0x1F
+        ) {
+
+            layers.push({
+
+                type:
+                    "raw-1f",
+
+                data:
+                    Buffer.from(
+                        data
+                    )
+            });
+
+            break;
+        }
+
+        throw new Error(
+            `COPY FARM: layer غير معروف. magic=${bufferMagic(data)}`
+        );
+    }
+
+    if (
+        looksLikeXml(
+            data
+        )
+    ) {
+
+        return {
+
+            xml:
+                trimXml(
+                    data
+                ),
+
+            layers:
+                layers
+        };
+    }
+
+    throw new Error(
+        `COPY FARM: لم يتم الوصول إلى XML. magic=${bufferMagic(data)}`
+    );
+}
+
+// ============================================================
+// ENCODE 0x79
+// ============================================================
+
+function encode79Layer(
+    decoded,
+    rawSeed,
+    processLen
+) {
+
+    if (
+        !Buffer.isBuffer(
+            decoded
+        )
+    ) {
+
+        decoded =
+            Buffer.from(
+                decoded
+            );
+    }
+
+    const actualLen =
+        Math.min(
+            processLen == null
+                ? decoded.length
+                : processLen,
+            decoded.length
+        );
+
+    const table =
+        build79Table(
+            add32(
+                rawSeed,
+                4
+            )
+        );
+
+    const encodedPayload =
+        Buffer.from(
+            decoded
+                .subarray(
+                    0,
+                    actualLen
+                )
+        );
+
+    if (
+        encodedPayload.length > 0
+    ) {
+
+        encodedPayload[0] =
+            (
+                encodedPayload[0] ^
+                table[0]
+            ) & 0xff;
+
+        for (
+            let i = 1;
+            i < decoded.length &&
+            i < actualLen;
+            i++
+        ) {
+
+            encodedPayload[i] =
+                (
+                    (
+                        decoded[i] ^
+                        table[
+                            i %
+                            TABLE_SIZE
+                        ]
+                    ) +
+                    decoded[i - 1]
+                ) & 0xff;
+        }
+    }
+
+    const total =
+        actualLen +
+        8;
+
+    const derived =
+        xor32(
+            TOTAL_XOR,
+            total
+        );
+
+    const encodedProcess =
+        xor32(
+            actualLen,
+            PROCESS_XOR
+        );
+
+    const headerValue =
+        add32(
+            encodedProcess,
+            derived
+        );
+
+    const out =
+        Buffer.alloc(
+            total
+        );
+
+    out[0] =
+        0x79;
+
+    out.writeUInt32LE(
+        headerValue >>> 0,
+        1
+    );
+
+    out.writeUInt32LE(
+        rawSeed >>> 0,
+        4
+    );
+
+    encodedPayload.copy(
+        out,
+        8
+    );
+
+    return out;
+}
+
+// ============================================================
+// ENCODE 0x54
+// ============================================================
+
+function encode54Layer(
+    decoded,
+    processLen
+) {
+
+    if (
+        !Buffer.isBuffer(
+            decoded
+        )
+    ) {
+
+        decoded =
+            Buffer.from(
+                decoded
+            );
+    }
+
+    const count =
+        Math.min(
+            processLen == null
+                ? decoded.length
+                : processLen,
+            decoded.length
+        );
+
+    const out =
+        Buffer.alloc(
+            decoded.length +
+            3
+        );
+
+    out[0] =
+        0x54;
+
+    out[1] =
+        (
+            (count & 0xff) ^
+            FETCH54_TABLE[0]
+        ) & 0xff;
+
+    out[2] =
+        (
+            count >>> 8
+        ) & 0xff;
+
+    if (
+        count > 0
+    ) {
+
+        out[3] =
+            (
+                decoded[0] +
+                0x54
+            ) & 0xff;
+
+        for (
+            let i = 1;
+            i < count;
+            i++
+        ) {
+
+            out[
+                3 + i
+            ] =
+                (
+                    (
+                        decoded[i] ^
+                        FETCH54_TABLE[
+                            i %
+                            FETCH54_TABLE.length
+                        ]
+                    ) +
+                    decoded[i - 1]
+                ) & 0xff;
+        }
+    }
+
+    if (
+        count <
+        decoded.length
+    ) {
+
+        decoded.copy(
+            out,
+            3 + count,
+            count
+        );
+    }
+
+    return out;
+}
+
+// ============================================================
+// XXHASH32 FOR LZ4 HEADER
+// ============================================================
+
+function xxhash32(
+    input,
+    seed = 0
+) {
+
+    if (
+        !Buffer.isBuffer(
+            input
+        )
+    ) {
+
+        input =
+            Buffer.from(
+                input
+            );
+    }
+
+    const PRIME1 =
+        0x9E3779B1;
+
+    const PRIME2 =
+        0x85EBCA77;
+
+    const PRIME3 =
+        0xC2B2AE3D;
+
+    const PRIME4 =
+        0x27D4EB2F;
+
+    const PRIME5 =
+        0x165667B1;
+
+    let p = 0;
+
+    const end =
+        input.length;
+
+    let h;
+
+    if (
+        input.length >= 16
+    ) {
+
+        let v1 =
+            (
+                seed +
+                PRIME1 +
+                PRIME2
+            ) >>> 0;
+
+        let v2 =
+            (
+                seed +
+                PRIME2
+            ) >>> 0;
+
+        let v3 =
+            seed >>> 0;
+
+        let v4 =
+            (
+                seed -
+                PRIME1
+            ) >>> 0;
+
+        const limit =
+            end -
+            16;
+
+        while (
+            p <= limit
+        ) {
+
+            v1 =
+                Math.imul(
+                    (
+                        v1 +
+                        Math.imul(
+                            input.readUInt32LE(
+                                p,
+                                true
+                            ),
+                            PRIME2
+                        )
+                    ) >>> 0,
+                    PRIME1
+                ) >>> 0;
+
+            v1 =
+                (
+                    (v1 << 13) |
+                    (v1 >>> 19)
+                ) >>> 0;
+
+            p += 4;
+
+            v2 =
+                Math.imul(
+                    (
+                        v2 +
+                        Math.imul(
+                            input.readUInt32LE(
+                                p
+                            ),
+                            PRIME2
+                        )
+                    ) >>> 0,
+                    PRIME1
+                ) >>> 0;
+
+            v2 =
+                (
+                    (v2 << 13) |
+                    (v2 >>> 19)
+                ) >>> 0;
+
+            p += 4;
+
+            v3 =
+                Math.imul(
+                    (
+                        v3 +
+                        Math.imul(
+                            input.readUInt32LE(
+                                p
+                            ),
+                            PRIME2
+                        )
+                    ) >>> 0,
+                    PRIME1
+                ) >>> 0;
+
+            v3 =
+                (
+                    (v3 << 13) |
+                    (v3 >>> 19)
+                ) >>> 0;
+
+            p += 4;
+
+            v4 =
+                Math.imul(
+                    (
+                        v4 +
+                        Math.imul(
+                            input.readUInt32LE(
+                                p
+                            ),
+                            PRIME2
+                        )
+                    ) >>> 0,
+                    PRIME1
+                ) >>> 0;
+
+            v4 =
+                (
+                    (v4 << 13) |
+                    (v4 >>> 19)
+                ) >>> 0;
+
+            p += 4;
+        }
+
+        h =
+            (
+                (
+                    (
+                        (v1 << 1) |
+                        (v1 >>> 31)
+                    ) +
+                    (
+                        (v2 << 7) |
+                        (v2 >>> 25)
+                    )
+                ) ^
+                0
+            ) >>> 0;
+
+        h =
+            (
+                h +
+                (
+                    (v3 << 12) |
+                    (v3 >>> 20)
+                ) +
+                (
+                    (v4 << 18) |
+                    (v4 >>> 14)
+                )
+            ) >>> 0;
+
+    } else {
+
+        h =
+            (
+                seed +
+                PRIME5
+            ) >>> 0;
+    }
+
+    h =
+        (
+            h +
+            input.length
+        ) >>> 0;
+
+    while (
+        p + 4 <=
+        end
+    ) {
+
+        h =
+            (
+                h +
+                Math.imul(
+                    input.readUInt32LE(
+                        p
+                    ),
+                    PRIME3
+                )
+            ) >>> 0;
+
+        h =
+            Math.imul(
+                (
+                    (h << 17) |
+                    (h >>> 15)
+                ) >>> 0,
+                PRIME4
+            ) >>> 0;
+
+        p += 4;
+    }
+
+    while (
+        p < end
+    ) {
+
+        h =
+            (
+                h +
+                Math.imul(
+                    input[p],
+                    PRIME5
+                )
+            ) >>> 0;
+
+        h =
+            Math.imul(
+                (
+                    (h << 11) |
+                    (h >>> 21)
+                ) >>> 0,
+                PRIME1
+            ) >>> 0;
+
+        p++;
+    }
+
+    h =
+        (
+            h ^
+            (h >>> 15)
+        ) >>> 0;
+
+    h =
+        Math.imul(
+            h,
+            PRIME2
+        ) >>> 0;
+
+    h =
+        (
+            h ^
+            (h >>> 13)
+        ) >>> 0;
+
+    h =
+        Math.imul(
+            h,
+            PRIME3
+        ) >>> 0;
+
+    h =
+        (
+            h ^
+            (h >>> 16)
+        ) >>> 0;
+
+    return h >>> 0;
+}
+
+// ============================================================
+// LZ4 ENCODE
+// ============================================================
+
+function encodeLz4Uncompressed(
+    decoded
+) {
+
+    if (
+        !Buffer.isBuffer(
+            decoded
+        )
+    ) {
+
+        decoded =
+            Buffer.from(
+                decoded
+            );
+    }
+
+    const parts = [];
+
+    const length =
+        decoded.length;
+
+    let literalLength =
+        length;
+
+    let token =
+        Math.min(
+            literalLength,
+            15
+        ) << 4;
+
+    parts.push(
+        Buffer.from([
+            token
+        ])
+    );
+
+    if (
+        literalLength >= 15
+    ) {
+
+        let remaining =
+            literalLength -
+            15;
+
+        while (
+            remaining >= 255
+        ) {
+
+            parts.push(
+                Buffer.from([
+                    255
+                ])
+            );
+
+            remaining -=
+                255;
+        }
+
+        parts.push(
+            Buffer.from([
+                remaining
+            ])
+        );
+    }
+
+    parts.push(
+        decoded
+    );
+
+    const compressed =
+        Buffer.concat(
+            parts
+        );
+
+    const header =
+        Buffer.from([
+            0x60,
+            0x70
+        ]);
+
+    const headerChecksum =
+        (
+            xxhash32(
+                header
+            ) >>>
+            8
+        ) & 0xff;
+
+    const out =
+        Buffer.alloc(
+            4 +
+            2 +
+            1 +
+            4 +
+            compressed.length
+        );
+
+    LZ4_MAGIC.copy(
+        out,
+        0
+    );
+
+    out[4] =
+        0x60;
+
+    out[5] =
+        0x70;
+
+    out[6] =
+        headerChecksum;
+
+    out.writeUInt32LE(
+        length >>> 0,
+        7
+    );
+
+    compressed.copy(
+        out,
+        11
+    );
+
+    return out;
+}
+
+// ============================================================
+// RE-ENCODE COMPLETE SAVE
+// ============================================================
+
+function encodeSaveWithLayers(
+    xml,
+    layers
+) {
+
+    let data =
+        Buffer.isBuffer(
+            xml
+        )
+            ? Buffer.from(
+                xml
+            )
+            : Buffer.from(
+                String(xml),
+                "utf8"
+            );
+
+    for (
+        let i =
+            layers.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        const layer =
+            layers[i];
+
+        switch (
+            layer.type
+        ) {
+
+            case "gzip":
+
+                data =
+                    zlib.gzipSync(
+                        data
+                    );
+
+                break;
+
+            case "lz4":
+
+                data =
+                    encodeLz4Uncompressed(
+                        data
+                    );
+
+                break;
+
+            case "79":
+
+                data =
+                    encode79Layer(
+                        data,
+                        layer.rawSeed,
+                        data.length
+                    );
+
+                break;
+
+            case "54":
+
+                data =
+                    encode54Layer(
+                        data,
+                        layer.processLen == null
+                            ? data.length
+                            : data.length
+                    );
+
+                break;
+
+            case "raw-1f":
+
+                throw new Error(
+                    "COPY FARM: لا يمكن إعادة ترميز raw-1f تلقائيًا"
+                );
+
+            default:
+
+                throw new Error(
+                    `COPY FARM: layer encoder غير معروف: ${layer.type}`
+                );
+        }
+    }
+
+    return data;
+}
+
+// ============================================================
+// FIND FETCHCITY DATA
+// ============================================================
+
+async function fetchFriendCityXml(
+    cityId,
+    cityVer
+) {
+
+    const json =
+        await requestFetchCity(
+            cityId,
+            cityVer
+        );
+
+    if (
+        !json ||
+        !json.result ||
+        typeof json.result.data !==
+            "string"
+    ) {
+
+        throw new Error(
+            "COPY FARM: FetchCity لم يرجع result.data"
+        );
+    }
+
+    const cityBytes =
+        Buffer.from(
+            json.result.data,
+            "base64"
+        );
+
+    console.log(
+        `[CopyFarm] fetched bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
+    );
+
+    const xml =
+        decodeSaveCity(
+            cityBytes
+        );
+
+    return {
+
+        xml:
+            xml,
+
+        cityBytes:
+            cityBytes
+    };
+}
+
+// ============================================================
+// COPY FARM INFO API
+// ============================================================
+
+async function handleCopyFarmInfo(
+    req,
+    res
+) {
+
+    try {
+
+        const encryptedFile =
+            req.body;
+
+        if (
+            !Buffer.isBuffer(
+                encryptedFile
+            )
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    ok:
+                        false,
+
+                    error:
+                        "COPY FARM INFO: أرسل ملف الأصدقاء بصيغة application/octet-stream"
+                });
+        }
+
+        if (
+            encryptedFile.length === 0
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    ok:
+                        false,
+
+                    error:
+                        "COPY FARM INFO: الملف فارغ"
+                });
+        }
+
+        console.log(
+            `[CopyFarm] friend file size=${encryptedFile.length}`
+        );
+
+        const xmlBuffer =
+            decodeFriendFile(
+                encryptedFile
+            );
+
+        const xml =
+            xmlBuffer
+                .toString(
+                    "utf8"
+                )
+                .replace(
+                    /^\uFEFF/,
+                    ""
+                )
+                .trim();
+
+        const friends =
+            parseFriends(
+                xml
+            );
+
+        const saveProfiles =
+            parseSaveProfiles(
+                xml
+            );
+
+        attachSaveIdsToFriends(
+            friends,
+            saveProfiles
+        );
+
+        const cities =
+            friends.map(
+                friend => ({
+
+                    city_id:
+                        friend.city_id,
+
+                    city_name:
+                        friend.city_name,
+
+                    name:
+                        friend.name,
+
+                    level:
+                        friend.level,
+
+                    xp:
+                        friend.xp,
+
+                    likes:
+                        friend.likes,
+
+                    lang:
+                        friend.lang,
+
+                    fetched_city_ver:
+                        friend.fetched_city_ver,
+
+                    save_id:
+                        friend.saveId || ""
+                })
+            );
+
+        console.log(
+            `[CopyFarm] cities=${cities.length}`
+        );
+
+        return res
+            .status(200)
+            .json({
+
+                ok:
+                    true,
+
+                count:
+                    cities.length,
+
+                cities:
+                    cities
+            });
+
+    } catch (err) {
+
+        console.error(
+            "[CopyFarm] INFO ERROR:",
+            err &&
+            err.stack
+                ? err.stack
+                : err
+        );
+
+        return res
+            .status(500)
+            .json({
+
+                ok:
+                    false,
+
+                error:
+                    String(
+                        err &&
+                        err.message
+                            ? err.message
+                            : err
+                    )
+            });
+    }
+}
+
+// ============================================================
+// COPY FARM API
+// ============================================================
+
+async function handleCopyFarm(
+    req,
+    res
+) {
+
+    try {
+
+        const mainSave =
+            req.body;
+
+        if (
+            !Buffer.isBuffer(
+                mainSave
+            )
+        ) {
+
+            return res
+                .status(400)
+                .send(
+                    "COPY FARM: أرسل الحفظ الرئيسي بصيغة application/octet-stream"
+                );
+        }
+
+        if (
+            mainSave.length === 0
+        ) {
+
+            return res
+                .status(400)
+                .send(
+                    "COPY FARM: الحفظ الرئيسي فارغ"
+                );
+        }
+
+        const cityId =
+            String(
+                req.headers["x-city-id"] ||
+                req.headers["x-friend-city-id"] ||
+                ""
+            ).trim();
+
+        const cityVerHeader =
+            String(
+                req.headers["x-city-ver"] ||
+                req.headers["x-fetched-city-ver"] ||
+                "0"
+            ).trim();
+
+        const cityVer =
+            Number(
+                cityVerHeader
+            );
+
+        if (
+            !cityId
+        ) {
+
+            return res
+                .status(400)
+                .send(
+                    "COPY FARM: x-city-id مفقود"
+                );
+        }
+
+        if (
+            !Number.isFinite(
+                cityVer
+            ) ||
+            cityVer < 0
+        ) {
+
+            return res
+                .status(400)
+                .send(
+                    "COPY FARM: x-city-ver غير صالح"
+                );
+        }
+
+        console.log(
+            `[CopyFarm] mainSave=${mainSave.length}`
+        );
+
+        console.log(
+            `[CopyFarm] selected cityId=${cityId} cityVer=${cityVer}`
+        );
+
+        // ====================================================
+        // DECODE MAIN SAVE
+        // ====================================================
+
+        const mainDecoded =
+            decodeSaveWithLayers(
+                mainSave
+            );
+
+        const mainXml =
+            mainDecoded.xml
+                .toString(
+                    "utf8"
+                );
+
+        console.log(
+            `[CopyFarm] main XML=${mainDecoded.xml.length}`
+        );
+
+        console.log(
+            `[CopyFarm] main layers=${mainDecoded.layers
+                .map(
+                    x =>
+                        x.type
+                )
+                .join(" -> ")}`
+        );
+
+        // ====================================================
+        // FETCH FRIEND
+        // ====================================================
+
+        const friendResult =
+            await fetchFriendCityXml(
+                cityId,
+                cityVer
+            );
+
+        const friendXml =
+            friendResult.xml
+                .toString(
+                    "utf8"
+                );
+
+        console.log(
+            `[CopyFarm] friend XML=${friendResult.xml.length}`
+        );
+
+        // ====================================================
+        // BASIC VALIDATION
+        // ====================================================
+
+        if (
+            !mainXml.includes(
+                "<root"
+            )
+        ) {
+
+            throw new Error(
+                "COPY FARM: الحفظ الرئيسي ليس XML صالحًا"
+            );
+        }
+
+        if (
+            !friendXml.includes(
+                "<root"
+            )
+        ) {
+
+            throw new Error(
+                "COPY FARM: حفظ الصديق ليس XML صالحًا"
+            );
+        }
+
+        // ====================================================
+        // COPY
+        // ====================================================
+
+        const mergedXml =
+            copyFarmReplaceTopLevelSections(
+                mainXml,
+                friendXml
+            );
+
+        console.log(
+            `[CopyFarm] merged XML=${mergedXml.length}`
+        );
+
+        // ====================================================
+        // KEEP MAIN ACCOUNT IDENTIFIERS
+        // ====================================================
+
+        let finalXml =
+            mergedXml;
+
+        finalXml =
+            finalXml.replace(
+                /<Var\b[^>]*\bname=["']cityId["'][^>]*\bv=["'][^"']*["'][^>]*\/?>/gi,
+                function(tag) {
+
+                    return tag;
+                }
+            );
+
+        // ====================================================
+        // RE-ENCODE USING MAIN SAVE LAYERS
+        // ====================================================
+
+        const encoded =
+            encodeSaveWithLayers(
+                finalXml,
+                mainDecoded.layers
+            );
+
+        console.log(
+            `[CopyFarm] final encoded size=${encoded.length}`
+        );
+
+        console.log(
+            `[CopyFarm] final magic=${bufferMagic(encoded)}`
+        );
+
+        // ====================================================
+        // RESPONSE
+        // ====================================================
+
+        res.status(
+            200
+        );
+
+        res.set(
+            "Content-Type",
+            "application/octet-stream"
+        );
+
+        res.set(
+            "Content-Disposition",
+            'attachment; filename="LocalInfo.xml"'
+        );
+
+        res.set(
+            "Cache-Control",
+            "no-store"
+        );
+
+        return res.send(
+            encoded
+        );
+
+    } catch (err) {
+
+        console.error(
+            "[CopyFarm] ERROR:",
+            err &&
+            err.stack
+                ? err.stack
+                : err
+        );
+
+        return res
+            .status(500)
+            .send(
+                String(
+                    err &&
+                    err.message
+                        ? err.message
+                        : err
+                )
+            );
+    }
+}
+
+// ============================================================
 // ROUTES
 // ============================================================
 
@@ -2865,8 +4782,38 @@ router.post(
     handleDecodeFriends
 );
 
+// ============================================================
+// NEW COPY FARM ROUTES
+// ============================================================
+
+router.post(
+    "/copy-farm-info",
+    express.raw({
+        type: "application/octet-stream",
+        limit: "50mb"
+    }),
+    handleCopyFarmInfo
+);
+
+router.post(
+    "/copy-farm",
+    express.raw({
+        type: "application/octet-stream",
+        limit: "100mb"
+    }),
+    handleCopyFarm
+);
+
 console.log(
     "[FetchCity] module loaded"
+);
+
+console.log(
+    "[CopyFarm] /copy-farm-info loaded"
+);
+
+console.log(
+    "[CopyFarm] /copy-farm loaded"
 );
 
 module.exports = router;
