@@ -2446,60 +2446,33 @@ function findVarSection(
 // COPY NAMED SECTIONS
 // ============================================================
 
-function copyNamedSections(
-    mainXml,
-    friendXml
-) {
-    let result =
-        mainXml;
+function copyNamedSections(mainXml, friendXml) {
+    let result = mainXml;
+    const names = [...new Set(COPY_VAR_NAMES)];
 
-    const names =
-        [
-            ...new Set(
-                COPY_VAR_NAMES
-            )
-        ];
+    for (const name of names) {
+        const friendSection = findVarSection(friendXml, name);
 
-    for (
-        const name of names
-    ) {
-        const friendSection =
-            findVarSection(
-                friendXml,
-                name
-            );
-
+        // غير موجود في Friend → تجاهل بدون خطأ
         if (!friendSection) {
-            throw new Error(
-                `Friend XML لا يحتوي القسم: ${name}`
-            );
+            console.log(`[Merge] skipped "${name}" - not found in Friend`);
+            continue;
         }
 
-        const mainSection =
-            findVarSection(
-                result,
-                name
-            );
+        const mainSection = findVarSection(result, name);
 
+        // غير موجود في Main → تجاهل بدون خطأ
         if (!mainSection) {
-            throw new Error(
-                `Main XML لا يحتوي القسم: ${name}`
-            );
+            console.log(`[Merge] skipped "${name}" - not found in Main`);
+            continue;
         }
 
         result =
-            result.slice(
-                0,
-                mainSection.start
-            ) +
+            result.slice(0, mainSection.start) +
             friendSection.text +
-            result.slice(
-                mainSection.end
-            );
+            result.slice(mainSection.end);
 
-        console.log(
-            `[Merge] copied Var "${name}"`
-        );
+        console.log(`[Merge] copied "${name}"`);
     }
 
     return result;
