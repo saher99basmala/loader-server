@@ -26,7 +26,7 @@ const TIMEOUT_MS =
     Number(process.env.FETCHCITY_TIMEOUT_MS || 25000);
 
 // ============================================================
-// SAVECRYPTO CONSTANTS
+// SAVECRYPTO CONSTANTS - FETCHCITY
 // ============================================================
 
 const TABLE_SIZE = 0x2D7;
@@ -46,7 +46,7 @@ const LZ4_MAGIC = Buffer.from([
 // ============================================================
 
 const FETCH54_TABLE = Buffer.from(
-    "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82bG5bc1lkczpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
+    "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82bG5bc1lkczpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGJmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
     "base64"
 );
 
@@ -56,13 +56,9 @@ const FETCH54_TABLE = Buffer.from(
 
 function u32le(buf, offset) {
 
-    if (
-        !Buffer.isBuffer(buf) ||
-        offset < 0 ||
-        offset + 4 > buf.length
-    ) {
+    if (offset + 4 > buf.length) {
         throw new Error(
-            `u32le out of bounds: offset=${offset}, size=${buf ? buf.length : 0}`
+            "u32le ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ­ط·آ¯ط¸ث†ط·آ¯ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
         );
     }
 
@@ -90,10 +86,7 @@ function sub32(a, b) {
 
 function bufferMagic(buf) {
 
-    if (
-        !buf ||
-        buf.length < 4
-    ) {
+    if (!buf || buf.length < 4) {
         return "";
     }
 
@@ -107,19 +100,6 @@ function bufferMagic(buf) {
                     .padStart(2, "0")
         )
         .join(" ");
-}
-
-function bufferHash(buf) {
-
-    if (!Buffer.isBuffer(buf)) {
-        buf = Buffer.from(buf);
-    }
-
-    return crypto
-        .createHash("sha256")
-        .update(buf)
-        .digest("hex")
-        .slice(0, 16);
 }
 
 function isLz4Magic(buf) {
@@ -146,10 +126,7 @@ function isGzip(buf) {
 
 function looksLikeXml(buf) {
 
-    if (
-        !buf ||
-        buf.length === 0
-    ) {
+    if (!buf || buf.length === 0) {
         return false;
     }
 
@@ -169,31 +146,6 @@ function looksLikeXml(buf) {
         text.startsWith("<") ||
         text.startsWith("<?xml")
     );
-}
-
-// ============================================================
-// VALIDATE GZIP
-// ============================================================
-
-function tryGunzip(buf) {
-
-    if (!isGzip(buf)) {
-        return null;
-    }
-
-    try {
-
-        const result =
-            zlib.gunzipSync(
-                buf
-            );
-
-        return result;
-
-    } catch (err) {
-
-        return null;
-    }
 }
 
 // ============================================================
@@ -235,12 +187,10 @@ function xorDecode79(raw) {
         raw = Buffer.from(raw);
     }
 
-    if (
-        raw.length < 8
-    ) {
+    if (raw.length < 8) {
 
         throw new Error(
-            `0x79 layer too short: ${raw.length}`
+            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x79 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
         );
     }
 
@@ -300,10 +250,6 @@ function xorDecode79(raw) {
             seed
         );
 
-    console.log(
-        `[FetchCity] 0x79 header=${headerValue >>> 0} total=${total} processLen=${processLen} seed=${rawSeed >>> 0}`
-    );
-
     const out =
         Buffer.from(
             raw.subarray(
@@ -312,9 +258,7 @@ function xorDecode79(raw) {
             )
         );
 
-    if (
-        out.length === 0
-    ) {
+    if (out.length === 0) {
         return out;
     }
 
@@ -355,30 +299,26 @@ function xorDecode79(raw) {
 }
 
 // ============================================================
-// FETCHCITY 0x54 - ORIGINAL
+// FETCHCITY 0x54
 // ============================================================
 
-function decode54LayerOriginal(raw) {
+function decode54Layer(raw) {
 
     if (!Buffer.isBuffer(raw)) {
         raw = Buffer.from(raw);
     }
 
-    if (
-        raw.length < 4
-    ) {
+    if (raw.length < 4) {
 
         throw new Error(
-            `0x54 layer too short: ${raw.length}`
+            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
         );
     }
 
-    if (
-        raw[0] !== 0x54
-    ) {
+    if (raw[0] !== 0x54) {
 
         throw new Error(
-            `Invalid 0x54 magic: ${bufferMagic(raw)}`
+            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­ط·آ©. Magic=${bufferMagic(raw)}`
         );
     }
 
@@ -399,18 +339,12 @@ function decode54LayerOriginal(raw) {
             raw.length - 3
         );
 
-    console.log(
-        `[FetchCity] 0x54 processLen=${processLen} payload=${raw.length - 3}`
-    );
-
     const out =
         Buffer.from(
             raw.subarray(3)
         );
 
-    if (
-        out.length === 0
-    ) {
+    if (out.length === 0) {
         return out;
     }
 
@@ -432,9 +366,7 @@ function decode54LayerOriginal(raw) {
         i++
     ) {
 
-        if (
-            i > 0
-        ) {
+        if (i > 0) {
 
             out[i] =
                 (
@@ -454,380 +386,6 @@ function decode54LayerOriginal(raw) {
     }
 
     return out;
-}
-
-// ============================================================
-// FETCHCITY 0x54 - ALTERNATIVE DECODER
-// ============================================================
-
-function decode54LayerFullPayload(raw) {
-
-    if (!Buffer.isBuffer(raw)) {
-        raw = Buffer.from(raw);
-    }
-
-    if (
-        raw.length < 4 ||
-        raw[0] !== 0x54
-    ) {
-        throw new Error(
-            "Invalid 0x54 data"
-        );
-    }
-
-    const payloadLength =
-        raw.length - 3;
-
-    const out =
-        Buffer.from(
-            raw.subarray(3)
-        );
-
-    if (
-        payloadLength === 0
-    ) {
-        return out;
-    }
-
-    out[0] =
-        (
-            out[0] -
-            0x54
-        ) & 0xFF;
-
-    for (
-        let i = 0;
-        i < payloadLength;
-        i++
-    ) {
-
-        if (
-            i > 0
-        ) {
-
-            out[i] =
-                (
-                    out[i] -
-                    out[i - 1]
-                ) & 0xFF;
-        }
-
-        out[i] =
-            (
-                out[i] ^
-                FETCH54_TABLE[
-                    i %
-                    FETCH54_TABLE.length
-                ]
-            ) & 0xFF;
-    }
-
-    return out;
-}
-
-// ============================================================
-// FETCHCITY 0x54 - CUSTOM LENGTH
-// ============================================================
-
-function decode54LayerWithLength(
-    raw,
-    requestedLength
-) {
-
-    if (!Buffer.isBuffer(raw)) {
-        raw = Buffer.from(raw);
-    }
-
-    const out =
-        Buffer.from(
-            raw.subarray(3)
-        );
-
-    if (
-        out.length === 0
-    ) {
-        return out;
-    }
-
-    const count =
-        Math.min(
-            Math.max(
-                1,
-                requestedLength
-            ),
-            out.length
-        );
-
-    out[0] =
-        (
-            out[0] -
-            0x54
-        ) & 0xFF;
-
-    for (
-        let i = 0;
-        i < count;
-        i++
-    ) {
-
-        if (
-            i > 0
-        ) {
-
-            out[i] =
-                (
-                    out[i] -
-                    out[i - 1]
-                ) & 0xFF;
-        }
-
-        out[i] =
-            (
-                out[i] ^
-                FETCH54_TABLE[
-                    i %
-                    FETCH54_TABLE.length
-                ]
-            ) & 0xFF;
-    }
-
-    return out;
-}
-
-// ============================================================
-// FETCHCITY 0x54 - SMART DECODER
-// ============================================================
-
-function decode54Layer(raw) {
-
-    if (!Buffer.isBuffer(raw)) {
-        raw = Buffer.from(raw);
-    }
-
-    if (
-        raw.length < 4
-    ) {
-        throw new Error(
-            `0x54 layer too short: ${raw.length}`
-        );
-    }
-
-    if (
-        raw[0] !== 0x54
-    ) {
-        throw new Error(
-            `Invalid 0x54 magic=${bufferMagic(raw)}`
-        );
-    }
-
-    const encodedLength =
-        (
-            (
-                (raw[1] & 0xFF) ^
-                FETCH54_TABLE[0]
-            ) |
-            (
-                (raw[2] & 0xFF) << 8
-            )
-        ) >>> 0;
-
-    const payloadLength =
-        raw.length - 3;
-
-    const processLen =
-        Math.min(
-            encodedLength,
-            payloadLength
-        );
-
-    console.log(
-        `[FetchCity] 0x54 encodedLength=${encodedLength} payloadLength=${payloadLength} processLen=${processLen}`
-    );
-
-    const candidates = [];
-
-    function addCandidate(
-        name,
-        data
-    ) {
-
-        if (!Buffer.isBuffer(data)) {
-            return;
-        }
-
-        candidates.push({
-            name,
-            data
-        });
-
-        console.log(
-            `[FetchCity] 0x54 candidate=${name} magic=${bufferMagic(data)} hash=${bufferHash(data)}`
-        );
-    }
-
-    try {
-
-        addCandidate(
-            "original",
-            decode54LayerOriginal(
-                raw
-            )
-        );
-
-    } catch (err) {
-
-        console.log(
-            `[FetchCity] 0x54 original failed: ${err.message}`
-        );
-    }
-
-    if (
-        processLen !== payloadLength
-    ) {
-
-        try {
-
-            addCandidate(
-                "full-payload",
-                decode54LayerFullPayload(
-                    raw
-                )
-            );
-
-        } catch (err) {
-
-            console.log(
-                `[FetchCity] 0x54 full-payload failed: ${err.message}`
-            );
-        }
-    }
-
-    try {
-
-        const data =
-            decode54LayerWithLength(
-                raw,
-                processLen
-            );
-
-        addCandidate(
-            "encoded-process-length",
-            data
-        );
-
-    } catch (err) {
-
-        console.log(
-            `[FetchCity] 0x54 process-length failed: ${err.message}`
-        );
-    }
-
-    const alternateLengths = [
-        payloadLength,
-        payloadLength - 1,
-        payloadLength - 2,
-        payloadLength - 4,
-        payloadLength - 8,
-        processLen,
-        processLen + 1,
-        processLen + 2,
-        processLen + 4,
-        processLen + 8
-    ];
-
-    const uniqueLengths =
-        [...new Set(
-            alternateLengths.filter(
-                x =>
-                    Number.isInteger(x) &&
-                    x > 0 &&
-                    x <= payloadLength
-            )
-        )];
-
-    for (
-        const len of uniqueLengths
-    ) {
-
-        if (
-            len === processLen ||
-            len === payloadLength
-        ) {
-            continue;
-        }
-
-        try {
-
-            addCandidate(
-                `length-${len}`,
-                decode54LayerWithLength(
-                    raw,
-                    len
-                )
-            );
-
-        } catch (err) {
-
-            // Ignore candidate.
-        }
-    }
-
-    for (
-        const candidate of candidates
-    ) {
-
-        if (
-            isGzip(
-                candidate.data
-            )
-        ) {
-
-            const inflated =
-                tryGunzip(
-                    candidate.data
-                );
-
-            if (
-                inflated &&
-                inflated.length > 0
-            ) {
-
-                console.log(
-                    `[FetchCity] 0x54 SELECTED=${candidate.name} -> GZIP OK (${inflated.length} bytes)`
-                );
-
-                return inflated;
-            }
-        }
-
-        if (
-            looksLikeXml(
-                candidate.data
-            )
-        ) {
-
-            console.log(
-                `[FetchCity] 0x54 SELECTED=${candidate.name} -> XML`
-            );
-
-            return candidate.data;
-        }
-    }
-
-    console.log(
-        "[FetchCity] 0x54 no candidate produced valid GZIP/XML; using original candidate"
-    );
-
-    if (
-        candidates.length > 0
-    ) {
-
-        return candidates[0].data;
-    }
-
-    throw new Error(
-        "0x54: no decode candidate"
-    );
 }
 
 // ============================================================
@@ -840,9 +398,7 @@ function decodeTransport(raw) {
         raw = Buffer.from(raw);
     }
 
-    if (
-        raw.length === 0
-    ) {
+    if (raw.length === 0) {
         return raw;
     }
 
@@ -867,8 +423,9 @@ function decodeTransport(raw) {
             return raw;
 
         default:
+
             throw new Error(
-                `Unknown FetchCity transport: 0x${type
+                `ط¸â€ ط¸ث†ط·آ¹ FetchCity ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦ ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹: 0x${type
                     .toString(16)
                     .padStart(2, "0")}`
             );
@@ -915,8 +472,9 @@ function lz4DecompressBlock(
                     srcPos >=
                     src.length
                 ) {
+
                     throw new Error(
-                        "LZ4: literal length overflow"
+                        "LZ4: literal length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
                     );
                 }
 
@@ -938,7 +496,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: literals exceed source"
+                "LZ4: literals ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
             );
         }
 
@@ -949,7 +507,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: literal output overflow"
+                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ literals"
             );
         }
 
@@ -980,7 +538,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: missing offset"
+                "LZ4: offset ط¸â€ ط·آ§ط¸â€ڑط·آµ"
             );
         }
 
@@ -1007,7 +565,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                `LZ4: invalid offset ${offset} > ${dstPos}`
+                `LZ4: offset ط·آ£ط¸ئ’ط·آ¨ط·آ± ط¸â€¦ط¸â€  output: ${offset} > ${dstPos}`
             );
         }
 
@@ -1028,7 +586,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: match length overflow"
+                        "LZ4: match length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
                     );
                 }
 
@@ -1052,7 +610,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: match output overflow"
+                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ match"
             );
         }
 
@@ -1082,7 +640,7 @@ function lz4DecompressBlock(
     ) {
 
         throw new Error(
-            `LZ4: output size mismatch. expected=${expectedSize}, actual=${dstPos}`
+            `LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑ. expected=${expectedSize}, actual=${dstPos}`
         );
     }
 
@@ -1096,7 +654,7 @@ function decodeLz4Container(raw) {
     ) {
 
         throw new Error(
-            `Invalid LZ4 magic: ${bufferMagic(raw)}`
+            `LZ4 magic ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­: ${bufferMagic(raw)}`
         );
     }
 
@@ -1105,7 +663,7 @@ function decodeLz4Container(raw) {
     ) {
 
         throw new Error(
-            "LZ4 container too short"
+            "LZ4 container ط¸â€ڑط·آµط¸ظ¹ط·آ±"
         );
     }
 
@@ -1294,21 +852,17 @@ function decodeSaveCity(cityBytes) {
         );
 
     console.log(
-        `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)} hash=${bufferHash(data)}`
+        `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
     );
 
     let rounds = 0;
 
     while (
         data.length > 0 &&
-        rounds < 12
+        rounds < 8
     ) {
 
         rounds++;
-
-        console.log(
-            `[FetchCity] decode round=${rounds} size=${data.length} magic=${bufferMagic(data)} hash=${bufferHash(data)}`
-        );
 
         if (
             looksLikeXml(data)
@@ -1347,23 +901,10 @@ function decodeSaveCity(cityBytes) {
                 "[FetchCity] GZIP detected"
             );
 
-            try {
-
-                data =
-                    zlib.gunzipSync(
-                        data
-                    );
-
-            } catch (err) {
-
-                console.error(
-                    `[FetchCity] GZIP ERROR: ${err.message}`
+            data =
+                zlib.gunzipSync(
+                    data
                 );
-
-                throw new Error(
-                    `GZIP decode failed: ${err.message}. magic=${bufferMagic(data)} size=${data.length}`
-                );
-            }
 
             continue;
         }
@@ -1393,7 +934,7 @@ function decodeSaveCity(cityBytes) {
         }
 
         throw new Error(
-            `Unknown FetchCity layer. magic=${bufferMagic(data)}`
+            `ط·ع¾ط¸â€¦ ط¸ظ¾ط¸ئ’ ط·آ·ط·آ¨ط¸â€ڑط·آ§ط·ع¾ FetchCity ط¸â€‍ط¸ئ’ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط·آ­ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ط·آ© ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¹ط·آ±ط¸ث†ط¸ظ¾ط·آ©. Magic=${bufferMagic(data)}`
         );
     }
 
@@ -1401,11 +942,13 @@ function decodeSaveCity(cityBytes) {
         looksLikeXml(data)
     ) {
 
-        return trimXml(data);
+        return trimXml(
+            data
+        );
     }
 
     throw new Error(
-        `Failed to reach XML. magic=${bufferMagic(data)} size=${data.length}`
+        `ط·ع¾ط·آ¹ط·آ°ط·آ± ط·آ§ط¸â€‍ط¸ث†ط·آµط¸ث†ط¸â€‍ ط·آ¥ط¸â€‍ط¸â€° XML. Magic=${bufferMagic(data)}`
     );
 }
 
@@ -1452,11 +995,8 @@ function encryptRequest(
         tag.toString("hex");
 
     return {
-        body:
-            ciphertext,
-
-        tsId:
-            tsId
+        body: ciphertext,
+        tsId
     };
 }
 
@@ -1472,7 +1012,7 @@ function decryptResponse(
     if (!tsId) {
 
         throw new Error(
-            "Upstream response missing ts-id"
+            "ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity ط¸â€‍ط·آ§ ط·ع¾ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ ts-id"
         );
     }
 
@@ -1482,7 +1022,7 @@ function decryptResponse(
     ) {
 
         throw new Error(
-            `Invalid ts-id: ${tsId}`
+            `ts-id ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­: ${tsId}`
         );
     }
 
@@ -1495,7 +1035,7 @@ function decryptResponse(
     ) {
 
         throw new Error(
-            `ts-id too short: ${tsId}`
+            `ts-id ط¸â€ڑط·آµط¸ظ¹ط·آ±: ${tsId}`
         );
     }
 
@@ -1574,7 +1114,7 @@ function decompressResponse(
     } catch (gzipError) {
 
         console.log(
-            `[FetchCity] GZIP failed: ${gzipError.message}`
+            "[FetchCity] GZIP failed"
         );
     }
 
@@ -1594,7 +1134,7 @@ function decompressResponse(
     } catch (zlibError) {
 
         console.log(
-            `[FetchCity] ZLIB failed: ${zlibError.message}`
+            "[FetchCity] ZLIB failed"
         );
     }
 
@@ -1614,7 +1154,7 @@ function decompressResponse(
     } catch (rawError) {
 
         console.log(
-            `[FetchCity] RAW DEFLATE failed: ${rawError.message}`
+            "[FetchCity] RAW DEFLATE failed"
         );
     }
 
@@ -1636,7 +1176,7 @@ function decompressResponse(
     }
 
     throw new Error(
-        "Unable to decompress FetchCity response. " +
+        "ط·ع¾ط·آ¹ط·آ°ط·آ± ط¸ظ¾ط¸ئ’ ط·آ¶ط·ط›ط·آ· ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity. " +
         `magic=${bufferMagic(decrypted)} ` +
         `size=${decrypted.length}`
     );
@@ -1656,10 +1196,6 @@ async function requestFetchCity(
 
     console.log(
         `[FetchCity] request cityId=${cityId} cityVer=${cityVer}`
-    );
-
-    console.log(
-        `[FetchCity] request JSON=${requestJson}`
     );
 
     const encrypted =
@@ -1685,8 +1221,7 @@ async function requestFetchCity(
                     cityId
                 ),
                 {
-                    method:
-                        "POST",
+                    method: "POST",
 
                     headers: {
 
@@ -1728,17 +1263,7 @@ async function requestFetchCity(
                 await response.arrayBuffer()
             );
 
-        console.log(
-            `[FetchCity] upstream status=${response.status}`
-        );
-
-        console.log(
-            `[FetchCity] upstream encrypted size=${responseBody.length}`
-        );
-
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             const text =
                 responseBody.toString(
@@ -1755,14 +1280,16 @@ async function requestFetchCity(
                 "ts-id"
             );
 
-        if (
-            !responseTsId
-        ) {
+        if (!responseTsId) {
 
             throw new Error(
                 "Upstream response missing ts-id"
             );
         }
+
+        console.log(
+            `[FetchCity] upstream status=${response.status}`
+        );
 
         const decrypted =
             decryptResponse(
@@ -1820,26 +1347,17 @@ async function handleFetchCity(
                 ""
             ).trim();
 
-        const rawCityVer =
-            body.cityVer ??
-            body.fetched_city_ver ??
-            body.fetchedCityVer ??
-            body.fetchCityVer ??
-            0;
-
         const cityVer =
             Number(
-                rawCityVer
+                body.cityVer || 0
             );
 
-        if (
-            !cityId
-        ) {
+        if (!cityId) {
 
             return res
                 .status(400)
                 .send(
-                    "cityId missing"
+                    "cityId ط¸â€¦ط·آ·ط¸â€‍ط¸ث†ط·آ¨"
                 );
         }
 
@@ -1853,7 +1371,7 @@ async function handleFetchCity(
             return res
                 .status(400)
                 .send(
-                    "cityVer invalid"
+                    "cityVer ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
                 );
         }
 
@@ -1875,7 +1393,7 @@ async function handleFetchCity(
         ) {
 
             throw new Error(
-                "Upstream JSON does not contain result.data"
+                "Upstream JSON ط¸â€‍ط·آ§ ط¸ظ¹ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ result.data"
             );
         }
 
@@ -1893,7 +1411,7 @@ async function handleFetchCity(
             );
 
         console.log(
-            `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)} hash=${bufferHash(cityBytes)}`
+            `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
         );
 
         const xml =
@@ -1914,9 +1432,7 @@ async function handleFetchCity(
             `[FetchCity] Modified XML size=${modifiedXml.length}`
         );
 
-        res.status(
-            200
-        );
+        res.status(200);
 
         res.set(
             "Content-Type",
@@ -1977,7 +1493,7 @@ function friendReadU32(
     ) {
 
         throw new Error(
-            "Friend UInt32 out of bounds"
+            "ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸ئ’ط·آ§ط¸ظ¾ط¸ظ¹ط·آ© ط¸â€‍ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© UInt32"
         );
     }
 
@@ -2189,7 +1705,7 @@ function friendXorDecode(
     ) {
 
         throw new Error(
-            "Friend file too short"
+            "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط·آµط·ط›ط¸ظ¹ط·آ± ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
         );
     }
 
@@ -2245,9 +1761,7 @@ function friendXorDecode(
     ) {
 
         out[i] =
-            data[
-                8 + i
-            ];
+            data[8 + i];
     }
 
     let j = 0;
@@ -2311,7 +1825,7 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            "Friend LZ4 data too short"
+            "LZ4: ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·آµط·ط›ط¸ظ¹ط·آ±ط·آ© ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
         );
     }
 
@@ -2323,7 +1837,7 @@ function friendLz4Decompress(
 
     let src = 8;
 
-    const output =
+    let output =
         Buffer.alloc(
             size
         );
@@ -2338,7 +1852,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: unexpected end of input"
+                "LZ4: ط¸â€ ط¸â€،ط·آ§ط¸ظ¹ط·آ© ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹ط·آ©"
             );
         }
 
@@ -2386,7 +1900,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: literal overflow"
+                "LZ4: Literal ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
             );
         }
 
@@ -2397,7 +1911,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: literal output overflow"
+                "LZ4: ط·آ­ط·آ¬ط¸â€¦ Literal ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­"
             );
         }
 
@@ -2428,7 +1942,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: missing offset"
+                "LZ4: ط¸â€‍ط·آ§ ط¸ظ¹ط¸ث†ط·آ¬ط·آ¯ Offset"
             );
         }
 
@@ -2443,7 +1957,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: offset = 0"
+                "LZ4: Offset ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
             );
         }
 
@@ -2480,7 +1994,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: invalid offset"
+                "LZ4: Offset ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
             );
         }
 
@@ -2496,7 +2010,7 @@ function friendLz4Decompress(
             ) {
 
                 throw new Error(
-                    "LZ4: output overflow"
+                    "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ع¾ط·آ¬ط·آ§ط¸ث†ط·آ² ط·آ§ط¸â€‍ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹"
                 );
             }
 
@@ -2516,7 +2030,11 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            `LZ4 output size mismatch. Expected=${size}, Actual=${outLen}`
+            "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­\n" +
+            "Expected: " +
+            size +
+            "\nActual: " +
+            outLen
         );
     }
 
@@ -2566,7 +2084,7 @@ function friendTrimXml(
 }
 
 // ============================================================
-// DECODE FRIEND FILE
+// EXACT decodeFile()
 // ============================================================
 
 function decodeFriendFile(
@@ -2588,10 +2106,11 @@ function decodeFriendFile(
     ) {
 
         throw new Error(
-            "Friend file is empty"
+            "ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
         );
     }
 
+    // XML ط·آ£ط·آµط¸â€‍ط·آ§ط¸â€¹
     if (
         data[0] === 0x3C
     ) {
@@ -2599,12 +2118,13 @@ function decodeFriendFile(
         return data;
     }
 
+    // ط¸ظ¹ط·آ¬ط·آ¨ ط·آ£ط¸â€  ط¸ظ¹ط·آ¨ط·آ¯ط·آ£ ط·آ¨ط¸â‚¬ 0x79
     if (
         data[0] !== 0x79
     ) {
 
         throw new Error(
-            "Unknown friend file format. Magic=0x" +
+            "ط¸â€ ط¸ث†ط·آ¹ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦\nMagic: 0x" +
             data[0]
                 .toString(16)
                 .padStart(
@@ -2839,8 +2359,8 @@ function parseFriends(
                     "bc"
                 ),
 
-            saveId:
-                ""
+            // ط·آ³ط¸ظ¹ط·آ¶ط·آ§ط¸ظ¾ saveId ط·آ¨ط·آ¹ط·آ¯ ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© ProfilesCache
+            saveId: ""
         });
     }
 
@@ -2848,7 +2368,7 @@ function parseFriends(
 }
 
 // ============================================================
-// SAVE PROFILES
+// SAVE PROFILES / saveId
 // ============================================================
 
 function parseSaveProfiles(
@@ -2930,8 +2450,7 @@ function parseSaveProfiles(
 
         if (
             !profile ||
-            typeof profile !==
-                "object"
+            typeof profile !== "object"
         ) {
 
             continue;
@@ -2949,20 +2468,26 @@ function parseSaveProfiles(
             continue;
         }
 
+        const cityname =
+            String(
+                profile.cityname || ""
+            ).trim();
+
+        const level =
+            String(
+                profile.level || ""
+            ).trim();
+
         profiles.push({
 
             cityname:
-                String(
-                    profile.cityname || ""
-                ).trim(),
+                cityname,
 
             saveId:
                 saveId,
 
             level:
-                String(
-                    profile.level || ""
-                ).trim()
+                level
         });
     }
 
@@ -2974,7 +2499,7 @@ function parseSaveProfiles(
 }
 
 // ============================================================
-// ATTACH saveId
+// ATTACH saveId TO FRIENDS
 // ============================================================
 
 function attachSaveIdsToFriends(
@@ -2983,23 +2508,19 @@ function attachSaveIdsToFriends(
 ) {
 
     if (
-        !Array.isArray(
-            friends
-        )
+        !Array.isArray(friends)
     ) {
 
         return [];
     }
 
     if (
-        !Array.isArray(
-            saveProfiles
-        ) ||
+        !Array.isArray(saveProfiles) ||
         saveProfiles.length === 0
     ) {
 
         console.log(
-            "[Friends] no saveProfiles available"
+            "[Friends] ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ saveProfiles ط¸â€‍ط·آ±ط·آ¨ط·آ·ط¸â€،ط·آ§"
         );
 
         return friends;
@@ -3025,10 +2546,9 @@ function attachSaveIdsToFriends(
             continue;
         }
 
+        // ط·آ£ط¸ث†ط¸â€‍ saveId ط¸â€‍ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط¸ظ¹ط·آ¨ط¸â€ڑط¸â€° ط¸â€،ط¸ث† ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦
         if (
-            !profileMap.has(
-                key
-            )
+            !profileMap.has(key)
         ) {
 
             profileMap.set(
@@ -3054,9 +2574,9 @@ function attachSaveIdsToFriends(
                 friend.name
             );
 
-        let saveId =
-            "";
+        let saveId = "";
 
+        // ط·آ§ط¸â€‍ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹ط·آ©: city_name
         if (
             cityNameKey &&
             profileMap.has(
@@ -3070,6 +2590,7 @@ function attachSaveIdsToFriends(
                 );
         }
 
+        // ط·آ§ط·آ­ط·ع¾ط¸ظ¹ط·آ§ط·آ·ط¸ظ¹ط·آ§ط¸â€¹: name
         if (
             !saveId &&
             friendNameKey &&
@@ -3103,7 +2624,7 @@ function attachSaveIdsToFriends(
 }
 
 // ============================================================
-// DECODE FRIENDS API
+// DECODE FRIEND FILE API
 // ============================================================
 
 async function handleDecodeFriends(
@@ -3113,7 +2634,7 @@ async function handleDecodeFriends(
 
     try {
 
-        const encryptedFile =
+        let encryptedFile =
             req.body;
 
         if (
@@ -3126,11 +2647,10 @@ async function handleDecodeFriends(
                 .status(400)
                 .json({
 
-                    ok:
-                        false,
+                    ok: false,
 
                     error:
-                        "Send .123.xml as application/octet-stream"
+                        "ط¸ظ¹ط·آ¬ط·آ¨ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ .123.xml ط·آ¨ط·آµط¸ظ¹ط·ط›ط·آ© application/octet-stream"
                 });
         }
 
@@ -3142,11 +2662,10 @@ async function handleDecodeFriends(
                 .status(400)
                 .json({
 
-                    ok:
-                        false,
+                    ok: false,
 
                     error:
-                        "File is empty"
+                        "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
                 });
         }
 
@@ -3158,6 +2677,10 @@ async function handleDecodeFriends(
             `[Friends] encrypted magic=${bufferMagic(encryptedFile)}`
         );
 
+        // ====================================================
+        // decodeFile ط·آ§ط¸â€‍ط·آ­ط¸â€ڑط¸ظ¹ط¸â€ڑط¸ظ¹
+        // ====================================================
+
         const xmlBuffer =
             decodeFriendFile(
                 encryptedFile
@@ -3165,9 +2688,7 @@ async function handleDecodeFriends(
 
         const xml =
             xmlBuffer
-                .toString(
-                    "utf8"
-                )
+                .toString("utf8")
                 .replace(
                     /^\uFEFF/,
                     ""
@@ -3183,7 +2704,7 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "Decoded friend file is not XML"
+                "ط·آ¨ط·آ¹ط·آ¯ ط¸ظ¾ط¸ئ’ .123.xml ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آµط¸ث†ط¸â€‍ ط·آ¹ط¸â€‍ط¸â€° XML"
             );
         }
 
@@ -3197,7 +2718,7 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "Version.version missing"
+                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.version"
             );
         }
 
@@ -3206,19 +2727,31 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "Version.FVer missing"
+                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.FVer"
             );
         }
+
+        // ====================================================
+        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ friends
+        // ====================================================
 
         const friends =
             parseFriends(
                 xml
             );
 
+        // ====================================================
+        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ saveId ط¸â€¦ط¸â€  ProfilesCache
+        // ====================================================
+
         const saveProfiles =
             parseSaveProfiles(
                 xml
             );
+
+        // ====================================================
+        // ط·آ±ط·آ¨ط·آ· saveId ط¸â€¦ط·آ¹ friends
+        // ====================================================
 
         attachSaveIdsToFriends(
             friends,
@@ -3241,6 +2774,10 @@ async function handleDecodeFriends(
             `[Friends] saveProfiles=${saveProfiles.length}`
         );
 
+        // ====================================================
+        // ط·آ·ط·آ¨ط·آ§ط·آ¹ط·آ© ط¸â€ ط·ع¾ط¸ظ¹ط·آ¬ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ·
+        // ====================================================
+
         for (
             const friend of friends
         ) {
@@ -3255,12 +2792,15 @@ async function handleDecodeFriends(
             }
         }
 
+        // ====================================================
+        // RESPONSE
+        // ====================================================
+
         return res
             .status(200)
             .json({
 
-                ok:
-                    true,
+                ok: true,
 
                 bver:
                     version.bver,
@@ -3289,8 +2829,7 @@ async function handleDecodeFriends(
             .status(500)
             .json({
 
-                ok:
-                    false,
+                ok: false,
 
                 error:
                     String(
@@ -3300,1958 +2839,6 @@ async function handleDecodeFriends(
                             : err
                     )
             });
-    }
-}
-
-// ============================================================
-// COPY FARM ENGINE
-// ============================================================
-
-const COPY_FARM_KEEP_MAIN = new Set([
-
-    "Devices",
-    "DeviceCompatibility",
-    "FriendsReferralSystem",
-    "ACService",
-    "Sessions",
-    "ChatLivesInbox",
-
-    "FriendIds",
-    "FollowedFriendIds",
-    "FollowerIds",
-    "NewFollowerIds",
-    "InvitedFriends",
-    "LastHelperIds",
-
-    "SentGifts",
-    "ReceivedGifts",
-    "ReceivedBoxes",
-    "OfflineBoxes",
-    "ComingLetters",
-
-    "ClanMail",
-    "MyClan",
-
-    "incompleteIAP",
-    "incompletePurchases",
-    "consumedPurchases",
-    "AlternativePaymentsTransactions",
-    "PurchaseAttempts",
-
-    "BankManager",
-    "coupons",
-
-    "Local",
-    "GameInfoPatcher",
-
-    "OtherPlayerProfilesLogicFeatureComponent",
-    "PushNotifDeviceInfo",
-
-    "IdfaAction",
-    "AgeRestrictionsManager"
-]);
-
-// ============================================================
-// COPY FARM XML PARSER
-// ============================================================
-
-function copyFarmGetTagName(
-    token
-) {
-
-    const match =
-        token.match(
-            /^<\s*([A-Za-z_][A-Za-z0-9_.:-]*)/
-        );
-
-    return match
-        ? match[1]
-        : "";
-}
-
-function copyFarmIsClosingTag(
-    token
-) {
-
-    return /^<\s*\//.test(
-        token
-    );
-}
-
-function copyFarmIsOpeningTag(
-    token
-) {
-
-    return (
-        /^<\s*[A-Za-z_][A-Za-z0-9_.:-]*/.test(
-            token
-        ) &&
-        !/^<\s*\//.test(token) &&
-        !/^<\s*!/.test(token) &&
-        !/^<\s*\?/.test(token)
-    );
-}
-
-function copyFarmIsSelfClosingTag(
-    token
-) {
-
-    return /\/\s*>$/.test(
-        token
-    );
-}
-
-function copyFarmFindTopLevelSections(
-    xml
-) {
-
-    const sections = [];
-
-    const rootMatch =
-        xml.match(
-            /<root\b[^>]*>/i
-        );
-
-    if (!rootMatch) {
-
-        throw new Error(
-            "COPY FARM: root XML missing"
-        );
-    }
-
-    const rootStart =
-        rootMatch.index;
-
-    const rootEnd =
-        xml.lastIndexOf(
-            "</root>"
-        );
-
-    if (
-        rootEnd === -1 ||
-        rootEnd <= rootStart
-    ) {
-
-        throw new Error(
-            "COPY FARM: </root> missing"
-        );
-    }
-
-    const bodyStart =
-        rootStart +
-        rootMatch[0].length;
-
-    const body =
-        xml.slice(
-            bodyStart,
-            rootEnd
-        );
-
-    const tokenRegex =
-        /<[^>]+>/g;
-
-    const stack = [];
-
-    let match;
-
-    while (
-        (match =
-            tokenRegex.exec(
-                body
-            )) !== null
-    ) {
-
-        const token =
-            match[0];
-
-        const tokenStart =
-            match.index;
-
-        const absoluteStart =
-            bodyStart +
-            tokenStart;
-
-        if (
-            /^<\s*(\?|!)/.test(
-                token
-            )
-        ) {
-
-            continue;
-        }
-
-        if (
-            copyFarmIsClosingTag(
-                token
-            )
-        ) {
-
-            const closingName =
-                copyFarmGetTagName(
-                    token
-                );
-
-            const open =
-                stack.pop();
-
-            if (
-                open &&
-                open.name ===
-                    closingName
-            ) {
-
-                if (
-                    open.depth === 1
-                ) {
-
-                    sections.push({
-
-                        name:
-                            open.name,
-
-                        start:
-                            open.start,
-
-                        end:
-                            absoluteStart +
-                            token.length,
-
-                        xml:
-                            xml.slice(
-                                open.start,
-                                absoluteStart +
-                                token.length
-                            )
-                    });
-                }
-            }
-
-            continue;
-        }
-
-        if (
-            copyFarmIsOpeningTag(
-                token
-            )
-        ) {
-
-            const name =
-                copyFarmGetTagName(
-                    token
-                );
-
-            if (
-                !name
-            ) {
-                continue;
-            }
-
-            if (
-                copyFarmIsSelfClosingTag(
-                    token
-                )
-            ) {
-
-                if (
-                    stack.length === 0
-                ) {
-
-                    sections.push({
-
-                        name:
-                            name,
-
-                        start:
-                            absoluteStart,
-
-                        end:
-                            absoluteStart +
-                            token.length,
-
-                        xml:
-                            token
-                    });
-                }
-
-                continue;
-            }
-
-            stack.push({
-
-                name:
-                    name,
-
-                start:
-                    absoluteStart,
-
-                depth:
-                    stack.length + 1
-            });
-        }
-    }
-
-    return sections;
-}
-
-// ============================================================
-// FIND SECTION
-// ============================================================
-
-function copyFarmFindSection(
-    xml,
-    sectionName
-) {
-
-    const sections =
-        copyFarmFindTopLevelSections(
-            xml
-        );
-
-    for (
-        const section of sections
-    ) {
-
-        if (
-            section.name ===
-            sectionName
-        ) {
-
-            return section;
-        }
-    }
-
-    return null;
-}
-
-// ============================================================
-// REPLACE SECTION
-// ============================================================
-
-function copyFarmReplaceSection(
-    xml,
-    sectionName,
-    replacement
-) {
-
-    const existing =
-        copyFarmFindSection(
-            xml,
-            sectionName
-        );
-
-    if (
-        existing
-    ) {
-
-        return (
-            xml.slice(
-                0,
-                existing.start
-            ) +
-            replacement +
-            xml.slice(
-                existing.end
-            )
-        );
-    }
-
-    const rootEnd =
-        xml.lastIndexOf(
-            "</root>"
-        );
-
-    if (
-        rootEnd === -1
-    ) {
-
-        throw new Error(
-            "COPY FARM: root end missing"
-        );
-    }
-
-    return (
-        xml.slice(
-            0,
-            rootEnd
-        ) +
-        "\n" +
-        replacement +
-        "\n" +
-        xml.slice(
-            rootEnd
-        )
-    );
-}
-
-// ============================================================
-// COPY TOP LEVEL SECTIONS
-// ============================================================
-
-function copyFarmReplaceTopLevelSections(
-    mainXml,
-    friendXml
-) {
-
-    let result =
-        mainXml;
-
-    const friendSections =
-        copyFarmFindTopLevelSections(
-            friendXml
-        );
-
-    let copied = 0;
-    let skipped = 0;
-
-    for (
-        const section of friendSections
-    ) {
-
-        const name =
-            section.name;
-
-        if (
-            COPY_FARM_KEEP_MAIN.has(
-                name
-            )
-        ) {
-
-            skipped++;
-
-            console.log(
-                `[CopyFarm] KEEP MAIN: ${name}`
-            );
-
-            continue;
-        }
-
-        if (
-            !section.xml ||
-            section.xml.length === 0
-        ) {
-
-            continue;
-        }
-
-        result =
-            copyFarmReplaceSection(
-                result,
-                name,
-                section.xml
-            );
-
-        copied++;
-
-        console.log(
-            `[CopyFarm] COPIED: ${name}`
-        );
-    }
-
-    console.log(
-        `[CopyFarm] top-level copied=${copied} skipped=${skipped}`
-    );
-
-    return result;
-}
-
-// ============================================================
-// DECODE SAVE WITH LAYERS
-// ============================================================
-
-function decodeSaveWithLayers(
-    input
-) {
-
-    let data =
-        Buffer.from(
-            input
-        );
-
-    const layers = [];
-
-    let rounds = 0;
-
-    while (
-        data.length > 0 &&
-        rounds < 12
-    ) {
-
-        rounds++;
-
-        if (
-            looksLikeXml(
-                data
-            )
-        ) {
-
-            return {
-
-                xml:
-                    trimXml(
-                        data
-                    ),
-
-                layers:
-                    layers
-            };
-        }
-
-        if (
-            isGzip(
-                data
-            )
-        ) {
-
-            layers.push({
-
-                type:
-                    "gzip"
-            });
-
-            data =
-                zlib.gunzipSync(
-                    data
-                );
-
-            continue;
-        }
-
-        if (
-            isLz4Magic(
-                data
-            )
-        ) {
-
-            layers.push({
-
-                type:
-                    "lz4"
-            });
-
-            data =
-                decodeLz4Container(
-                    data
-                );
-
-            continue;
-        }
-
-        if (
-            data[0] === 0x79
-        ) {
-
-            if (
-                data.length < 8
-            ) {
-
-                throw new Error(
-                    "COPY FARM: 0x79 layer too short"
-                );
-            }
-
-            const headerValue =
-                u32le(
-                    data,
-                    1
-                );
-
-            const total =
-                data.length >>> 0;
-
-            const derived =
-                xor32(
-                    TOTAL_XOR,
-                    total
-                );
-
-            const processLenU32 =
-                xor32(
-                    sub32(
-                        headerValue,
-                        derived
-                    ),
-                    PROCESS_XOR
-                );
-
-            const processLen =
-                Math.min(
-                    Math.max(
-                        0,
-                        total - 8
-                    ),
-                    processLenU32 >>> 0
-                );
-
-            const rawSeed =
-                u32le(
-                    data,
-                    4
-                );
-
-            layers.push({
-
-                type:
-                    "79",
-
-                rawSeed:
-                    rawSeed,
-
-                processLen:
-                    processLen
-            });
-
-            data =
-                xorDecode79(
-                    data
-                );
-
-            continue;
-        }
-
-        if (
-            data[0] === 0x54
-        ) {
-
-            if (
-                data.length < 3
-            ) {
-
-                throw new Error(
-                    "COPY FARM: 0x54 layer too short"
-                );
-            }
-
-            const processLen =
-                (
-                    (
-                        data[1] ^
-                        FETCH54_TABLE[0]
-                    ) |
-                    (
-                        data[2] << 8
-                    )
-                ) >>> 0;
-
-            layers.push({
-
-                type:
-                    "54",
-
-                processLen:
-                    Math.min(
-                        processLen,
-                        data.length - 3
-                    )
-            });
-
-            data =
-                decode54Layer(
-                    data
-                );
-
-            continue;
-        }
-
-        if (
-            data[0] === 0x1F
-        ) {
-
-            layers.push({
-
-                type:
-                    "raw-1f",
-
-                data:
-                    Buffer.from(
-                        data
-                    )
-            });
-
-            break;
-        }
-
-        throw new Error(
-            `COPY FARM: unknown layer magic=${bufferMagic(data)}`
-        );
-    }
-
-    if (
-        looksLikeXml(
-            data
-        )
-    ) {
-
-        return {
-
-            xml:
-                trimXml(
-                    data
-                ),
-
-            layers:
-                layers
-        };
-    }
-
-    throw new Error(
-        `COPY FARM: failed to reach XML. magic=${bufferMagic(data)}`
-    );
-}
-
-// ============================================================
-// ENCODE 0x79
-// ============================================================
-
-function encode79Layer(
-    decoded,
-    rawSeed,
-    processLen
-) {
-
-    if (
-        !Buffer.isBuffer(
-            decoded
-        )
-    ) {
-
-        decoded =
-            Buffer.from(
-                decoded
-            );
-    }
-
-    const actualLen =
-        Math.min(
-            processLen == null
-                ? decoded.length
-                : processLen,
-            decoded.length
-        );
-
-    const table =
-        build79Table(
-            add32(
-                rawSeed,
-                4
-            )
-        );
-
-    const encodedPayload =
-        Buffer.from(
-            decoded.subarray(
-                0,
-                actualLen
-            )
-        );
-
-    if (
-        encodedPayload.length > 0
-    ) {
-
-        encodedPayload[0] =
-            (
-                encodedPayload[0] ^
-                table[0]
-            ) & 0xff;
-
-        for (
-            let i = 1;
-            i < actualLen;
-            i++
-        ) {
-
-            encodedPayload[i] =
-                (
-                    (
-                        decoded[i] ^
-                        table[
-                            i % TABLE_SIZE
-                        ]
-                    ) +
-                    decoded[i - 1]
-                ) & 0xff;
-        }
-    }
-
-    const total =
-        actualLen +
-        8;
-
-    const derived =
-        xor32(
-            TOTAL_XOR,
-            total
-        );
-
-    const encodedProcess =
-        xor32(
-            actualLen,
-            PROCESS_XOR
-        );
-
-    const headerValue =
-        add32(
-            encodedProcess,
-            derived
-        );
-
-    const out =
-        Buffer.alloc(
-            total
-        );
-
-    out[0] =
-        0x79;
-
-    out.writeUInt32LE(
-        headerValue >>> 0,
-        1
-    );
-
-    out.writeUInt32LE(
-        rawSeed >>> 0,
-        4
-    );
-
-    encodedPayload.copy(
-        out,
-        8
-    );
-
-    return out;
-}
-
-// ============================================================
-// ENCODE 0x54
-// ============================================================
-
-function encode54Layer(
-    decoded,
-    processLen
-) {
-
-    if (
-        !Buffer.isBuffer(
-            decoded
-        )
-    ) {
-
-        decoded =
-            Buffer.from(
-                decoded
-            );
-    }
-
-    const count =
-        Math.min(
-            processLen == null
-                ? decoded.length
-                : processLen,
-            decoded.length
-        );
-
-    const out =
-        Buffer.alloc(
-            decoded.length +
-            3
-        );
-
-    out[0] =
-        0x54;
-
-    out[1] =
-        (
-            (count & 0xff) ^
-            FETCH54_TABLE[0]
-        ) & 0xff;
-
-    out[2] =
-        (
-            count >>> 8
-        ) & 0xff;
-
-    if (
-        count > 0
-    ) {
-
-        out[3] =
-            (
-                decoded[0] +
-                0x54
-            ) & 0xff;
-
-        for (
-            let i = 1;
-            i < count;
-            i++
-        ) {
-
-            out[
-                3 + i
-            ] =
-                (
-                    (
-                        decoded[i] ^
-                        FETCH54_TABLE[
-                            i %
-                            FETCH54_TABLE.length
-                        ]
-                    ) +
-                    decoded[i - 1]
-                ) & 0xff;
-        }
-    }
-
-    if (
-        count <
-        decoded.length
-    ) {
-
-        decoded.copy(
-            out,
-            3 + count,
-            count
-        );
-    }
-
-    return out;
-}
-
-// ============================================================
-// XXHASH32
-// ============================================================
-
-function xxhash32(
-    input,
-    seed = 0
-) {
-
-    if (
-        !Buffer.isBuffer(
-            input
-        )
-    ) {
-
-        input =
-            Buffer.from(
-                input
-            );
-    }
-
-    const PRIME1 =
-        0x9E3779B1;
-
-    const PRIME2 =
-        0x85EBCA77;
-
-    const PRIME3 =
-        0xC2B2AE3D;
-
-    const PRIME4 =
-        0x27D4EB2F;
-
-    const PRIME5 =
-        0x165667B1;
-
-    let p = 0;
-
-    const end =
-        input.length;
-
-    let h;
-
-    if (
-        input.length >= 16
-    ) {
-
-        let v1 =
-            (
-                seed +
-                PRIME1 +
-                PRIME2
-            ) >>> 0;
-
-        let v2 =
-            (
-                seed +
-                PRIME2
-            ) >>> 0;
-
-        let v3 =
-            seed >>> 0;
-
-        let v4 =
-            (
-                seed -
-                PRIME1
-            ) >>> 0;
-
-        const limit =
-            end -
-            16;
-
-        while (
-            p <= limit
-        ) {
-
-            v1 =
-                Math.imul(
-                    (
-                        v1 +
-                        Math.imul(
-                            input.readUInt32LE(
-                                p
-                            ),
-                            PRIME2
-                        )
-                    ) >>> 0,
-                    PRIME1
-                ) >>> 0;
-
-            v1 =
-                (
-                    (v1 << 13) |
-                    (v1 >>> 19)
-                ) >>> 0;
-
-            p += 4;
-
-            v2 =
-                Math.imul(
-                    (
-                        v2 +
-                        Math.imul(
-                            input.readUInt32LE(
-                                p
-                            ),
-                            PRIME2
-                        )
-                    ) >>> 0,
-                    PRIME1
-                ) >>> 0;
-
-            v2 =
-                (
-                    (v2 << 13) |
-                    (v2 >>> 19)
-                ) >>> 0;
-
-            p += 4;
-
-            v3 =
-                Math.imul(
-                    (
-                        v3 +
-                        Math.imul(
-                            input.readUInt32LE(
-                                p
-                            ),
-                            PRIME2
-                        )
-                    ) >>> 0,
-                    PRIME1
-                ) >>> 0;
-
-            v3 =
-                (
-                    (v3 << 13) |
-                    (v3 >>> 19)
-                ) >>> 0;
-
-            p += 4;
-
-            v4 =
-                Math.imul(
-                    (
-                        v4 +
-                        Math.imul(
-                            input.readUInt32LE(
-                                p
-                            ),
-                            PRIME2
-                        )
-                    ) >>> 0,
-                    PRIME1
-                ) >>> 0;
-
-            v4 =
-                (
-                    (v4 << 13) |
-                    (v4 >>> 19)
-                ) >>> 0;
-
-            p += 4;
-        }
-
-        h =
-            (
-                (
-                    (v1 << 1) |
-                    (v1 >>> 31)
-                ) +
-                (
-                    (v2 << 7) |
-                    (v2 >>> 25)
-                )
-            ) >>> 0;
-
-        h =
-            (
-                h +
-                (
-                    (v3 << 12) |
-                    (v3 >>> 20)
-                ) +
-                (
-                    (v4 << 18) |
-                    (v4 >>> 14)
-                )
-            ) >>> 0;
-
-    } else {
-
-        h =
-            (
-                seed +
-                PRIME5
-            ) >>> 0;
-    }
-
-    h =
-        (
-            h +
-            input.length
-        ) >>> 0;
-
-    while (
-        p + 4 <=
-        end
-    ) {
-
-        h =
-            (
-                h +
-                Math.imul(
-                    input.readUInt32LE(
-                        p
-                    ),
-                    PRIME3
-                )
-            ) >>> 0;
-
-        h =
-            Math.imul(
-                (
-                    (h << 17) |
-                    (h >>> 15)
-                ) >>> 0,
-                PRIME4
-            ) >>> 0;
-
-        p += 4;
-    }
-
-    while (
-        p < end
-    ) {
-
-        h =
-            (
-                h +
-                Math.imul(
-                    input[p],
-                    PRIME5
-                )
-            ) >>> 0;
-
-        h =
-            Math.imul(
-                (
-                    (h << 11) |
-                    (h >>> 21)
-                ) >>> 0,
-                PRIME1
-            ) >>> 0;
-
-        p++;
-    }
-
-    h =
-        (
-            h ^
-            (h >>> 15)
-        ) >>> 0;
-
-    h =
-        Math.imul(
-            h,
-            PRIME2
-        ) >>> 0;
-
-    h =
-        (
-            h ^
-            (h >>> 13)
-        ) >>> 0;
-
-    h =
-        Math.imul(
-            h,
-            PRIME3
-        ) >>> 0;
-
-    h =
-        (
-            h ^
-            (h >>> 16)
-        ) >>> 0;
-
-    return h >>> 0;
-}
-
-// ============================================================
-// LZ4 ENCODE
-// ============================================================
-
-function encodeLz4Uncompressed(
-    decoded
-) {
-
-    if (
-        !Buffer.isBuffer(
-            decoded
-        )
-    ) {
-
-        decoded =
-            Buffer.from(
-                decoded
-            );
-    }
-
-    const parts = [];
-
-    const length =
-        decoded.length;
-
-    const literalLength =
-        length;
-
-    const token =
-        Math.min(
-            literalLength,
-            15
-        ) << 4;
-
-    parts.push(
-        Buffer.from([
-            token
-        ])
-    );
-
-    if (
-        literalLength >= 15
-    ) {
-
-        let remaining =
-            literalLength -
-            15;
-
-        while (
-            remaining >= 255
-        ) {
-
-            parts.push(
-                Buffer.from([
-                    255
-                ])
-            );
-
-            remaining -=
-                255;
-        }
-
-        parts.push(
-            Buffer.from([
-                remaining
-            ])
-        );
-    }
-
-    parts.push(
-        decoded
-    );
-
-    const compressed =
-        Buffer.concat(
-            parts
-        );
-
-    const header =
-        Buffer.from([
-            0x60,
-            0x70
-        ]);
-
-    const headerChecksum =
-        (
-            xxhash32(
-                header
-            ) >>>
-            8
-        ) & 0xff;
-
-    const out =
-        Buffer.alloc(
-            4 +
-            2 +
-            1 +
-            4 +
-            compressed.length
-        );
-
-    LZ4_MAGIC.copy(
-        out,
-        0
-    );
-
-    out[4] =
-        0x60;
-
-    out[5] =
-        0x70;
-
-    out[6] =
-        headerChecksum;
-
-    out.writeUInt32LE(
-        length >>> 0,
-        7
-    );
-
-    compressed.copy(
-        out,
-        11
-    );
-
-    return out;
-}
-
-// ============================================================
-// RE-ENCODE COMPLETE SAVE
-// ============================================================
-
-function encodeSaveWithLayers(
-    xml,
-    layers
-) {
-
-    let data =
-        Buffer.isBuffer(
-            xml
-        )
-            ? Buffer.from(
-                xml
-            )
-            : Buffer.from(
-                String(xml),
-                "utf8"
-            );
-
-    for (
-        let i =
-            layers.length - 1;
-        i >= 0;
-        i--
-    ) {
-
-        const layer =
-            layers[i];
-
-        switch (
-            layer.type
-        ) {
-
-            case "gzip":
-
-                data =
-                    zlib.gzipSync(
-                        data
-                    );
-
-                break;
-
-            case "lz4":
-
-                data =
-                    encodeLz4Uncompressed(
-                        data
-                    );
-
-                break;
-
-            case "79":
-
-                data =
-                    encode79Layer(
-                        data,
-                        layer.rawSeed,
-                        data.length
-                    );
-
-                break;
-
-            case "54":
-
-                data =
-                    encode54Layer(
-                        data,
-                        data.length
-                    );
-
-                break;
-
-            case "raw-1f":
-
-                throw new Error(
-                    "COPY FARM: raw-1f cannot be re-encoded automatically"
-                );
-
-            default:
-
-                throw new Error(
-                    `COPY FARM: unknown encoder ${layer.type}`
-                );
-        }
-    }
-
-    return data;
-}
-
-// ============================================================
-// FETCH FRIEND CITY XML
-// ============================================================
-
-async function fetchFriendCityXml(
-    cityId,
-    cityVer
-) {
-
-    const json =
-        await requestFetchCity(
-            cityId,
-            cityVer
-        );
-
-    if (
-        !json ||
-        !json.result ||
-        typeof json.result.data !==
-            "string"
-    ) {
-
-        throw new Error(
-            "COPY FARM: FetchCity did not return result.data"
-        );
-    }
-
-    const cityBytes =
-        Buffer.from(
-            json.result.data,
-            "base64"
-        );
-
-    console.log(
-        `[CopyFarm] fetched bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
-    );
-
-    const xml =
-        decodeSaveCity(
-            cityBytes
-        );
-
-    return {
-
-        xml:
-            xml,
-
-        cityBytes:
-            cityBytes
-    };
-}
-
-// ============================================================
-// COPY FARM INFO
-// ============================================================
-
-async function handleCopyFarmInfo(
-    req,
-    res
-) {
-
-    try {
-
-        const encryptedFile =
-            req.body;
-
-        if (
-            !Buffer.isBuffer(
-                encryptedFile
-            )
-        ) {
-
-            return res
-                .status(400)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "COPY FARM INFO: send friend file as application/octet-stream"
-                });
-        }
-
-        if (
-            encryptedFile.length === 0
-        ) {
-
-            return res
-                .status(400)
-                .json({
-
-                    ok:
-                        false,
-
-                    error:
-                        "COPY FARM INFO: file is empty"
-                });
-        }
-
-        console.log(
-            `[CopyFarm] friend file size=${encryptedFile.length}`
-        );
-
-        const xmlBuffer =
-            decodeFriendFile(
-                encryptedFile
-            );
-
-        const xml =
-            xmlBuffer
-                .toString(
-                    "utf8"
-                )
-                .replace(
-                    /^\uFEFF/,
-                    ""
-                )
-                .trim();
-
-        const friends =
-            parseFriends(
-                xml
-            );
-
-        const saveProfiles =
-            parseSaveProfiles(
-                xml
-            );
-
-        attachSaveIdsToFriends(
-            friends,
-            saveProfiles
-        );
-
-        // ====================================================
-        // COMPATIBILITY RESPONSE
-        // ====================================================
-        //
-        // Return both old and new property names:
-        //
-        // cityId / city_id
-        // saveId / save_id
-        //
-        // Also keep:
-        // friends
-        // saveProfiles
-        //
-        // This prevents old Lua clients from breaking.
-        // ====================================================
-
-        const cities =
-            friends.map(
-                friend => ({
-
-                    cityId:
-                        friend.city_id,
-
-                    city_id:
-                        friend.city_id,
-
-                    city_name:
-                        friend.city_name,
-
-                    name:
-                        friend.name,
-
-                    level:
-                        friend.level,
-
-                    xp:
-                        friend.xp,
-
-                    likes:
-                        friend.likes,
-
-                    lang:
-                        friend.lang,
-
-                    fetched_city_ver:
-                        friend.fetched_city_ver,
-
-                    saveId:
-                        friend.saveId || "",
-
-                    save_id:
-                        friend.saveId || ""
-                })
-            );
-
-        console.log(
-            `[CopyFarm] cities=${cities.length}`
-        );
-
-        for (
-            const city of cities
-        ) {
-
-            console.log(
-                `[CopyFarm] CITY cityId="${city.cityId}" saveId="${city.saveId}" name="${city.name}" city_name="${city.city_name}"`
-            );
-        }
-
-        return res
-            .status(200)
-            .json({
-
-                ok:
-                    true,
-
-                count:
-                    cities.length,
-
-                cities:
-                    cities,
-
-                // Old API compatibility
-                friends:
-                    friends,
-
-                saveProfiles:
-                    saveProfiles
-            });
-
-    } catch (err) {
-
-        console.error(
-            "[CopyFarm] INFO ERROR:",
-            err &&
-            err.stack
-                ? err.stack
-                : err
-        );
-
-        return res
-            .status(500)
-            .json({
-
-                ok:
-                    false,
-
-                error:
-                    String(
-                        err &&
-                        err.message
-                            ? err.message
-                            : err
-                    )
-            });
-    }
-}
-
-// ============================================================
-// COPY FARM
-// ============================================================
-
-async function handleCopyFarm(
-    req,
-    res
-) {
-
-    try {
-
-        const mainSave =
-            req.body;
-
-        if (
-            !Buffer.isBuffer(
-                mainSave
-            )
-        ) {
-
-            return res
-                .status(400)
-                .send(
-                    "COPY FARM: send main save as application/octet-stream"
-                );
-        }
-
-        if (
-            mainSave.length === 0
-        ) {
-
-            return res
-                .status(400)
-                .send(
-                    "COPY FARM: main save is empty"
-                );
-        }
-
-        const cityId =
-            String(
-                req.headers["x-city-id"] ||
-                req.headers["x-friend-city-id"] ||
-                ""
-            ).trim();
-
-        const cityVerHeader =
-            String(
-                req.headers["x-city-ver"] ||
-                req.headers["x-fetched-city-ver"] ||
-                "0"
-            ).trim();
-
-        const cityVer =
-            Number(
-                cityVerHeader
-            );
-
-        if (
-            !cityId
-        ) {
-
-            return res
-                .status(400)
-                .send(
-                    "COPY FARM: x-city-id missing"
-                );
-        }
-
-        if (
-            !Number.isFinite(
-                cityVer
-            ) ||
-            cityVer < 0
-        ) {
-
-            return res
-                .status(400)
-                .send(
-                    "COPY FARM: x-city-ver invalid"
-                );
-        }
-
-        console.log(
-            `[CopyFarm] mainSave=${mainSave.length}`
-        );
-
-        console.log(
-            `[CopyFarm] selected cityId=${cityId} cityVer=${cityVer}`
-        );
-
-        // ====================================================
-        // DECODE MAIN SAVE
-        // ====================================================
-
-        const mainDecoded =
-            decodeSaveWithLayers(
-                mainSave
-            );
-
-        const mainXml =
-            mainDecoded.xml
-                .toString(
-                    "utf8"
-                );
-
-        console.log(
-            `[CopyFarm] main XML=${mainDecoded.xml.length}`
-        );
-
-        console.log(
-            `[CopyFarm] main layers=${mainDecoded.layers
-                .map(
-                    x =>
-                        x.type
-                )
-                .join(" -> ")}`
-        );
-
-        // ====================================================
-        // FETCH FRIEND
-        // ====================================================
-
-        const friendResult =
-            await fetchFriendCityXml(
-                cityId,
-                cityVer
-            );
-
-        const friendXml =
-            friendResult.xml
-                .toString(
-                    "utf8"
-                );
-
-        console.log(
-            `[CopyFarm] friend XML=${friendResult.xml.length}`
-        );
-
-        // ====================================================
-        // VALIDATION
-        // ====================================================
-
-        if (
-            !mainXml.includes(
-                "<root"
-            )
-        ) {
-
-            throw new Error(
-                "COPY FARM: main save is not valid XML"
-            );
-        }
-
-        if (
-            !friendXml.includes(
-                "<root"
-            )
-        ) {
-
-            throw new Error(
-                "COPY FARM: friend save is not valid XML"
-            );
-        }
-
-        // ====================================================
-        // COPY
-        // ====================================================
-
-        const mergedXml =
-            copyFarmReplaceTopLevelSections(
-                mainXml,
-                friendXml
-            );
-
-        console.log(
-            `[CopyFarm] merged XML=${mergedXml.length}`
-        );
-
-        // ====================================================
-        // KEEP MAIN IDENTIFIERS
-        // ====================================================
-
-        let finalXml =
-            mergedXml;
-
-        finalXml =
-            finalXml.replace(
-                /<Var\b[^>]*\bname=["']cityId["'][^>]*\bv=["'][^"']*["'][^>]*\/?>/gi,
-                function(tag) {
-
-                    return tag;
-                }
-            );
-
-        // ====================================================
-        // IMPORTANT:
-        // DO NOT RE-ENCODE THE SAVE
-        // ====================================================
-        //
-        // The main save was decoded only so that the XML
-        // sections could be modified.
-        //
-        // The final result MUST remain an OPEN XML file.
-        //
-        // Do NOT call:
-        //
-        // encodeSaveWithLayers(...)
-        //
-        // here.
-        // ====================================================
-
-        const outputXml =
-            Buffer.from(
-                finalXml,
-                "utf8"
-            );
-
-        console.log(
-            `[CopyFarm] final OPEN XML size=${outputXml.length}`
-        );
-
-        console.log(
-            `[CopyFarm] final magic=${bufferMagic(outputXml)}`
-        );
-
-        console.log(
-            `[CopyFarm] final startsWithXML=${looksLikeXml(outputXml)}`
-        );
-
-        res.status(
-            200
-        );
-
-        res.set(
-            "Content-Type",
-            "application/xml; charset=utf-8"
-        );
-
-        res.set(
-            "Content-Disposition",
-            'attachment; filename="LocalInfo.xml"'
-        );
-
-        res.set(
-            "Cache-Control",
-            "no-store"
-        );
-
-        return res.send(
-            outputXml
-        );
-
-    } catch (err) {
-
-        console.error(
-            "[CopyFarm] ERROR:",
-            err &&
-            err.stack
-                ? err.stack
-                : err
-        );
-
-        return res
-            .status(500)
-            .send(
-                String(
-                    err &&
-                    err.message
-                        ? err.message
-                        : err
-                )
-            );
     }
 }
 
@@ -5272,51 +2859,14 @@ router.post(
 router.post(
     "/decode-friends",
     express.raw({
-        type:
-            "application/octet-stream",
-        limit:
-            "50mb"
+        type: "application/octet-stream",
+        limit: "50mb"
     }),
     handleDecodeFriends
 );
-
-router.post(
-    "/copy-farm-info",
-    express.raw({
-        type:
-            "application/octet-stream",
-        limit:
-            "50mb"
-    }),
-    handleCopyFarmInfo
-);
-
-router.post(
-    "/copy-farm",
-    express.raw({
-        type:
-            "application/octet-stream",
-        limit:
-            "100mb"
-    }),
-    handleCopyFarm
-);
-
-// ============================================================
-// MODULE
-// ============================================================
 
 console.log(
     "[FetchCity] module loaded"
 );
 
-console.log(
-    "[CopyFarm] /copy-farm-info loaded"
-);
-
-console.log(
-    "[CopyFarm] /copy-farm loaded"
-);
-
-module.exports =
-    router;
+module.exports = router;
