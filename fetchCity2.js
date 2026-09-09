@@ -55,9 +55,10 @@ const FETCH54_TABLE = Buffer.from(
 // ============================================================
 
 function u32le(buf, offset) {
-
     if (offset + 4 > buf.length) {
-        throw new Error("u32le out of range");
+        throw new Error(
+            "u32le خارج حدود البيانات"
+        );
     }
 
     return (
@@ -83,7 +84,6 @@ function sub32(a, b) {
 }
 
 function bufferMagic(buf) {
-
     if (!buf || buf.length < 4) {
         return "";
     }
@@ -101,7 +101,6 @@ function bufferMagic(buf) {
 }
 
 function isLz4Magic(buf) {
-
     return (
         buf &&
         buf.length >= 4 &&
@@ -113,7 +112,6 @@ function isLz4Magic(buf) {
 }
 
 function isGzip(buf) {
-
     return (
         buf &&
         buf.length >= 2 &&
@@ -123,7 +121,6 @@ function isGzip(buf) {
 }
 
 function looksLikeXml(buf) {
-
     if (!buf || buf.length === 0) {
         return false;
     }
@@ -132,7 +129,10 @@ function looksLikeXml(buf) {
         buf
             .subarray(
                 0,
-                Math.min(buf.length, 512)
+                Math.min(
+                    buf.length,
+                    512
+                )
             )
             .toString("utf8")
             .trimStart();
@@ -148,9 +148,10 @@ function looksLikeXml(buf) {
 // ============================================================
 
 function build79Table(seed) {
-
     const table =
-        Buffer.alloc(TABLE_SIZE);
+        Buffer.alloc(
+            TABLE_SIZE
+        );
 
     let state =
         seed >>> 0;
@@ -160,7 +161,6 @@ function build79Table(seed) {
         i < TABLE_SIZE;
         i++
     ) {
-
         state =
             Math.imul(
                 state,
@@ -175,19 +175,21 @@ function build79Table(seed) {
 }
 
 function xorDecode79(raw) {
-
     if (!Buffer.isBuffer(raw)) {
         raw = Buffer.from(raw);
     }
 
     if (raw.length < 8) {
         throw new Error(
-            `0x79 data too short: ${raw.length}`
+            `بيانات 0x79 قصيرة: ${raw.length}`
         );
     }
 
     const headerValue =
-        u32le(raw, 1);
+        u32le(
+            raw,
+            1
+        );
 
     const total =
         raw.length >>> 0;
@@ -223,7 +225,10 @@ function xorDecode79(raw) {
         );
 
     const rawSeed =
-        u32le(raw, 4);
+        u32le(
+            raw,
+            4
+        );
 
     const seed =
         add32(
@@ -232,7 +237,9 @@ function xorDecode79(raw) {
         );
 
     const table =
-        build79Table(seed);
+        build79Table(
+            seed
+        );
 
     const out =
         Buffer.from(
@@ -257,7 +264,6 @@ function xorDecode79(raw) {
         i < out.length;
         i++
     ) {
-
         const current =
             out[i];
 
@@ -287,20 +293,19 @@ function xorDecode79(raw) {
 // ============================================================
 
 function decode54Layer(raw) {
-
     if (!Buffer.isBuffer(raw)) {
         raw = Buffer.from(raw);
     }
 
     if (raw.length < 4) {
         throw new Error(
-            `0x54 data too short: ${raw.length}`
+            `بيانات 0x54 قصيرة: ${raw.length}`
         );
     }
 
     if (raw[0] !== 0x54) {
         throw new Error(
-            `Invalid 0x54 magic: ${bufferMagic(raw)}`
+            `بيانات 0x54 غير صحيحة. Magic=${bufferMagic(raw)}`
         );
     }
 
@@ -347,9 +352,7 @@ function decode54Layer(raw) {
         i < count;
         i++
     ) {
-
         if (i > 0) {
-
             out[i] =
                 (
                     out[i] -
@@ -361,7 +364,8 @@ function decode54Layer(raw) {
             (
                 out[i] ^
                 FETCH54_TABLE[
-                    i % FETCH54_TABLE.length
+                    i %
+                    FETCH54_TABLE.length
                 ]
             ) & 0xFF;
     }
@@ -374,7 +378,6 @@ function decode54Layer(raw) {
 // ============================================================
 
 function decodeTransport(raw) {
-
     if (!Buffer.isBuffer(raw)) {
         raw = Buffer.from(raw);
     }
@@ -393,7 +396,6 @@ function decodeTransport(raw) {
     );
 
     switch (type) {
-
         case 0x79:
             return xorDecode79(raw);
 
@@ -405,7 +407,7 @@ function decodeTransport(raw) {
 
         default:
             throw new Error(
-                `Unknown FetchCity layer: 0x${type
+                `نوع FetchCity غير معروف: 0x${type
                     .toString(16)
                     .padStart(2, "0")}`
             );
@@ -420,18 +422,18 @@ function lz4DecompressBlock(
     src,
     expectedSize
 ) {
-
     let srcPos = 0;
     let dstPos = 0;
 
     const output =
-        Buffer.alloc(expectedSize);
+        Buffer.alloc(
+            expectedSize
+        );
 
     while (
         srcPos < src.length &&
         dstPos < expectedSize
     ) {
-
         const token =
             src[srcPos++];
 
@@ -441,16 +443,15 @@ function lz4DecompressBlock(
         if (
             literalLength === 15
         ) {
-
             let value;
 
             do {
-
                 if (
-                    srcPos >= src.length
+                    srcPos >=
+                    src.length
                 ) {
                     throw new Error(
-                        "LZ4 literal length invalid"
+                        "LZ4: literal length غير مكتمل"
                     );
                 }
 
@@ -471,7 +472,7 @@ function lz4DecompressBlock(
             src.length
         ) {
             throw new Error(
-                "LZ4 literals out of range"
+                "LZ4: literals غير مكتملة"
             );
         }
 
@@ -481,7 +482,7 @@ function lz4DecompressBlock(
             expectedSize
         ) {
             throw new Error(
-                "LZ4 output overflow"
+                "LZ4: output overflow في literals"
             );
         }
 
@@ -511,7 +512,7 @@ function lz4DecompressBlock(
             src.length
         ) {
             throw new Error(
-                "LZ4 offset missing"
+                "LZ4: offset ناقص"
             );
         }
 
@@ -527,7 +528,7 @@ function lz4DecompressBlock(
             offset === 0
         ) {
             throw new Error(
-                "LZ4 offset = 0"
+                "LZ4: offset = 0"
             );
         }
 
@@ -536,7 +537,7 @@ function lz4DecompressBlock(
             dstPos
         ) {
             throw new Error(
-                `LZ4 invalid offset ${offset}`
+                `LZ4: offset أكبر من output: ${offset} > ${dstPos}`
             );
         }
 
@@ -546,17 +547,15 @@ function lz4DecompressBlock(
         if (
             matchLength === 15
         ) {
-
             let value;
 
             do {
-
                 if (
                     srcPos >=
                     src.length
                 ) {
                     throw new Error(
-                        "LZ4 match length invalid"
+                        "LZ4: match length غير مكتمل"
                     );
                 }
 
@@ -579,7 +578,7 @@ function lz4DecompressBlock(
             expectedSize
         ) {
             throw new Error(
-                "LZ4 match output overflow"
+                "LZ4: output overflow في match"
             );
         }
 
@@ -588,7 +587,6 @@ function lz4DecompressBlock(
             i < matchLength;
             i++
         ) {
-
             output[
                 dstPos + i
             ] =
@@ -608,7 +606,7 @@ function lz4DecompressBlock(
         expectedSize
     ) {
         throw new Error(
-            `LZ4 size mismatch: expected=${expectedSize}, actual=${dstPos}`
+            `LZ4: الحجم غير مطابق. expected=${expectedSize}, actual=${dstPos}`
         );
     }
 
@@ -616,12 +614,11 @@ function lz4DecompressBlock(
 }
 
 function decodeLz4Container(raw) {
-
     if (
         !isLz4Magic(raw)
     ) {
         throw new Error(
-            `Invalid LZ4 magic: ${bufferMagic(raw)}`
+            `LZ4 magic غير صحيح: ${bufferMagic(raw)}`
         );
     }
 
@@ -629,15 +626,20 @@ function decodeLz4Container(raw) {
         raw.length < 8
     ) {
         throw new Error(
-            "LZ4 container too short"
+            "LZ4 container قصير"
         );
     }
 
     const expectedSize =
-        u32le(raw, 4);
+        u32le(
+            raw,
+            4
+        );
 
     const compressed =
-        raw.subarray(8);
+        raw.subarray(
+            8
+        );
 
     console.log(
         `[FetchCity] LZ4 expectedSize=${expectedSize}, compressed=${compressed.length}`
@@ -654,21 +656,23 @@ function decodeLz4Container(raw) {
 // ============================================================
 
 function trimXml(buf) {
-
     if (!Buffer.isBuffer(buf)) {
         buf = Buffer.from(buf);
     }
 
     const text =
-        buf.toString("utf8");
+        buf.toString(
+            "utf8"
+        );
 
     const rootEnd =
-        text.lastIndexOf("</root>");
+        text.lastIndexOf(
+            "</root>"
+        );
 
     if (
         rootEnd !== -1
     ) {
-
         return Buffer.from(
             text.slice(
                 0,
@@ -685,7 +689,6 @@ function trimXml(buf) {
     while (
         end > 0
     ) {
-
         const c =
             buf[end - 1];
 
@@ -696,11 +699,8 @@ function trimXml(buf) {
             c === 0x0D ||
             c === 0x20
         ) {
-
             end--;
-
         } else {
-
             break;
         }
     }
@@ -712,13 +712,14 @@ function trimXml(buf) {
 }
 
 function editCityXml(xml) {
-
     if (!Buffer.isBuffer(xml)) {
         xml = Buffer.from(xml);
     }
 
     let text =
-        xml.toString("utf8");
+        xml.toString(
+            "utf8"
+        );
 
     text =
         text.replace(
@@ -729,14 +730,12 @@ function editCityXml(xml) {
                     /\bname\s*=\s*["']cityId["']/i
                         .test(tag)
                 ) {
-
                     const valueRegex =
                         /(\bv\s*=\s*["'])[^"']*(["'])/i;
 
                     if (
                         valueRegex.test(tag)
                     ) {
-
                         return tag.replace(
                             valueRegex,
                             "$1$2"
@@ -753,14 +752,12 @@ function editCityXml(xml) {
                     /\bname\s*=\s*["']Device["']/i
                         .test(tag)
                 ) {
-
                     const valueRegex =
                         /(\bv\s*=\s*["'])[^"']*(["'])/i;
 
                     if (
                         valueRegex.test(tag)
                     ) {
-
                         return tag.replace(
                             valueRegex,
                             "$1ASUS_Z01QD$2"
@@ -800,9 +797,10 @@ function editCityXml(xml) {
 // ============================================================
 
 function decodeSaveCity(cityBytes) {
-
     let data =
-        Buffer.from(cityBytes);
+        Buffer.from(
+            cityBytes
+        );
 
     console.log(
         `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
@@ -814,30 +812,31 @@ function decodeSaveCity(cityBytes) {
         data.length > 0 &&
         rounds < 8
     ) {
-
         rounds++;
 
         if (
             looksLikeXml(data)
         ) {
-
             console.log(
                 `[FetchCity] XML detected after ${rounds - 1} layer(s)`
             );
 
-            return trimXml(data);
+            return trimXml(
+                data
+            );
         }
 
         if (
             isLz4Magic(data)
         ) {
-
             console.log(
                 "[FetchCity] LZ4 container detected"
             );
 
             data =
-                decodeLz4Container(data);
+                decodeLz4Container(
+                    data
+                );
 
             continue;
         }
@@ -845,13 +844,14 @@ function decodeSaveCity(cityBytes) {
         if (
             isGzip(data)
         ) {
-
             console.log(
                 "[FetchCity] GZIP detected"
             );
 
             data =
-                zlib.gunzipSync(data);
+                zlib.gunzipSync(
+                    data
+                );
 
             continue;
         }
@@ -864,12 +864,13 @@ function decodeSaveCity(cityBytes) {
             type === 0x54 ||
             type === 0x1F
         ) {
-
             const before =
                 data;
 
             data =
-                decodeTransport(data);
+                decodeTransport(
+                    data
+                );
 
             console.log(
                 `[FetchCity] layer ${rounds}: ${bufferMagic(before)} -> ${bufferMagic(data)}`
@@ -879,19 +880,20 @@ function decodeSaveCity(cityBytes) {
         }
 
         throw new Error(
-            `Unable to decode FetchCity layer. Magic=${bufferMagic(data)}`
+            `تعذر فك FetchCity. Magic=${bufferMagic(data)}`
         );
     }
 
     if (
         looksLikeXml(data)
     ) {
-
-        return trimXml(data);
+        return trimXml(
+            data
+        );
     }
 
     throw new Error(
-        `Unable to reach XML. Magic=${bufferMagic(data)}`
+        `تعذر الوصول إلى XML. Magic=${bufferMagic(data)}`
     );
 }
 
@@ -902,9 +904,10 @@ function decodeSaveCity(cityBytes) {
 function encryptRequest(
     requestJson
 ) {
-
     const iv =
-        crypto.randomBytes(12);
+        crypto.randomBytes(
+            12
+        );
 
     const cipher =
         crypto.createCipheriv(
@@ -921,7 +924,9 @@ function encryptRequest(
 
     const ciphertext =
         Buffer.concat([
-            cipher.update(plaintext),
+            cipher.update(
+                plaintext
+            ),
             cipher.final()
         ]);
 
@@ -947,10 +952,9 @@ function decryptResponse(
     body,
     tsId
 ) {
-
     if (!tsId) {
         throw new Error(
-            "Upstream missing ts-id"
+            "استجابة FetchCity لا تحتوي ts-id"
         );
     }
 
@@ -959,7 +963,7 @@ function decryptResponse(
         !tsId.startsWith("002")
     ) {
         throw new Error(
-            `Invalid ts-id: ${tsId}`
+            `ts-id غير صالح: ${tsId}`
         );
     }
 
@@ -971,7 +975,7 @@ function decryptResponse(
         24 + 32
     ) {
         throw new Error(
-            `ts-id too short: ${tsId}`
+            `ts-id قصير: ${tsId}`
         );
     }
 
@@ -1006,10 +1010,14 @@ function decryptResponse(
             iv
         );
 
-    decipher.setAuthTag(tag);
+    decipher.setAuthTag(
+        tag
+    );
 
     return Buffer.concat([
-        decipher.update(body),
+        decipher.update(
+            body
+        ),
         decipher.final()
     ]);
 }
@@ -1021,7 +1029,6 @@ function decryptResponse(
 function decompressResponse(
     decrypted
 ) {
-
     console.log(
         `[FetchCity] decrypted size=${decrypted.length}`
     );
@@ -1031,7 +1038,6 @@ function decompressResponse(
     );
 
     try {
-
         const result =
             zlib.gunzipSync(
                 decrypted
@@ -1044,14 +1050,12 @@ function decompressResponse(
         return result;
 
     } catch (gzipError) {
-
         console.log(
             "[FetchCity] GZIP failed"
         );
     }
 
     try {
-
         const result =
             zlib.inflateSync(
                 decrypted
@@ -1064,14 +1068,12 @@ function decompressResponse(
         return result;
 
     } catch (zlibError) {
-
         console.log(
             "[FetchCity] ZLIB failed"
         );
     }
 
     try {
-
         const result =
             zlib.inflateRawSync(
                 decrypted
@@ -1084,7 +1086,6 @@ function decompressResponse(
         return result;
 
     } catch (rawError) {
-
         console.log(
             "[FetchCity] RAW DEFLATE failed"
         );
@@ -1099,7 +1100,6 @@ function decompressResponse(
         text.startsWith("{") ||
         text.startsWith("[")
     ) {
-
         console.log(
             "[FetchCity] response = plain JSON"
         );
@@ -1108,7 +1108,7 @@ function decompressResponse(
     }
 
     throw new Error(
-        "Unable to decompress FetchCity response. " +
+        "تعذر فك استجابة FetchCity. " +
         `magic=${bufferMagic(decrypted)} ` +
         `size=${decrypted.length}`
     );
@@ -1122,7 +1122,6 @@ async function requestFetchCity(
     cityId,
     cityVer
 ) {
-
     const requestJson =
         `{"cityId":"","cityVer":${cityVer},"fetchCityId":"${cityId}","important":true}`;
 
@@ -1145,16 +1144,16 @@ async function requestFetchCity(
         );
 
     try {
-
         const response =
             await fetch(
                 ENDPOINT +
-                encodeURIComponent(cityId),
+                encodeURIComponent(
+                    cityId
+                ),
                 {
                     method: "POST",
 
                     headers: {
-
                         "Accept-Encoding":
                             "identity",
 
@@ -1194,7 +1193,6 @@ async function requestFetchCity(
             );
 
         if (!response.ok) {
-
             const text =
                 responseBody.toString(
                     "utf8"
@@ -1211,7 +1209,6 @@ async function requestFetchCity(
             );
 
         if (!responseTsId) {
-
             throw new Error(
                 "Upstream response missing ts-id"
             );
@@ -1242,13 +1239,16 @@ async function requestFetchCity(
         );
 
         const json =
-            JSON.parse(text);
+            JSON.parse(
+                text
+            );
 
         return json;
 
     } finally {
-
-        clearTimeout(timer);
+        clearTimeout(
+            timer
+        );
     }
 }
 
@@ -1266,13 +1266,12 @@ function friendReadU32(
     data,
     pos
 ) {
-
     if (
         pos + 4 >
         data.length
     ) {
         throw new Error(
-            "UInt32 out of range"
+            "بيانات غير كافية لقراءة UInt32"
         );
     }
 
@@ -1285,7 +1284,6 @@ function friendReadU32(
 }
 
 function friendU32Bytes(v) {
-
     v =
         friendU32(v);
 
@@ -1301,7 +1299,6 @@ function friendMmh2(
     data,
     seed
 ) {
-
     const m =
         0x5bd1e995;
 
@@ -1318,7 +1315,6 @@ function friendMmh2(
     while (
         length >= 4
     ) {
-
         let k =
             friendReadU32(
                 data,
@@ -1362,7 +1358,6 @@ function friendMmh2(
     if (
         length === 3
     ) {
-
         h =
             (
                 h ^
@@ -1373,7 +1368,6 @@ function friendMmh2(
     if (
         length >= 2
     ) {
-
         h =
             (
                 h ^
@@ -1384,7 +1378,6 @@ function friendMmh2(
     if (
         length >= 1
     ) {
-
         h =
             (
                 h ^
@@ -1423,7 +1416,6 @@ function friendGetHashTable(
     length,
     seed
 ) {
-
     const table =
         Buffer.alloc(
             FRIEND_TABLE_SIZE
@@ -1438,9 +1430,10 @@ function friendGetHashTable(
         i <
         FRIEND_TABLE_SIZE
     ) {
-
         const v =
-            friendU32Bytes(h);
+            friendU32Bytes(
+                h
+            );
 
         h =
             friendMmh2(
@@ -1449,7 +1442,9 @@ function friendGetHashTable(
             );
 
         const hb =
-            friendU32Bytes(h);
+            friendU32Bytes(
+                h
+            );
 
         for (
             let j = 0;
@@ -1458,7 +1453,6 @@ function friendGetHashTable(
             FRIEND_TABLE_SIZE;
             j++
         ) {
-
             table[
                 i + j
             ] =
@@ -1474,12 +1468,11 @@ function friendGetHashTable(
 function friendXorDecode(
     data
 ) {
-
     if (
         data.length < 8
     ) {
         throw new Error(
-            "Friend file too short"
+            "الملف قصير"
         );
     }
 
@@ -1524,14 +1517,15 @@ function friendXorDecode(
         );
 
     const out =
-        Buffer.alloc(actual);
+        Buffer.alloc(
+            actual
+        );
 
     for (
         let i = 0;
         i < actual;
         i++
     ) {
-
         out[i] =
             data[8 + i];
     }
@@ -1543,11 +1537,9 @@ function friendXorDecode(
         i < out.length;
         i++
     ) {
-
         if (
             i > 0
         ) {
-
             out[i] =
                 (
                     out[i] -
@@ -1577,7 +1569,6 @@ function friendXorDecode(
 function friendIsLz4(
     data
 ) {
-
     return (
         data.length >= 4 &&
         data[0] === 0x04 &&
@@ -1590,12 +1581,11 @@ function friendIsLz4(
 function friendLz4Decompress(
     data
 ) {
-
     if (
         data.length < 9
     ) {
         throw new Error(
-            "Friend LZ4 data too short"
+            "LZ4: البيانات قصيرة"
         );
     }
 
@@ -1607,30 +1597,34 @@ function friendLz4Decompress(
 
     let src = 8;
 
-    const output =
-        Buffer.alloc(size);
+    let output =
+        Buffer.alloc(
+            size
+        );
 
     let outLen = 0;
 
     function readByte() {
-
         if (
             src >=
             data.length
         ) {
             throw new Error(
-                "LZ4 unexpected end"
+                "LZ4: البيانات غير مكتملة"
             );
         }
 
-        return data[src++];
+        return data[
+            src++
+        ];
     }
 
     while (
-        src < data.length &&
-        outLen < size
+        src <
+            data.length &&
+        outLen <
+            size
     ) {
-
         const token =
             readByte();
 
@@ -1640,11 +1634,9 @@ function friendLz4Decompress(
         if (
             literalLen === 15
         ) {
-
             let b;
 
             do {
-
                 b =
                     readByte();
 
@@ -1662,7 +1654,7 @@ function friendLz4Decompress(
             data.length
         ) {
             throw new Error(
-                "LZ4 literal out of range"
+                "LZ4: Literal غير مكتمل"
             );
         }
 
@@ -1672,7 +1664,7 @@ function friendLz4Decompress(
             size
         ) {
             throw new Error(
-                "LZ4 literal overflow"
+                "LZ4: Literal أكبر من الحجم"
             );
         }
 
@@ -1681,7 +1673,6 @@ function friendLz4Decompress(
             i < literalLen;
             i++
         ) {
-
             output[
                 outLen++
             ] =
@@ -1702,7 +1693,7 @@ function friendLz4Decompress(
             data.length
         ) {
             throw new Error(
-                "LZ4 offset missing"
+                "LZ4: لا يوجد Offset"
             );
         }
 
@@ -1716,7 +1707,7 @@ function friendLz4Decompress(
             offset === 0
         ) {
             throw new Error(
-                "LZ4 offset zero"
+                "LZ4: Offset غير صالح"
             );
         }
 
@@ -1726,11 +1717,9 @@ function friendLz4Decompress(
         if (
             matchLen === 15
         ) {
-
             let b;
 
             do {
-
                 b =
                     readByte();
 
@@ -1752,7 +1741,7 @@ function friendLz4Decompress(
             start < 0
         ) {
             throw new Error(
-                "LZ4 invalid offset"
+                "LZ4: Offset خارج النطاق"
             );
         }
 
@@ -1761,13 +1750,12 @@ function friendLz4Decompress(
             i < matchLen;
             i++
         ) {
-
             if (
                 outLen >=
                 size
             ) {
                 throw new Error(
-                    "LZ4 output overflow"
+                    "LZ4: تجاوز حجم الإخراج"
                 );
             }
 
@@ -1786,7 +1774,11 @@ function friendLz4Decompress(
         size
     ) {
         throw new Error(
-            `LZ4 size mismatch. Expected=${size} Actual=${outLen}`
+            "LZ4: الحجم غير مطابق\n" +
+            "Expected: " +
+            size +
+            "\nActual: " +
+            outLen
         );
     }
 
@@ -1796,7 +1788,6 @@ function friendLz4Decompress(
 function friendTrimXml(
     data
 ) {
-
     const marker =
         Buffer.from(
             "</root>"
@@ -1810,7 +1801,6 @@ function friendTrimXml(
     if (
         pos !== -1
     ) {
-
         return data.subarray(
             0,
             pos +
@@ -1835,55 +1825,59 @@ function friendTrimXml(
 }
 
 // ============================================================
-// EXACT decodeFile()
+// decodeFriendFile
 // ============================================================
 
 function decodeFriendFile(
     data
 ) {
-
     if (
         !Buffer.isBuffer(data)
     ) {
         data =
-            Buffer.from(data);
+            Buffer.from(
+                data
+            );
     }
 
     if (
         data.length === 0
     ) {
         throw new Error(
-            "File empty"
+            "الملف فارغ"
         );
     }
 
-    // Plain XML
     if (
         data[0] === 0x3C
     ) {
         return data;
     }
 
-    // Must be 0x79
     if (
         data[0] !== 0x79
     ) {
         throw new Error(
-            "Unknown friend/main file format. " +
-            "Expected 0x79, got 0x" +
+            "نوع ملف غير معروف\nMagic: 0x" +
             data[0]
                 .toString(16)
-                .padStart(2, "0")
+                .padStart(
+                    2,
+                    "0"
+                )
         );
     }
 
     let payload =
-        friendXorDecode(data);
+        friendXorDecode(
+            data
+        );
 
     if (
-        friendIsLz4(payload)
+        friendIsLz4(
+            payload
+        )
     ) {
-
         payload =
             friendLz4Decompress(
                 payload
@@ -1903,7 +1897,6 @@ function attrFromXmlTag(
     tag,
     name
 ) {
-
     const doubleQuote =
         tag.match(
             new RegExp(
@@ -1944,7 +1937,6 @@ function attrFromXmlTag(
 function normalizeCityName(
     value
 ) {
-
     return String(
         value || ""
     )
@@ -1963,14 +1955,14 @@ function normalizeCityName(
 function parseFriendVersion(
     xml
 ) {
-
     const versionTag =
         xml.match(
             /<Version\b[^>]*>/i
         );
 
-    if (!versionTag) {
-
+    if (
+        !versionTag
+    ) {
         return {
             bver: "",
             fver: ""
@@ -1978,7 +1970,6 @@ function parseFriendVersion(
     }
 
     return {
-
         bver:
             attrFromXmlTag(
                 versionTag[0],
@@ -2000,7 +1991,6 @@ function parseFriendVersion(
 function parseFriends(
     xml
 ) {
-
     const friends = [];
 
     const regex =
@@ -2012,7 +2002,6 @@ function parseFriends(
         (match =
             regex.exec(xml)) !== null
     ) {
-
         const tag =
             match[0];
 
@@ -2022,12 +2011,13 @@ function parseFriends(
                 "city_id"
             );
 
-        if (!cityId) {
+        if (
+            !cityId
+        ) {
             continue;
         }
 
         friends.push({
-
             city_id:
                 cityId,
 
@@ -2105,17 +2095,17 @@ function parseFriends(
 function parseSaveProfiles(
     xml
 ) {
-
     const profiles = [];
 
     const regex =
         /<OtherPlayerProfilesLogicFeatureComponent\b[^>]*>/i;
 
     const match =
-        xml.match(regex);
+        xml.match(
+            regex
+        );
 
     if (!match) {
-
         console.log(
             "[Friends] OtherPlayerProfilesLogicFeatureComponent not found"
         );
@@ -2133,7 +2123,6 @@ function parseSaveProfiles(
         );
 
     if (!profilesCache) {
-
         console.log(
             "[Friends] ProfilesCache not found"
         );
@@ -2144,14 +2133,12 @@ function parseSaveProfiles(
     let parsed;
 
     try {
-
         parsed =
             JSON.parse(
                 profilesCache
             );
 
     } catch (err) {
-
         console.error(
             "[Friends] ProfilesCache JSON parse failed:",
             err.message
@@ -2161,8 +2148,13 @@ function parseSaveProfiles(
     }
 
     if (
-        !Array.isArray(parsed)
+        !Array.isArray(
+            parsed
+        )
     ) {
+        console.log(
+            "[Friends] ProfilesCache is not an array"
+        );
 
         return profiles;
     }
@@ -2170,10 +2162,10 @@ function parseSaveProfiles(
     for (
         const profile of parsed
     ) {
-
         if (
             !profile ||
-            typeof profile !== "object"
+            typeof profile !==
+                "object"
         ) {
             continue;
         }
@@ -2183,24 +2175,31 @@ function parseSaveProfiles(
                 profile.saveId || ""
             ).trim();
 
-        if (!saveId) {
+        if (
+            !saveId
+        ) {
             continue;
         }
 
-        profiles.push({
+        const cityname =
+            String(
+                profile.cityname || ""
+            ).trim();
 
+        const level =
+            String(
+                profile.level || ""
+            ).trim();
+
+        profiles.push({
             cityname:
-                String(
-                    profile.cityname || ""
-                ).trim(),
+                cityname,
 
             saveId:
                 saveId,
 
             level:
-                String(
-                    profile.level || ""
-                ).trim()
+                level
         });
     }
 
@@ -2219,7 +2218,6 @@ function attachSaveIdsToFriends(
     friends,
     saveProfiles
 ) {
-
     if (
         !Array.isArray(friends)
     ) {
@@ -2230,6 +2228,9 @@ function attachSaveIdsToFriends(
         !Array.isArray(saveProfiles) ||
         saveProfiles.length === 0
     ) {
+        console.log(
+            "[Friends] لا توجد saveProfiles"
+        );
 
         return friends;
     }
@@ -2240,7 +2241,6 @@ function attachSaveIdsToFriends(
     for (
         const profile of saveProfiles
     ) {
-
         const key =
             normalizeCityName(
                 profile.cityname
@@ -2256,7 +2256,6 @@ function attachSaveIdsToFriends(
         if (
             !profileMap.has(key)
         ) {
-
             profileMap.set(
                 key,
                 profile.saveId
@@ -2269,7 +2268,6 @@ function attachSaveIdsToFriends(
     for (
         const friend of friends
     ) {
-
         const cityNameKey =
             normalizeCityName(
                 friend.city_name
@@ -2288,7 +2286,6 @@ function attachSaveIdsToFriends(
                 cityNameKey
             )
         ) {
-
             saveId =
                 profileMap.get(
                     cityNameKey
@@ -2302,15 +2299,15 @@ function attachSaveIdsToFriends(
                 friendNameKey
             )
         ) {
-
             saveId =
                 profileMap.get(
                     friendNameKey
                 );
         }
 
-        if (saveId) {
-
+        if (
+            saveId
+        ) {
             friend.saveId =
                 saveId;
 
@@ -2331,14 +2328,15 @@ function attachSaveIdsToFriends(
 // ============================================================
 // ============================================================
 
-// الأقسام المطلوبة من الصديق إلى الرئيسي
+// الأقسام التي يتم نسخها من Friend -> Main
 //
-// unlockAllCards كان مذكوراً مرتين في الطلب.
-// Set أدناه يمنع استبداله مرتين.
+// unlockAllCards كان مكررًا في القائمة الأصلية.
+// يتم استخدام Set لاحقًا حتى يتم التعامل معه كقسم واحد.
 
 const COPY_VAR_NAMES = [
     "chatEmojis",
     "unlockAllAvatars",
+    "unlockAllCards",
     "unlockAllCards",
     "unlockedExpRanks",
     "unlockedStyles",
@@ -2356,10 +2354,7 @@ const COPY_VAR_NAMES = [
 // ESCAPE REGEX
 // ============================================================
 
-function escapeRegex(
-    value
-) {
-
+function escapeRegex(value) {
     return String(value).replace(
         /[.*+?^${}()|[\]\\]/g,
         "\\$&"
@@ -2367,14 +2362,13 @@ function escapeRegex(
 }
 
 // ============================================================
-// FIND COMPLETE <Var>
+// FIND COMPLETE <Var> SECTION
 // ============================================================
 
 function findVarSection(
     xml,
     name
 ) {
-
     const safeName =
         escapeRegex(name);
 
@@ -2385,7 +2379,9 @@ function findVarSection(
         );
 
     const match =
-        regex.exec(xml);
+        regex.exec(
+            xml
+        );
 
     if (!match) {
         return null;
@@ -2401,21 +2397,15 @@ function findVarSection(
         start +
         openingTag.length;
 
-    // Self closing:
-    // <Var name="xxx" .../>
+    // self closing
     if (
         /\/>\s*$/.test(
             openingTag
         )
     ) {
-
         return {
-
             start,
-
-            end:
-                openingEnd,
-
+            end: openingEnd,
             text:
                 xml.slice(
                     start,
@@ -2423,10 +2413,6 @@ function findVarSection(
                 )
         };
     }
-
-    // ========================================================
-    // Non-self-closing Var
-    // ========================================================
 
     let depth = 1;
 
@@ -2442,42 +2428,32 @@ function findVarSection(
         (tagMatch =
             tagRegex.exec(xml)) !== null
     ) {
-
         const tag =
             tagMatch[0];
 
-        // Opening nested Var
         if (
             /^<Var\b/i.test(tag) &&
             !/\/>\s*$/.test(tag)
         ) {
-
             depth++;
-
             continue;
         }
 
-        // Closing Var
         if (
             /^<\/Var\b/i.test(tag)
         ) {
-
             depth--;
 
             if (
                 depth === 0
             ) {
-
                 const end =
                     tagMatch.index +
                     tag.length;
 
                 return {
-
                     start,
-
                     end,
-
                     text:
                         xml.slice(
                             start,
@@ -2489,19 +2465,18 @@ function findVarSection(
     }
 
     throw new Error(
-        `Var section incomplete: ${name}`
+        `Var section غير مكتمل: ${name}`
     );
 }
 
 // ============================================================
-// COPY NAMED VAR SECTIONS
+// COPY NAMED SECTIONS
 // ============================================================
 
 function copyNamedSections(
     mainXml,
     friendXml
 ) {
-
     let result =
         mainXml;
 
@@ -2515,7 +2490,6 @@ function copyNamedSections(
     for (
         const name of names
     ) {
-
         const friendSection =
             findVarSection(
                 friendXml,
@@ -2523,9 +2497,8 @@ function copyNamedSections(
             );
 
         if (!friendSection) {
-
             throw new Error(
-                `Friend XML missing section: ${name}`
+                `Friend XML لا يحتوي القسم: ${name}`
             );
         }
 
@@ -2536,14 +2509,10 @@ function copyNamedSections(
             );
 
         if (!mainSection) {
-
             throw new Error(
-                `Main XML missing section: ${name}`
+                `Main XML لا يحتوي القسم: ${name}`
             );
         }
-
-        // استبدال القسم بالكامل
-        // بدون إعادة تنسيق XML
 
         result =
             result.slice(
@@ -2564,25 +2533,31 @@ function copyNamedSections(
 }
 
 // ============================================================
-// FIND BOTH BUILDINGS SECTIONS
+// FIND BUILDINGS SECTIONS
 // ============================================================
+//
+// المطلوب:
+// يبدأ القسم بالضبط من:
+//
+// </TownGround><Buildings><Object
+//
+// وينتهي عند </Buildings> المطابق.
+//
+// يتم هنا حساب <Buildings> و </Buildings>
+// بدل الاعتماد على أول </Buildings> بشكل أعمى.
+//
 
 function findBuildingsSections(
     xml
 ) {
-
     const START =
         "</TownGround><Buildings><Object";
-
-    const END =
-        "</Buildings>";
 
     const sections = [];
 
     let searchFrom = 0;
 
     while (true) {
-
         const start =
             xml.indexOf(
                 START,
@@ -2595,31 +2570,75 @@ function findBuildingsSections(
             break;
         }
 
-        const endMarker =
+        // موضع <Buildings> داخل الـ marker
+        const buildingsOpen =
             xml.indexOf(
-                END,
+                "<Buildings",
                 start
             );
 
         if (
-            endMarker === -1
+            buildingsOpen === -1
         ) {
-
             throw new Error(
-                "Buildings section incomplete"
+                "Buildings opening tag غير موجود"
             );
         }
 
-        const end =
-            endMarker +
-            END.length;
+        const tagRegex =
+            /<\/?Buildings\b[^>]*>/gi;
+
+        tagRegex.lastIndex =
+            buildingsOpen;
+
+        let depth = 0;
+        let end = -1;
+
+        let match;
+
+        while (
+            (match =
+                tagRegex.exec(xml)) !== null
+        ) {
+            const tag =
+                match[0];
+
+            if (
+                /^<Buildings\b/i.test(tag) &&
+                !/\/>\s*$/.test(tag)
+            ) {
+                depth++;
+                continue;
+            }
+
+            if (
+                /^<\/Buildings\b/i.test(tag)
+            ) {
+                depth--;
+
+                if (
+                    depth === 0
+                ) {
+                    end =
+                        match.index +
+                        match[0].length;
+
+                    break;
+                }
+            }
+        }
+
+        if (
+            end === -1
+        ) {
+            throw new Error(
+                "Buildings section غير مكتمل"
+            );
+        }
 
         sections.push({
-
             start,
-
             end,
-
             text:
                 xml.slice(
                     start,
@@ -2642,7 +2661,6 @@ function copyBothBuildingsSections(
     mainXml,
     friendXml
 ) {
-
     const mainSections =
         findBuildingsSections(
             mainXml
@@ -2653,44 +2671,31 @@ function copyBothBuildingsSections(
             friendXml
         );
 
-    console.log(
-        `[Merge] Main Buildings sections=${mainSections.length}`
-    );
-
-    console.log(
-        `[Merge] Friend Buildings sections=${friendSections.length}`
-    );
-
     if (
         mainSections.length !== 2
     ) {
-
         throw new Error(
-            `Main XML must contain exactly 2 Buildings sections. Found=${mainSections.length}`
+            `Main XML يجب أن يحتوي قسمي Buildings بالضبط. الموجود=${mainSections.length}`
         );
     }
 
     if (
         friendSections.length !== 2
     ) {
-
         throw new Error(
-            `Friend XML must contain exactly 2 Buildings sections. Found=${friendSections.length}`
+            `Friend XML يجب أن يحتوي قسمي Buildings بالضبط. الموجود=${friendSections.length}`
         );
     }
 
     let result =
         mainXml;
 
-    // نستبدل من الأخير للأول
-    // حتى لا تتغير مواقع الأقسام
-
+    // من الأخير للأول حتى لا تتغير offsets
     for (
         let i = 1;
         i >= 0;
         i--
     ) {
-
         const mainSection =
             mainSections[i];
 
@@ -2718,50 +2723,58 @@ function copyBothBuildingsSections(
 // ============================================================
 // COPY LEVELUP TO END
 // ============================================================
+//
+// المطلوب يبدأ من:
+//
+// <Var name="levelup" v="1089" t="i"/>
+//
+// وليس فقط الـ Var.
+// يتم أخذ كل شيء من هذا الموضع
+// حتى نهاية Friend XML.
+//
 
 function copyLevelupToEnd(
     mainXml,
     friendXml
 ) {
+    const LEVELUP_REGEX =
+        /<Var\b[^>]*\bname\s*=\s*["']levelup["'][^>]*\/?>/i;
 
-    const mainSection =
-        findVarSection(
-            mainXml,
-            "levelup"
+    const mainMatch =
+        LEVELUP_REGEX.exec(
+            mainXml
         );
 
-    const friendSection =
-        findVarSection(
-            friendXml,
-            "levelup"
-        );
-
-    if (!mainSection) {
-
+    if (!mainMatch) {
         throw new Error(
-            'Main XML missing <Var name="levelup"...>'
+            'Main XML لا يحتوي <Var name="levelup"...>'
         );
     }
 
-    if (!friendSection) {
+    const friendMatch =
+        LEVELUP_REGEX.exec(
+            friendXml
+        );
 
+    if (!friendMatch) {
         throw new Error(
-            'Friend XML missing <Var name="levelup"...>'
+            'Friend XML لا يحتوي <Var name="levelup"...>'
         );
     }
 
-    // ========================================================
-    // مهم:
-    // يبدأ من levelup وينسخ إلى نهاية Friend XML
-    // ========================================================
+    const mainStart =
+        mainMatch.index;
+
+    const friendStart =
+        friendMatch.index;
 
     const result =
         mainXml.slice(
             0,
-            mainSection.start
+            mainStart
         ) +
         friendXml.slice(
-            friendSection.start
+            friendStart
         );
 
     console.log(
@@ -2772,18 +2785,16 @@ function copyLevelupToEnd(
 }
 
 // ============================================================
-// COMPLETE FRIEND -> MAIN MERGE
+// MERGE FRIEND INTO MAIN
 // ============================================================
 
 function mergeFriendIntoMain(
     mainXml,
     friendXml
 ) {
-
     if (
         Buffer.isBuffer(mainXml)
     ) {
-
         mainXml =
             mainXml.toString(
                 "utf8"
@@ -2793,7 +2804,6 @@ function mergeFriendIntoMain(
     if (
         Buffer.isBuffer(friendXml)
     ) {
-
         friendXml =
             friendXml.toString(
                 "utf8"
@@ -2801,51 +2811,44 @@ function mergeFriendIntoMain(
     }
 
     mainXml =
-        String(mainXml)
-            .replace(
-                /^\uFEFF/,
-                ""
-            );
+        String(
+            mainXml
+        ).replace(
+            /^\uFEFF/,
+            ""
+        );
 
     friendXml =
-        String(friendXml)
-            .replace(
-                /^\uFEFF/,
-                ""
-            );
+        String(
+            friendXml
+        ).replace(
+            /^\uFEFF/,
+            ""
+        );
 
     console.log(
-        `[Merge] main XML size=${mainXml.length}`
+        `[Merge] main size=${mainXml.length}`
     );
 
     console.log(
-        `[Merge] friend XML size=${friendXml.length}`
+        `[Merge] friend size=${friendXml.length}`
     );
 
-    // --------------------------------------------------------
-    // 1. Buildings #1 + #2
-    // --------------------------------------------------------
-
+    // 1. Buildings
     let result =
         copyBothBuildingsSections(
             mainXml,
             friendXml
         );
 
-    // --------------------------------------------------------
-    // 2. الأقسام المحددة
-    // --------------------------------------------------------
-
+    // 2. الأقسام المطلوبة
     result =
         copyNamedSections(
             result,
             friendXml
         );
 
-    // --------------------------------------------------------
-    // 3. levelup إلى نهاية الملف
-    // --------------------------------------------------------
-
+    // 3. levelup -> END
     result =
         copyLevelupToEnd(
             result,
@@ -2853,7 +2856,7 @@ function mergeFriendIntoMain(
         );
 
     console.log(
-        `[Merge] FINAL MAIN size=${result.length}`
+        `[Merge] final main size=${result.length}`
     );
 
     return Buffer.from(
@@ -2863,284 +2866,325 @@ function mergeFriendIntoMain(
 }
 
 // ============================================================
-// FETCH FRIEND XML
+// NEW RAW MERGE MODE
 // ============================================================
+//
+// Lua يرسل:
+//
+// Content-Type: application/octet-stream
+// X-City-Id: cityId
+// X-City-Ver: cityVer
+//
+// Body = mGameInfo.xml المشفر
+//
+// السيرفر يرجع mGameInfo.xml المعدل فقط.
+//
 
-async function fetchFriendXml(
-    cityId,
-    cityVer
+async function handleRawMerge(
+    req,
+    res
 ) {
+    try {
+        const mainEncrypted =
+            req.body;
 
-    const json =
-        await requestFetchCity(
-            cityId,
-            cityVer
-        );
-
-    if (
-        !json ||
-        !json.result ||
-        typeof json.result.data !==
-            "string"
-    ) {
-
-        throw new Error(
-            "Upstream JSON does not contain result.data"
-        );
-    }
-
-    const base64 =
-        json.result.data;
-
-    console.log(
-        `[Merge] Friend Base64 length=${base64.length}`
-    );
-
-    const friendBytes =
-        Buffer.from(
-            base64,
-            "base64"
-        );
-
-    console.log(
-        `[Merge] Friend bytes=${friendBytes.length} magic=${bufferMagic(friendBytes)}`
-    );
-
-    const friendXmlBuffer =
-        decodeSaveCity(
-            friendBytes
-        );
-
-    const friendXml =
-        friendXmlBuffer
-            .toString("utf8")
-            .replace(
-                /^\uFEFF/,
-                ""
+        if (
+            !Buffer.isBuffer(
+                mainEncrypted
             )
-            .trim();
+        ) {
+            return res
+                .status(400)
+                .send(
+                    "Main file يجب أن يكون application/octet-stream"
+                );
+        }
 
-    if (
-        !friendXml.startsWith("<")
-    ) {
+        if (
+            mainEncrypted.length === 0
+        ) {
+            return res
+                .status(400)
+                .send(
+                    "Main file فارغ"
+                );
+        }
 
-        throw new Error(
-            "Friend decoded data is not XML"
+        const cityId =
+            String(
+                req.headers[
+                    "x-city-id"
+                ] || ""
+            ).trim();
+
+        const cityVer =
+            Number(
+                req.headers[
+                    "x-city-ver"
+                ] || 0
+            );
+
+        if (!cityId) {
+            return res
+                .status(400)
+                .send(
+                    "X-City-Id مفقود"
+                );
+        }
+
+        if (
+            !Number.isFinite(
+                cityVer
+            ) ||
+            cityVer < 0
+        ) {
+            return res
+                .status(400)
+                .send(
+                    "X-City-Ver غير صحيح"
+                );
+        }
+
+        console.log(
+            `[Merge] incoming cityId=${cityId} cityVer=${cityVer}`
         );
+
+        console.log(
+            `[Merge] main encrypted size=${mainEncrypted.length}`
+        );
+
+        console.log(
+            `[Merge] main encrypted magic=${bufferMagic(mainEncrypted)}`
+        );
+
+        // ====================================================
+        // فك mGameInfo.xml
+        // ====================================================
+
+        const mainXmlBuffer =
+            decodeFriendFile(
+                mainEncrypted
+            );
+
+        const mainXml =
+            mainXmlBuffer
+                .toString("utf8")
+                .replace(
+                    /^\uFEFF/,
+                    ""
+                )
+                .trim();
+
+        console.log(
+            `[Merge] decoded main XML size=${mainXml.length}`
+        );
+
+        if (
+            !mainXml.startsWith("<")
+        ) {
+            throw new Error(
+                "Main file بعد فك التشفير ليس XML"
+            );
+        }
+
+        // ====================================================
+        // جلب Friend من Playrix
+        // ====================================================
+
+        const upstream =
+            await requestFetchCity(
+                cityId,
+                cityVer
+            );
+
+        if (
+            !upstream ||
+            !upstream.result ||
+            typeof upstream.result.data !==
+                "string"
+        ) {
+            throw new Error(
+                "FetchCity أعاد استجابة غير صالحة"
+            );
+        }
+
+        const base64 =
+            upstream.result.data;
+
+        console.log(
+            `[Merge] Friend Base64 length=${base64.length}`
+        );
+
+        const friendBytes =
+            Buffer.from(
+                base64,
+                "base64"
+            );
+
+        console.log(
+            `[Merge] Friend bytes=${friendBytes.length} magic=${bufferMagic(friendBytes)}`
+        );
+
+        // ====================================================
+        // فك Friend
+        // ====================================================
+
+        const friendXmlBuffer =
+            decodeSaveCity(
+                friendBytes
+            );
+
+        const friendXml =
+            (
+                Buffer.isBuffer(
+                    friendXmlBuffer
+                )
+                    ? friendXmlBuffer.toString(
+                          "utf8"
+                      )
+                    : String(
+                          friendXmlBuffer
+                      )
+            )
+                .replace(
+                    /^\uFEFF/,
+                    ""
+                )
+                .trim();
+
+        console.log(
+            `[Merge] decoded Friend XML size=${friendXml.length}`
+        );
+
+        if (
+            !friendXml.startsWith("<")
+        ) {
+            throw new Error(
+                "Friend file بعد فك التشفير ليس XML"
+            );
+        }
+
+        // ====================================================
+        // MERGE
+        // ====================================================
+
+        const modifiedMain =
+            mergeFriendIntoMain(
+                mainXml,
+                friendXml
+            );
+
+        console.log(
+            `[Merge] modified main size=${modifiedMain.length}`
+        );
+
+        // ====================================================
+        // RESPONSE
+        // ====================================================
+
+        res.status(200);
+
+        res.set(
+            "Content-Type",
+            "application/xml; charset=utf-8"
+        );
+
+        res.set(
+            "Cache-Control",
+            "no-store"
+        );
+
+        res.set(
+            "Content-Disposition",
+            'attachment; filename="mGameInfo.xml"'
+        );
+
+        return res.send(
+            modifiedMain
+        );
+
+    } catch (err) {
+        console.error(
+            "[Merge] ERROR:",
+            err &&
+            err.stack
+                ? err.stack
+                : err
+        );
+
+        return res
+            .status(500)
+            .send(
+                String(
+                    err &&
+                    err.message
+                        ? err.message
+                        : err
+                )
+            );
     }
-
-    console.log(
-        `[Merge] Friend XML size=${friendXml.length}`
-    );
-
-    return friendXml;
 }
 
 // ============================================================
-// FETCHCITY API
+// FETCHCITY API - OLD JSON MODE
 // ============================================================
 
 async function handleFetchCity(
     req,
     res
 ) {
-
     try {
 
         // ====================================================
-        // NEW MODE
-        //
-        // Body:
-        // application/octet-stream
-        //
-        // Headers:
-        // X-City-Id
-        // X-City-Ver
-        //
-        // Body = encrypted MAIN file
+        // NEW RAW MODE
         // ====================================================
 
+        const contentType =
+            String(
+                req.headers[
+                    "content-type"
+                ] || ""
+            ).toLowerCase();
+
         if (
-            Buffer.isBuffer(req.body)
+            contentType.startsWith(
+                "application/octet-stream"
+            )
         ) {
-
-            const mainEncrypted =
-                req.body;
-
-            if (
-                mainEncrypted.length === 0
-            ) {
-
-                return res
-                    .status(400)
-                    .send(
-                        "Main file is empty"
-                    );
-            }
-
-            const cityId =
-                String(
-                    req.headers[
-                        "x-city-id"
-                    ] ||
-                    ""
-                ).trim();
-
-            const cityVer =
-                Number(
-                    req.headers[
-                        "x-city-ver"
-                    ] ||
-                    0
-                );
-
-            if (!cityId) {
-
-                return res
-                    .status(400)
-                    .send(
-                        "X-City-Id missing"
-                    );
-            }
-
-            if (
-                !Number.isFinite(cityVer) ||
-                cityVer < 0
-            ) {
-
-                return res
-                    .status(400)
-                    .send(
-                        "X-City-Ver invalid"
-                    );
-            }
-
-            console.log(
-                "========================================"
-            );
-
-            console.log(
-                "[Merge] NEW MERGE REQUEST"
-            );
-
-            console.log(
-                `[Merge] cityId=${cityId}`
-            );
-
-            console.log(
-                `[Merge] cityVer=${cityVer}`
-            );
-
-            console.log(
-                `[Merge] Main encrypted size=${mainEncrypted.length}`
-            );
-
-            console.log(
-                `[Merge] Main magic=${bufferMagic(mainEncrypted)}`
-            );
-
-            // =================================================
-            // 1. فك الملف الرئيسي
-            //
-            // نفس decodeFriendFile المستخدم في
-            // decode-friends
-            // =================================================
-
-            const mainXmlBuffer =
-                decodeFriendFile(
-                    mainEncrypted
-                );
-
-            const mainXml =
-                mainXmlBuffer
-                    .toString("utf8")
-                    .replace(
-                        /^\uFEFF/,
-                        ""
-                    )
-                    .trim();
-
-            if (
-                !mainXml.startsWith("<")
-            ) {
-
-                throw new Error(
-                    "Main file after decode is not XML"
-                );
-            }
-
-            console.log(
-                `[Merge] Main decrypted size=${mainXml.length}`
-            );
-
-            // =================================================
-            // 2. جلب ملف الصديق وفك تشفيره
-            // =================================================
-
-            const friendXml =
-                await fetchFriendXml(
-                    cityId,
-                    cityVer
-                );
-
-            // =================================================
-            // 3. دمج الصديق داخل الرئيسي
-            // =================================================
-
-            const modifiedMain =
-                mergeFriendIntoMain(
-                    mainXml,
-                    friendXml
-                );
-
-            // =================================================
-            // 4. إرجاع MAIN فقط
-            // =================================================
-
-            res.status(200);
-
-            res.set(
-                "Content-Type",
-                "application/xml; charset=utf-8"
-            );
-
-            res.set(
-                "Cache-Control",
-                "no-store"
-            );
-
-            res.set(
-                "Content-Disposition",
-                'attachment; filename="mGameInfo.xml"'
-            );
-
-            console.log(
-                `[Merge] Returning modified MAIN only. size=${modifiedMain.length}`
-            );
-
-            console.log(
-                "========================================"
-            );
-
-            return res.send(
-                modifiedMain
+            return handleRawMerge(
+                req,
+                res
             );
         }
 
         // ====================================================
-        // OLD MODE
-        //
-        // JSON:
-        // {
-        //   cityId,
-        //   cityVer
-        // }
-        //
-        // يبقى موجوداً للتوافق القديم
+        // OLD JSON MODE
         // ====================================================
 
-        const body =
+        let body =
             req.body || {};
+
+        // حماية إضافية إذا وصل JSON كـ Buffer
+        if (
+            Buffer.isBuffer(
+                body
+            )
+        ) {
+            try {
+                body =
+                    JSON.parse(
+                        body.toString(
+                            "utf8"
+                        )
+                    );
+            } catch (e) {
+                return res
+                    .status(400)
+                    .send(
+                        "JSON غير صالح"
+                    );
+            }
+        }
 
         const cityId =
             String(
@@ -3155,23 +3199,23 @@ async function handleFetchCity(
             );
 
         if (!cityId) {
-
             return res
                 .status(400)
                 .send(
-                    "cityId missing"
+                    "cityId مفقود"
                 );
         }
 
         if (
-            !Number.isFinite(cityVer) ||
+            !Number.isFinite(
+                cityVer
+            ) ||
             cityVer < 0
         ) {
-
             return res
                 .status(400)
                 .send(
-                    "cityVer invalid"
+                    "cityVer غير صالح"
                 );
         }
 
@@ -3191,9 +3235,8 @@ async function handleFetchCity(
             typeof json.result.data !==
                 "string"
         ) {
-
             throw new Error(
-                "Upstream JSON does not contain result.data"
+                "Upstream JSON لا يحتوي result.data"
             );
         }
 
@@ -3249,7 +3292,6 @@ async function handleFetchCity(
         );
 
     } catch (err) {
-
         console.error(
             "[FetchCity] ERROR:",
             err &&
@@ -3279,10 +3321,8 @@ async function handleDecodeFriends(
     req,
     res
 ) {
-
     try {
-
-        const encryptedFile =
+        let encryptedFile =
             req.body;
 
         if (
@@ -3290,30 +3330,26 @@ async function handleDecodeFriends(
                 encryptedFile
             )
         ) {
-
             return res
                 .status(400)
                 .json({
-
                     ok: false,
 
                     error:
-                        "Expected application/octet-stream"
+                        "يجب إرسال الملف كـ application/octet-stream"
                 });
         }
 
         if (
             encryptedFile.length === 0
         ) {
-
             return res
                 .status(400)
                 .json({
-
                     ok: false,
 
                     error:
-                        "File is empty"
+                        "الملف فارغ"
                 });
         }
 
@@ -3350,15 +3386,10 @@ async function handleDecodeFriends(
         if (
             !xml.startsWith("<")
         ) {
-
             throw new Error(
-                "Decoded file is not XML"
+                "الملف بعد فك التشفير ليس XML"
             );
         }
-
-        // ====================================================
-        // Version
-        // ====================================================
 
         const version =
             parseFriendVersion(
@@ -3368,23 +3399,21 @@ async function handleDecodeFriends(
         if (
             !version.bver
         ) {
-
             throw new Error(
-                "Version.version missing"
+                "لم يتم العثور على Version.version"
             );
         }
 
         if (
             !version.fver
         ) {
-
             throw new Error(
-                "Version.FVer missing"
+                "لم يتم العثور على Version.FVer"
             );
         }
 
         // ====================================================
-        // friends
+        // استخراج friends
         // ====================================================
 
         const friends =
@@ -3393,7 +3422,7 @@ async function handleDecodeFriends(
             );
 
         // ====================================================
-        // saveProfiles
+        // استخراج saveId
         // ====================================================
 
         const saveProfiles =
@@ -3402,7 +3431,7 @@ async function handleDecodeFriends(
             );
 
         // ====================================================
-        // attach saveId
+        // ربط saveId
         // ====================================================
 
         attachSaveIdsToFriends(
@@ -3427,17 +3456,15 @@ async function handleDecodeFriends(
         );
 
         // ====================================================
-        // Logging matches
+        // عرض النتائج
         // ====================================================
 
         for (
             const friend of friends
         ) {
-
             if (
                 friend.saveId
             ) {
-
                 console.log(
                     `[Friends] MATCH city_name="${friend.city_name}" city_id="${friend.city_id}" saveId="${friend.saveId}"`
                 );
@@ -3451,7 +3478,6 @@ async function handleDecodeFriends(
         return res
             .status(200)
             .json({
-
                 ok: true,
 
                 bver:
@@ -3468,7 +3494,6 @@ async function handleDecodeFriends(
             });
 
     } catch (err) {
-
         console.error(
             "[Friends] DECODE ERROR:",
             err &&
@@ -3480,7 +3505,6 @@ async function handleDecodeFriends(
         return res
             .status(500)
             .json({
-
                 ok: false,
 
                 error:
@@ -3504,29 +3528,33 @@ router.post(
     handleFetchCity
 );
 
-// الجديد + القديم JSON
+// الجديد + القديم
 //
-// application/octet-stream:
-//   Main file
-//
-// JSON:
-//   cityId / cityVer
-//
+// مهم:
+// octet-stream يتم تحويله إلى Buffer.
+// JSON لا يزال يمر إلى السلوك القديم.
+
 router.post(
     "/fetch-city",
     express.raw({
-        type: "application/octet-stream",
-        limit: "50mb"
+        type:
+            "application/octet-stream",
+
+        limit:
+            "50mb"
     }),
     handleFetchCity
 );
 
-// أول ملف - بدون تغيير
+// decode friends
 router.post(
     "/decode-friends",
     express.raw({
-        type: "application/octet-stream",
-        limit: "50mb"
+        type:
+            "application/octet-stream",
+
+        limit:
+            "50mb"
     }),
     handleDecodeFriends
 );
