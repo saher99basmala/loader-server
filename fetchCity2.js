@@ -57,9 +57,7 @@ const FETCH54_TABLE = Buffer.from(
 function u32le(buf, offset) {
 
     if (offset + 4 > buf.length) {
-        throw new Error(
-            "u32le ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ­ط·آ¯ط¸ث†ط·آ¯ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
-        );
+        throw new Error("u32le out of range");
     }
 
     return (
@@ -134,10 +132,7 @@ function looksLikeXml(buf) {
         buf
             .subarray(
                 0,
-                Math.min(
-                    buf.length,
-                    512
-                )
+                Math.min(buf.length, 512)
             )
             .toString("utf8")
             .trimStart();
@@ -155,9 +150,7 @@ function looksLikeXml(buf) {
 function build79Table(seed) {
 
     const table =
-        Buffer.alloc(
-            TABLE_SIZE
-        );
+        Buffer.alloc(TABLE_SIZE);
 
     let state =
         seed >>> 0;
@@ -188,17 +181,13 @@ function xorDecode79(raw) {
     }
 
     if (raw.length < 8) {
-
         throw new Error(
-            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x79 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
+            `0x79 data too short: ${raw.length}`
         );
     }
 
     const headerValue =
-        u32le(
-            raw,
-            1
-        );
+        u32le(raw, 1);
 
     const total =
         raw.length >>> 0;
@@ -234,10 +223,7 @@ function xorDecode79(raw) {
         );
 
     const rawSeed =
-        u32le(
-            raw,
-            4
-        );
+        u32le(raw, 4);
 
     const seed =
         add32(
@@ -246,9 +232,7 @@ function xorDecode79(raw) {
         );
 
     const table =
-        build79Table(
-            seed
-        );
+        build79Table(seed);
 
     const out =
         Buffer.from(
@@ -309,16 +293,14 @@ function decode54Layer(raw) {
     }
 
     if (raw.length < 4) {
-
         throw new Error(
-            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
+            `0x54 data too short: ${raw.length}`
         );
     }
 
     if (raw[0] !== 0x54) {
-
         throw new Error(
-            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­ط·آ©. Magic=${bufferMagic(raw)}`
+            `Invalid 0x54 magic: ${bufferMagic(raw)}`
         );
     }
 
@@ -379,8 +361,7 @@ function decode54Layer(raw) {
             (
                 out[i] ^
                 FETCH54_TABLE[
-                    i %
-                    FETCH54_TABLE.length
+                    i % FETCH54_TABLE.length
                 ]
             ) & 0xFF;
     }
@@ -423,9 +404,8 @@ function decodeTransport(raw) {
             return raw;
 
         default:
-
             throw new Error(
-                `ط¸â€ ط¸ث†ط·آ¹ FetchCity ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦ ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹: 0x${type
+                `Unknown FetchCity layer: 0x${type
                     .toString(16)
                     .padStart(2, "0")}`
             );
@@ -445,9 +425,7 @@ function lz4DecompressBlock(
     let dstPos = 0;
 
     const output =
-        Buffer.alloc(
-            expectedSize
-        );
+        Buffer.alloc(expectedSize);
 
     while (
         srcPos < src.length &&
@@ -469,12 +447,10 @@ function lz4DecompressBlock(
             do {
 
                 if (
-                    srcPos >=
-                    src.length
+                    srcPos >= src.length
                 ) {
-
                     throw new Error(
-                        "LZ4: literal length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
+                        "LZ4 literal length invalid"
                     );
                 }
 
@@ -494,9 +470,8 @@ function lz4DecompressBlock(
             literalLength >
             src.length
         ) {
-
             throw new Error(
-                "LZ4: literals ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
+                "LZ4 literals out of range"
             );
         }
 
@@ -505,9 +480,8 @@ function lz4DecompressBlock(
             literalLength >
             expectedSize
         ) {
-
             throw new Error(
-                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ literals"
+                "LZ4 output overflow"
             );
         }
 
@@ -536,9 +510,8 @@ function lz4DecompressBlock(
             srcPos + 2 >
             src.length
         ) {
-
             throw new Error(
-                "LZ4: offset ط¸â€ ط·آ§ط¸â€ڑط·آµ"
+                "LZ4 offset missing"
             );
         }
 
@@ -553,9 +526,8 @@ function lz4DecompressBlock(
         if (
             offset === 0
         ) {
-
             throw new Error(
-                "LZ4: offset = 0"
+                "LZ4 offset = 0"
             );
         }
 
@@ -563,9 +535,8 @@ function lz4DecompressBlock(
             offset >
             dstPos
         ) {
-
             throw new Error(
-                `LZ4: offset ط·آ£ط¸ئ’ط·آ¨ط·آ± ط¸â€¦ط¸â€  output: ${offset} > ${dstPos}`
+                `LZ4 invalid offset ${offset}`
             );
         }
 
@@ -584,9 +555,8 @@ function lz4DecompressBlock(
                     srcPos >=
                     src.length
                 ) {
-
                     throw new Error(
-                        "LZ4: match length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
+                        "LZ4 match length invalid"
                     );
                 }
 
@@ -608,9 +578,8 @@ function lz4DecompressBlock(
             matchLength >
             expectedSize
         ) {
-
             throw new Error(
-                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ match"
+                "LZ4 match output overflow"
             );
         }
 
@@ -638,9 +607,8 @@ function lz4DecompressBlock(
         dstPos !==
         expectedSize
     ) {
-
         throw new Error(
-            `LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑ. expected=${expectedSize}, actual=${dstPos}`
+            `LZ4 size mismatch: expected=${expectedSize}, actual=${dstPos}`
         );
     }
 
@@ -652,31 +620,24 @@ function decodeLz4Container(raw) {
     if (
         !isLz4Magic(raw)
     ) {
-
         throw new Error(
-            `LZ4 magic ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­: ${bufferMagic(raw)}`
+            `Invalid LZ4 magic: ${bufferMagic(raw)}`
         );
     }
 
     if (
         raw.length < 8
     ) {
-
         throw new Error(
-            "LZ4 container ط¸â€ڑط·آµط¸ظ¹ط·آ±"
+            "LZ4 container too short"
         );
     }
 
     const expectedSize =
-        u32le(
-            raw,
-            4
-        );
+        u32le(raw, 4);
 
     const compressed =
-        raw.subarray(
-            8
-        );
+        raw.subarray(8);
 
     console.log(
         `[FetchCity] LZ4 expectedSize=${expectedSize}, compressed=${compressed.length}`
@@ -699,14 +660,10 @@ function trimXml(buf) {
     }
 
     const text =
-        buf.toString(
-            "utf8"
-        );
+        buf.toString("utf8");
 
     const rootEnd =
-        text.lastIndexOf(
-            "</root>"
-        );
+        text.lastIndexOf("</root>");
 
     if (
         rootEnd !== -1
@@ -761,9 +718,7 @@ function editCityXml(xml) {
     }
 
     let text =
-        xml.toString(
-            "utf8"
-        );
+        xml.toString("utf8");
 
     text =
         text.replace(
@@ -847,9 +802,7 @@ function editCityXml(xml) {
 function decodeSaveCity(cityBytes) {
 
     let data =
-        Buffer.from(
-            cityBytes
-        );
+        Buffer.from(cityBytes);
 
     console.log(
         `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
@@ -872,9 +825,7 @@ function decodeSaveCity(cityBytes) {
                 `[FetchCity] XML detected after ${rounds - 1} layer(s)`
             );
 
-            return trimXml(
-                data
-            );
+            return trimXml(data);
         }
 
         if (
@@ -886,9 +837,7 @@ function decodeSaveCity(cityBytes) {
             );
 
             data =
-                decodeLz4Container(
-                    data
-                );
+                decodeLz4Container(data);
 
             continue;
         }
@@ -902,9 +851,7 @@ function decodeSaveCity(cityBytes) {
             );
 
             data =
-                zlib.gunzipSync(
-                    data
-                );
+                zlib.gunzipSync(data);
 
             continue;
         }
@@ -922,9 +869,7 @@ function decodeSaveCity(cityBytes) {
                 data;
 
             data =
-                decodeTransport(
-                    data
-                );
+                decodeTransport(data);
 
             console.log(
                 `[FetchCity] layer ${rounds}: ${bufferMagic(before)} -> ${bufferMagic(data)}`
@@ -934,7 +879,7 @@ function decodeSaveCity(cityBytes) {
         }
 
         throw new Error(
-            `ط·ع¾ط¸â€¦ ط¸ظ¾ط¸ئ’ ط·آ·ط·آ¨ط¸â€ڑط·آ§ط·ع¾ FetchCity ط¸â€‍ط¸ئ’ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط·آ­ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ط·آ© ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¹ط·آ±ط¸ث†ط¸ظ¾ط·آ©. Magic=${bufferMagic(data)}`
+            `Unable to decode FetchCity layer. Magic=${bufferMagic(data)}`
         );
     }
 
@@ -942,13 +887,11 @@ function decodeSaveCity(cityBytes) {
         looksLikeXml(data)
     ) {
 
-        return trimXml(
-            data
-        );
+        return trimXml(data);
     }
 
     throw new Error(
-        `ط·ع¾ط·آ¹ط·آ°ط·آ± ط·آ§ط¸â€‍ط¸ث†ط·آµط¸ث†ط¸â€‍ ط·آ¥ط¸â€‍ط¸â€° XML. Magic=${bufferMagic(data)}`
+        `Unable to reach XML. Magic=${bufferMagic(data)}`
     );
 }
 
@@ -961,9 +904,7 @@ function encryptRequest(
 ) {
 
     const iv =
-        crypto.randomBytes(
-            12
-        );
+        crypto.randomBytes(12);
 
     const cipher =
         crypto.createCipheriv(
@@ -980,9 +921,7 @@ function encryptRequest(
 
     const ciphertext =
         Buffer.concat([
-            cipher.update(
-                plaintext
-            ),
+            cipher.update(plaintext),
             cipher.final()
         ]);
 
@@ -1010,9 +949,8 @@ function decryptResponse(
 ) {
 
     if (!tsId) {
-
         throw new Error(
-            "ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity ط¸â€‍ط·آ§ ط·ع¾ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ ts-id"
+            "Upstream missing ts-id"
         );
     }
 
@@ -1020,9 +958,8 @@ function decryptResponse(
         typeof tsId !== "string" ||
         !tsId.startsWith("002")
     ) {
-
         throw new Error(
-            `ts-id ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­: ${tsId}`
+            `Invalid ts-id: ${tsId}`
         );
     }
 
@@ -1033,9 +970,8 @@ function decryptResponse(
         hex.length <
         24 + 32
     ) {
-
         throw new Error(
-            `ts-id ط¸â€ڑط·آµط¸ظ¹ط·آ±: ${tsId}`
+            `ts-id too short: ${tsId}`
         );
     }
 
@@ -1070,14 +1006,10 @@ function decryptResponse(
             iv
         );
 
-    decipher.setAuthTag(
-        tag
-    );
+    decipher.setAuthTag(tag);
 
     return Buffer.concat([
-        decipher.update(
-            body
-        ),
+        decipher.update(body),
         decipher.final()
     ]);
 }
@@ -1176,7 +1108,7 @@ function decompressResponse(
     }
 
     throw new Error(
-        "ط·ع¾ط·آ¹ط·آ°ط·آ± ط¸ظ¾ط¸ئ’ ط·آ¶ط·ط›ط·آ· ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity. " +
+        "Unable to decompress FetchCity response. " +
         `magic=${bufferMagic(decrypted)} ` +
         `size=${decrypted.length}`
     );
@@ -1217,9 +1149,7 @@ async function requestFetchCity(
         const response =
             await fetch(
                 ENDPOINT +
-                encodeURIComponent(
-                    cityId
-                ),
+                encodeURIComponent(cityId),
                 {
                     method: "POST",
 
@@ -1312,162 +1242,13 @@ async function requestFetchCity(
         );
 
         const json =
-            JSON.parse(
-                text
-            );
+            JSON.parse(text);
 
         return json;
 
     } finally {
 
-        clearTimeout(
-            timer
-        );
-    }
-}
-
-// ============================================================
-// FETCHCITY API
-// ============================================================
-
-async function handleFetchCity(
-    req,
-    res
-) {
-
-    try {
-
-        const body =
-            req.body || {};
-
-        const cityId =
-            String(
-                body.cityId ||
-                body.fetchCityId ||
-                ""
-            ).trim();
-
-        const cityVer =
-            Number(
-                body.cityVer || 0
-            );
-
-        if (!cityId) {
-
-            return res
-                .status(400)
-                .send(
-                    "cityId ط¸â€¦ط·آ·ط¸â€‍ط¸ث†ط·آ¨"
-                );
-        }
-
-        if (
-            !Number.isFinite(
-                cityVer
-            ) ||
-            cityVer < 0
-        ) {
-
-            return res
-                .status(400)
-                .send(
-                    "cityVer ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
-                );
-        }
-
-        console.log(
-            `[FetchCity] incoming cityId=${cityId} cityVer=${cityVer}`
-        );
-
-        const json =
-            await requestFetchCity(
-                cityId,
-                cityVer
-            );
-
-        if (
-            !json ||
-            !json.result ||
-            typeof json.result.data !==
-                "string"
-        ) {
-
-            throw new Error(
-                "Upstream JSON ط¸â€‍ط·آ§ ط¸ظ¹ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ result.data"
-            );
-        }
-
-        const base64 =
-            json.result.data;
-
-        console.log(
-            `[FetchCity] Base64 length=${base64.length}`
-        );
-
-        const cityBytes =
-            Buffer.from(
-                base64,
-                "base64"
-            );
-
-        console.log(
-            `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
-        );
-
-        const xml =
-            decodeSaveCity(
-                cityBytes
-            );
-
-        console.log(
-            `[FetchCity] XML size=${xml.length}`
-        );
-
-        const modifiedXml =
-            editCityXml(
-                xml
-            );
-
-        console.log(
-            `[FetchCity] Modified XML size=${modifiedXml.length}`
-        );
-
-        res.status(200);
-
-        res.set(
-            "Content-Type",
-            "application/xml; charset=utf-8"
-        );
-
-        res.set(
-            "Cache-Control",
-            "no-store"
-        );
-
-        return res.send(
-            modifiedXml
-        );
-
-    } catch (err) {
-
-        console.error(
-            "[FetchCity] ERROR:",
-            err &&
-            err.stack
-                ? err.stack
-                : err
-        );
-
-        return res
-            .status(500)
-            .send(
-                String(
-                    err &&
-                    err.message
-                        ? err.message
-                        : err
-                )
-            );
+        clearTimeout(timer);
     }
 }
 
@@ -1478,7 +1259,6 @@ async function handleFetchCity(
 const FRIEND_TABLE_SIZE = 0x2D7;
 
 function friendU32(v) {
-
     return v >>> 0;
 }
 
@@ -1491,9 +1271,8 @@ function friendReadU32(
         pos + 4 >
         data.length
     ) {
-
         throw new Error(
-            "ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸ئ’ط·آ§ط¸ظ¾ط¸ظ¹ط·آ© ط¸â€‍ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© UInt32"
+            "UInt32 out of range"
         );
     }
 
@@ -1661,9 +1440,7 @@ function friendGetHashTable(
     ) {
 
         const v =
-            friendU32Bytes(
-                h
-            );
+            friendU32Bytes(h);
 
         h =
             friendMmh2(
@@ -1672,9 +1449,7 @@ function friendGetHashTable(
             );
 
         const hb =
-            friendU32Bytes(
-                h
-            );
+            friendU32Bytes(h);
 
         for (
             let j = 0;
@@ -1703,9 +1478,8 @@ function friendXorDecode(
     if (
         data.length < 8
     ) {
-
         throw new Error(
-            "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط·آµط·ط›ط¸ظ¹ط·آ± ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
+            "Friend file too short"
         );
     }
 
@@ -1750,9 +1524,7 @@ function friendXorDecode(
         );
 
     const out =
-        Buffer.alloc(
-            actual
-        );
+        Buffer.alloc(actual);
 
     for (
         let i = 0;
@@ -1795,7 +1567,6 @@ function friendXorDecode(
             j >=
             FRIEND_TABLE_SIZE
         ) {
-
             j = 0;
         }
     }
@@ -1823,9 +1594,8 @@ function friendLz4Decompress(
     if (
         data.length < 9
     ) {
-
         throw new Error(
-            "LZ4: ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·آµط·ط›ط¸ظ¹ط·آ±ط·آ© ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
+            "Friend LZ4 data too short"
         );
     }
 
@@ -1837,10 +1607,8 @@ function friendLz4Decompress(
 
     let src = 8;
 
-    let output =
-        Buffer.alloc(
-            size
-        );
+    const output =
+        Buffer.alloc(size);
 
     let outLen = 0;
 
@@ -1850,22 +1618,17 @@ function friendLz4Decompress(
             src >=
             data.length
         ) {
-
             throw new Error(
-                "LZ4: ط¸â€ ط¸â€،ط·آ§ط¸ظ¹ط·آ© ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹ط·آ©"
+                "LZ4 unexpected end"
             );
         }
 
-        return data[
-            src++
-        ];
+        return data[src++];
     }
 
     while (
-        src <
-            data.length &&
-        outLen <
-            size
+        src < data.length &&
+        outLen < size
     ) {
 
         const token =
@@ -1898,9 +1661,8 @@ function friendLz4Decompress(
             literalLen >
             data.length
         ) {
-
             throw new Error(
-                "LZ4: Literal ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
+                "LZ4 literal out of range"
             );
         }
 
@@ -1909,9 +1671,8 @@ function friendLz4Decompress(
             literalLen >
             size
         ) {
-
             throw new Error(
-                "LZ4: ط·آ­ط·آ¬ط¸â€¦ Literal ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­"
+                "LZ4 literal overflow"
             );
         }
 
@@ -1940,9 +1701,8 @@ function friendLz4Decompress(
             src + 2 >
             data.length
         ) {
-
             throw new Error(
-                "LZ4: ط¸â€‍ط·آ§ ط¸ظ¹ط¸ث†ط·آ¬ط·آ¯ Offset"
+                "LZ4 offset missing"
             );
         }
 
@@ -1955,9 +1715,8 @@ function friendLz4Decompress(
         if (
             offset === 0
         ) {
-
             throw new Error(
-                "LZ4: Offset ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
+                "LZ4 offset zero"
             );
         }
 
@@ -1992,9 +1751,8 @@ function friendLz4Decompress(
         if (
             start < 0
         ) {
-
             throw new Error(
-                "LZ4: Offset ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
+                "LZ4 invalid offset"
             );
         }
 
@@ -2008,9 +1766,8 @@ function friendLz4Decompress(
                 outLen >=
                 size
             ) {
-
                 throw new Error(
-                    "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ع¾ط·آ¬ط·آ§ط¸ث†ط·آ² ط·آ§ط¸â€‍ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹"
+                    "LZ4 output overflow"
                 );
             }
 
@@ -2028,13 +1785,8 @@ function friendLz4Decompress(
         outLen !==
         size
     ) {
-
         throw new Error(
-            "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­\n" +
-            "Expected: " +
-            size +
-            "\nActual: " +
-            outLen
+            `LZ4 size mismatch. Expected=${size} Actual=${outLen}`
         );
     }
 
@@ -2073,7 +1825,6 @@ function friendTrimXml(
         end > 0 &&
         data[end - 1] === 0
     ) {
-
         end--;
     }
 
@@ -2094,55 +1845,43 @@ function decodeFriendFile(
     if (
         !Buffer.isBuffer(data)
     ) {
-
         data =
-            Buffer.from(
-                data
-            );
+            Buffer.from(data);
     }
 
     if (
         data.length === 0
     ) {
-
         throw new Error(
-            "ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
+            "File empty"
         );
     }
 
-    // XML ط·آ£ط·آµط¸â€‍ط·آ§ط¸â€¹
+    // Plain XML
     if (
         data[0] === 0x3C
     ) {
-
         return data;
     }
 
-    // ط¸ظ¹ط·آ¬ط·آ¨ ط·آ£ط¸â€  ط¸ظ¹ط·آ¨ط·آ¯ط·آ£ ط·آ¨ط¸â‚¬ 0x79
+    // Must be 0x79
     if (
         data[0] !== 0x79
     ) {
-
         throw new Error(
-            "ط¸â€ ط¸ث†ط·آ¹ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦\nMagic: 0x" +
+            "Unknown friend/main file format. " +
+            "Expected 0x79, got 0x" +
             data[0]
                 .toString(16)
-                .padStart(
-                    2,
-                    "0"
-                )
+                .padStart(2, "0")
         );
     }
 
     let payload =
-        friendXorDecode(
-            data
-        );
+        friendXorDecode(data);
 
     if (
-        friendIsLz4(
-            payload
-        )
+        friendIsLz4(payload)
     ) {
 
         payload =
@@ -2177,7 +1916,6 @@ function attrFromXmlTag(
     if (
         doubleQuote
     ) {
-
         return doubleQuote[1];
     }
 
@@ -2193,7 +1931,6 @@ function attrFromXmlTag(
     if (
         singleQuote
     ) {
-
         return singleQuote[1];
     }
 
@@ -2232,9 +1969,7 @@ function parseFriendVersion(
             /<Version\b[^>]*>/i
         );
 
-    if (
-        !versionTag
-    ) {
+    if (!versionTag) {
 
         return {
             bver: "",
@@ -2287,10 +2022,7 @@ function parseFriends(
                 "city_id"
             );
 
-        if (
-            !cityId
-        ) {
-
+        if (!cityId) {
             continue;
         }
 
@@ -2359,7 +2091,6 @@ function parseFriends(
                     "bc"
                 ),
 
-            // ط·آ³ط¸ظ¹ط·آ¶ط·آ§ط¸ظ¾ saveId ط·آ¨ط·آ¹ط·آ¯ ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© ProfilesCache
             saveId: ""
         });
     }
@@ -2381,9 +2112,7 @@ function parseSaveProfiles(
         /<OtherPlayerProfilesLogicFeatureComponent\b[^>]*>/i;
 
     const match =
-        xml.match(
-            regex
-        );
+        xml.match(regex);
 
     if (!match) {
 
@@ -2432,14 +2161,8 @@ function parseSaveProfiles(
     }
 
     if (
-        !Array.isArray(
-            parsed
-        )
+        !Array.isArray(parsed)
     ) {
-
-        console.log(
-            "[Friends] ProfilesCache is not an array"
-        );
 
         return profiles;
     }
@@ -2452,7 +2175,6 @@ function parseSaveProfiles(
             !profile ||
             typeof profile !== "object"
         ) {
-
             continue;
         }
 
@@ -2461,33 +2183,24 @@ function parseSaveProfiles(
                 profile.saveId || ""
             ).trim();
 
-        if (
-            !saveId
-        ) {
-
+        if (!saveId) {
             continue;
         }
-
-        const cityname =
-            String(
-                profile.cityname || ""
-            ).trim();
-
-        const level =
-            String(
-                profile.level || ""
-            ).trim();
 
         profiles.push({
 
             cityname:
-                cityname,
+                String(
+                    profile.cityname || ""
+                ).trim(),
 
             saveId:
                 saveId,
 
             level:
-                level
+                String(
+                    profile.level || ""
+                ).trim()
         });
     }
 
@@ -2510,7 +2223,6 @@ function attachSaveIdsToFriends(
     if (
         !Array.isArray(friends)
     ) {
-
         return [];
     }
 
@@ -2518,10 +2230,6 @@ function attachSaveIdsToFriends(
         !Array.isArray(saveProfiles) ||
         saveProfiles.length === 0
     ) {
-
-        console.log(
-            "[Friends] ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ saveProfiles ط¸â€‍ط·آ±ط·آ¨ط·آ·ط¸â€،ط·آ§"
-        );
 
         return friends;
     }
@@ -2542,11 +2250,9 @@ function attachSaveIdsToFriends(
             !key ||
             !profile.saveId
         ) {
-
             continue;
         }
 
-        // ط·آ£ط¸ث†ط¸â€‍ saveId ط¸â€‍ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط¸ظ¹ط·آ¨ط¸â€ڑط¸â€° ط¸â€،ط¸ث† ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦
         if (
             !profileMap.has(key)
         ) {
@@ -2576,7 +2282,6 @@ function attachSaveIdsToFriends(
 
         let saveId = "";
 
-        // ط·آ§ط¸â€‍ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹ط·آ©: city_name
         if (
             cityNameKey &&
             profileMap.has(
@@ -2590,7 +2295,6 @@ function attachSaveIdsToFriends(
                 );
         }
 
-        // ط·آ§ط·آ­ط·ع¾ط¸ظ¹ط·آ§ط·آ·ط¸ظ¹ط·آ§ط¸â€¹: name
         if (
             !saveId &&
             friendNameKey &&
@@ -2605,9 +2309,7 @@ function attachSaveIdsToFriends(
                 );
         }
 
-        if (
-            saveId
-        ) {
+        if (saveId) {
 
             friend.saveId =
                 saveId;
@@ -2624,6 +2326,952 @@ function attachSaveIdsToFriends(
 }
 
 // ============================================================
+// ============================================================
+// NEW MERGE SYSTEM
+// ============================================================
+// ============================================================
+
+// الأقسام المطلوبة من الصديق إلى الرئيسي
+//
+// unlockAllCards كان مذكوراً مرتين في الطلب.
+// Set أدناه يمنع استبداله مرتين.
+
+const COPY_VAR_NAMES = [
+    "chatEmojis",
+    "unlockAllAvatars",
+    "unlockAllCards",
+    "unlockedExpRanks",
+    "unlockedStyles",
+    "unlockedFrames",
+    "regataTasksCompleted",
+    "m3CompLvls",
+    "livesSent",
+    "fullCardCollections",
+    "firstAttemptM3Levels",
+    "townName",
+    "achievementTeamwork"
+];
+
+// ============================================================
+// ESCAPE REGEX
+// ============================================================
+
+function escapeRegex(
+    value
+) {
+
+    return String(value).replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+    );
+}
+
+// ============================================================
+// FIND COMPLETE <Var>
+// ============================================================
+
+function findVarSection(
+    xml,
+    name
+) {
+
+    const safeName =
+        escapeRegex(name);
+
+    const regex =
+        new RegExp(
+            `<Var\\b[^>]*\\bname\\s*=\\s*["']${safeName}["'][^>]*>`,
+            "i"
+        );
+
+    const match =
+        regex.exec(xml);
+
+    if (!match) {
+        return null;
+    }
+
+    const start =
+        match.index;
+
+    const openingTag =
+        match[0];
+
+    const openingEnd =
+        start +
+        openingTag.length;
+
+    // Self closing:
+    // <Var name="xxx" .../>
+    if (
+        /\/>\s*$/.test(
+            openingTag
+        )
+    ) {
+
+        return {
+
+            start,
+
+            end:
+                openingEnd,
+
+            text:
+                xml.slice(
+                    start,
+                    openingEnd
+                )
+        };
+    }
+
+    // ========================================================
+    // Non-self-closing Var
+    // ========================================================
+
+    let depth = 1;
+
+    const tagRegex =
+        /<\/?Var\b[^>]*>/gi;
+
+    tagRegex.lastIndex =
+        openingEnd;
+
+    let tagMatch;
+
+    while (
+        (tagMatch =
+            tagRegex.exec(xml)) !== null
+    ) {
+
+        const tag =
+            tagMatch[0];
+
+        // Opening nested Var
+        if (
+            /^<Var\b/i.test(tag) &&
+            !/\/>\s*$/.test(tag)
+        ) {
+
+            depth++;
+
+            continue;
+        }
+
+        // Closing Var
+        if (
+            /^<\/Var\b/i.test(tag)
+        ) {
+
+            depth--;
+
+            if (
+                depth === 0
+            ) {
+
+                const end =
+                    tagMatch.index +
+                    tag.length;
+
+                return {
+
+                    start,
+
+                    end,
+
+                    text:
+                        xml.slice(
+                            start,
+                            end
+                        )
+                };
+            }
+        }
+    }
+
+    throw new Error(
+        `Var section incomplete: ${name}`
+    );
+}
+
+// ============================================================
+// COPY NAMED VAR SECTIONS
+// ============================================================
+
+function copyNamedSections(
+    mainXml,
+    friendXml
+) {
+
+    let result =
+        mainXml;
+
+    const names =
+        [
+            ...new Set(
+                COPY_VAR_NAMES
+            )
+        ];
+
+    for (
+        const name of names
+    ) {
+
+        const friendSection =
+            findVarSection(
+                friendXml,
+                name
+            );
+
+        if (!friendSection) {
+
+            throw new Error(
+                `Friend XML missing section: ${name}`
+            );
+        }
+
+        const mainSection =
+            findVarSection(
+                result,
+                name
+            );
+
+        if (!mainSection) {
+
+            throw new Error(
+                `Main XML missing section: ${name}`
+            );
+        }
+
+        // استبدال القسم بالكامل
+        // بدون إعادة تنسيق XML
+
+        result =
+            result.slice(
+                0,
+                mainSection.start
+            ) +
+            friendSection.text +
+            result.slice(
+                mainSection.end
+            );
+
+        console.log(
+            `[Merge] copied Var "${name}"`
+        );
+    }
+
+    return result;
+}
+
+// ============================================================
+// FIND BOTH BUILDINGS SECTIONS
+// ============================================================
+
+function findBuildingsSections(
+    xml
+) {
+
+    const START =
+        "</TownGround><Buildings><Object";
+
+    const END =
+        "</Buildings>";
+
+    const sections = [];
+
+    let searchFrom = 0;
+
+    while (true) {
+
+        const start =
+            xml.indexOf(
+                START,
+                searchFrom
+            );
+
+        if (
+            start === -1
+        ) {
+            break;
+        }
+
+        const endMarker =
+            xml.indexOf(
+                END,
+                start
+            );
+
+        if (
+            endMarker === -1
+        ) {
+
+            throw new Error(
+                "Buildings section incomplete"
+            );
+        }
+
+        const end =
+            endMarker +
+            END.length;
+
+        sections.push({
+
+            start,
+
+            end,
+
+            text:
+                xml.slice(
+                    start,
+                    end
+                )
+        });
+
+        searchFrom =
+            end;
+    }
+
+    return sections;
+}
+
+// ============================================================
+// COPY BOTH BUILDINGS
+// ============================================================
+
+function copyBothBuildingsSections(
+    mainXml,
+    friendXml
+) {
+
+    const mainSections =
+        findBuildingsSections(
+            mainXml
+        );
+
+    const friendSections =
+        findBuildingsSections(
+            friendXml
+        );
+
+    console.log(
+        `[Merge] Main Buildings sections=${mainSections.length}`
+    );
+
+    console.log(
+        `[Merge] Friend Buildings sections=${friendSections.length}`
+    );
+
+    if (
+        mainSections.length !== 2
+    ) {
+
+        throw new Error(
+            `Main XML must contain exactly 2 Buildings sections. Found=${mainSections.length}`
+        );
+    }
+
+    if (
+        friendSections.length !== 2
+    ) {
+
+        throw new Error(
+            `Friend XML must contain exactly 2 Buildings sections. Found=${friendSections.length}`
+        );
+    }
+
+    let result =
+        mainXml;
+
+    // نستبدل من الأخير للأول
+    // حتى لا تتغير مواقع الأقسام
+
+    for (
+        let i = 1;
+        i >= 0;
+        i--
+    ) {
+
+        const mainSection =
+            mainSections[i];
+
+        const friendSection =
+            friendSections[i];
+
+        result =
+            result.slice(
+                0,
+                mainSection.start
+            ) +
+            friendSection.text +
+            result.slice(
+                mainSection.end
+            );
+
+        console.log(
+            `[Merge] copied Buildings section ${i + 1}/2`
+        );
+    }
+
+    return result;
+}
+
+// ============================================================
+// COPY LEVELUP TO END
+// ============================================================
+
+function copyLevelupToEnd(
+    mainXml,
+    friendXml
+) {
+
+    const mainSection =
+        findVarSection(
+            mainXml,
+            "levelup"
+        );
+
+    const friendSection =
+        findVarSection(
+            friendXml,
+            "levelup"
+        );
+
+    if (!mainSection) {
+
+        throw new Error(
+            'Main XML missing <Var name="levelup"...>'
+        );
+    }
+
+    if (!friendSection) {
+
+        throw new Error(
+            'Friend XML missing <Var name="levelup"...>'
+        );
+    }
+
+    // ========================================================
+    // مهم:
+    // يبدأ من levelup وينسخ إلى نهاية Friend XML
+    // ========================================================
+
+    const result =
+        mainXml.slice(
+            0,
+            mainSection.start
+        ) +
+        friendXml.slice(
+            friendSection.start
+        );
+
+    console.log(
+        "[Merge] copied levelup -> END"
+    );
+
+    return result;
+}
+
+// ============================================================
+// COMPLETE FRIEND -> MAIN MERGE
+// ============================================================
+
+function mergeFriendIntoMain(
+    mainXml,
+    friendXml
+) {
+
+    if (
+        Buffer.isBuffer(mainXml)
+    ) {
+
+        mainXml =
+            mainXml.toString(
+                "utf8"
+            );
+    }
+
+    if (
+        Buffer.isBuffer(friendXml)
+    ) {
+
+        friendXml =
+            friendXml.toString(
+                "utf8"
+            );
+    }
+
+    mainXml =
+        String(mainXml)
+            .replace(
+                /^\uFEFF/,
+                ""
+            );
+
+    friendXml =
+        String(friendXml)
+            .replace(
+                /^\uFEFF/,
+                ""
+            );
+
+    console.log(
+        `[Merge] main XML size=${mainXml.length}`
+    );
+
+    console.log(
+        `[Merge] friend XML size=${friendXml.length}`
+    );
+
+    // --------------------------------------------------------
+    // 1. Buildings #1 + #2
+    // --------------------------------------------------------
+
+    let result =
+        copyBothBuildingsSections(
+            mainXml,
+            friendXml
+        );
+
+    // --------------------------------------------------------
+    // 2. الأقسام المحددة
+    // --------------------------------------------------------
+
+    result =
+        copyNamedSections(
+            result,
+            friendXml
+        );
+
+    // --------------------------------------------------------
+    // 3. levelup إلى نهاية الملف
+    // --------------------------------------------------------
+
+    result =
+        copyLevelupToEnd(
+            result,
+            friendXml
+        );
+
+    console.log(
+        `[Merge] FINAL MAIN size=${result.length}`
+    );
+
+    return Buffer.from(
+        result,
+        "utf8"
+    );
+}
+
+// ============================================================
+// FETCH FRIEND XML
+// ============================================================
+
+async function fetchFriendXml(
+    cityId,
+    cityVer
+) {
+
+    const json =
+        await requestFetchCity(
+            cityId,
+            cityVer
+        );
+
+    if (
+        !json ||
+        !json.result ||
+        typeof json.result.data !==
+            "string"
+    ) {
+
+        throw new Error(
+            "Upstream JSON does not contain result.data"
+        );
+    }
+
+    const base64 =
+        json.result.data;
+
+    console.log(
+        `[Merge] Friend Base64 length=${base64.length}`
+    );
+
+    const friendBytes =
+        Buffer.from(
+            base64,
+            "base64"
+        );
+
+    console.log(
+        `[Merge] Friend bytes=${friendBytes.length} magic=${bufferMagic(friendBytes)}`
+    );
+
+    const friendXmlBuffer =
+        decodeSaveCity(
+            friendBytes
+        );
+
+    const friendXml =
+        friendXmlBuffer
+            .toString("utf8")
+            .replace(
+                /^\uFEFF/,
+                ""
+            )
+            .trim();
+
+    if (
+        !friendXml.startsWith("<")
+    ) {
+
+        throw new Error(
+            "Friend decoded data is not XML"
+        );
+    }
+
+    console.log(
+        `[Merge] Friend XML size=${friendXml.length}`
+    );
+
+    return friendXml;
+}
+
+// ============================================================
+// FETCHCITY API
+// ============================================================
+
+async function handleFetchCity(
+    req,
+    res
+) {
+
+    try {
+
+        // ====================================================
+        // NEW MODE
+        //
+        // Body:
+        // application/octet-stream
+        //
+        // Headers:
+        // X-City-Id
+        // X-City-Ver
+        //
+        // Body = encrypted MAIN file
+        // ====================================================
+
+        if (
+            Buffer.isBuffer(req.body)
+        ) {
+
+            const mainEncrypted =
+                req.body;
+
+            if (
+                mainEncrypted.length === 0
+            ) {
+
+                return res
+                    .status(400)
+                    .send(
+                        "Main file is empty"
+                    );
+            }
+
+            const cityId =
+                String(
+                    req.headers[
+                        "x-city-id"
+                    ] ||
+                    ""
+                ).trim();
+
+            const cityVer =
+                Number(
+                    req.headers[
+                        "x-city-ver"
+                    ] ||
+                    0
+                );
+
+            if (!cityId) {
+
+                return res
+                    .status(400)
+                    .send(
+                        "X-City-Id missing"
+                    );
+            }
+
+            if (
+                !Number.isFinite(cityVer) ||
+                cityVer < 0
+            ) {
+
+                return res
+                    .status(400)
+                    .send(
+                        "X-City-Ver invalid"
+                    );
+            }
+
+            console.log(
+                "========================================"
+            );
+
+            console.log(
+                "[Merge] NEW MERGE REQUEST"
+            );
+
+            console.log(
+                `[Merge] cityId=${cityId}`
+            );
+
+            console.log(
+                `[Merge] cityVer=${cityVer}`
+            );
+
+            console.log(
+                `[Merge] Main encrypted size=${mainEncrypted.length}`
+            );
+
+            console.log(
+                `[Merge] Main magic=${bufferMagic(mainEncrypted)}`
+            );
+
+            // =================================================
+            // 1. فك الملف الرئيسي
+            //
+            // نفس decodeFriendFile المستخدم في
+            // decode-friends
+            // =================================================
+
+            const mainXmlBuffer =
+                decodeFriendFile(
+                    mainEncrypted
+                );
+
+            const mainXml =
+                mainXmlBuffer
+                    .toString("utf8")
+                    .replace(
+                        /^\uFEFF/,
+                        ""
+                    )
+                    .trim();
+
+            if (
+                !mainXml.startsWith("<")
+            ) {
+
+                throw new Error(
+                    "Main file after decode is not XML"
+                );
+            }
+
+            console.log(
+                `[Merge] Main decrypted size=${mainXml.length}`
+            );
+
+            // =================================================
+            // 2. جلب ملف الصديق وفك تشفيره
+            // =================================================
+
+            const friendXml =
+                await fetchFriendXml(
+                    cityId,
+                    cityVer
+                );
+
+            // =================================================
+            // 3. دمج الصديق داخل الرئيسي
+            // =================================================
+
+            const modifiedMain =
+                mergeFriendIntoMain(
+                    mainXml,
+                    friendXml
+                );
+
+            // =================================================
+            // 4. إرجاع MAIN فقط
+            // =================================================
+
+            res.status(200);
+
+            res.set(
+                "Content-Type",
+                "application/xml; charset=utf-8"
+            );
+
+            res.set(
+                "Cache-Control",
+                "no-store"
+            );
+
+            res.set(
+                "Content-Disposition",
+                'attachment; filename="mGameInfo.xml"'
+            );
+
+            console.log(
+                `[Merge] Returning modified MAIN only. size=${modifiedMain.length}`
+            );
+
+            console.log(
+                "========================================"
+            );
+
+            return res.send(
+                modifiedMain
+            );
+        }
+
+        // ====================================================
+        // OLD MODE
+        //
+        // JSON:
+        // {
+        //   cityId,
+        //   cityVer
+        // }
+        //
+        // يبقى موجوداً للتوافق القديم
+        // ====================================================
+
+        const body =
+            req.body || {};
+
+        const cityId =
+            String(
+                body.cityId ||
+                body.fetchCityId ||
+                ""
+            ).trim();
+
+        const cityVer =
+            Number(
+                body.cityVer || 0
+            );
+
+        if (!cityId) {
+
+            return res
+                .status(400)
+                .send(
+                    "cityId missing"
+                );
+        }
+
+        if (
+            !Number.isFinite(cityVer) ||
+            cityVer < 0
+        ) {
+
+            return res
+                .status(400)
+                .send(
+                    "cityVer invalid"
+                );
+        }
+
+        console.log(
+            `[FetchCity] incoming cityId=${cityId} cityVer=${cityVer}`
+        );
+
+        const json =
+            await requestFetchCity(
+                cityId,
+                cityVer
+            );
+
+        if (
+            !json ||
+            !json.result ||
+            typeof json.result.data !==
+                "string"
+        ) {
+
+            throw new Error(
+                "Upstream JSON does not contain result.data"
+            );
+        }
+
+        const base64 =
+            json.result.data;
+
+        console.log(
+            `[FetchCity] Base64 length=${base64.length}`
+        );
+
+        const cityBytes =
+            Buffer.from(
+                base64,
+                "base64"
+            );
+
+        console.log(
+            `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
+        );
+
+        const xml =
+            decodeSaveCity(
+                cityBytes
+            );
+
+        console.log(
+            `[FetchCity] XML size=${xml.length}`
+        );
+
+        const modifiedXml =
+            editCityXml(
+                xml
+            );
+
+        console.log(
+            `[FetchCity] Modified XML size=${modifiedXml.length}`
+        );
+
+        res.status(200);
+
+        res.set(
+            "Content-Type",
+            "application/xml; charset=utf-8"
+        );
+
+        res.set(
+            "Cache-Control",
+            "no-store"
+        );
+
+        return res.send(
+            modifiedXml
+        );
+
+    } catch (err) {
+
+        console.error(
+            "[FetchCity] ERROR:",
+            err &&
+            err.stack
+                ? err.stack
+                : err
+        );
+
+        return res
+            .status(500)
+            .send(
+                String(
+                    err &&
+                    err.message
+                        ? err.message
+                        : err
+                )
+            );
+    }
+}
+
+// ============================================================
 // DECODE FRIEND FILE API
 // ============================================================
 
@@ -2634,7 +3282,7 @@ async function handleDecodeFriends(
 
     try {
 
-        let encryptedFile =
+        const encryptedFile =
             req.body;
 
         if (
@@ -2650,7 +3298,7 @@ async function handleDecodeFriends(
                     ok: false,
 
                     error:
-                        "ط¸ظ¹ط·آ¬ط·آ¨ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ .123.xml ط·آ¨ط·آµط¸ظ¹ط·ط›ط·آ© application/octet-stream"
+                        "Expected application/octet-stream"
                 });
         }
 
@@ -2665,7 +3313,7 @@ async function handleDecodeFriends(
                     ok: false,
 
                     error:
-                        "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
+                        "File is empty"
                 });
         }
 
@@ -2678,7 +3326,7 @@ async function handleDecodeFriends(
         );
 
         // ====================================================
-        // decodeFile ط·آ§ط¸â€‍ط·آ­ط¸â€ڑط¸ظ¹ط¸â€ڑط¸ظ¹
+        // decodeFile
         // ====================================================
 
         const xmlBuffer =
@@ -2704,9 +3352,13 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ط·آ¨ط·آ¹ط·آ¯ ط¸ظ¾ط¸ئ’ .123.xml ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آµط¸ث†ط¸â€‍ ط·آ¹ط¸â€‍ط¸â€° XML"
+                "Decoded file is not XML"
             );
         }
+
+        // ====================================================
+        // Version
+        // ====================================================
 
         const version =
             parseFriendVersion(
@@ -2718,7 +3370,7 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.version"
+                "Version.version missing"
             );
         }
 
@@ -2727,12 +3379,12 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.FVer"
+                "Version.FVer missing"
             );
         }
 
         // ====================================================
-        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ friends
+        // friends
         // ====================================================
 
         const friends =
@@ -2741,7 +3393,7 @@ async function handleDecodeFriends(
             );
 
         // ====================================================
-        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ saveId ط¸â€¦ط¸â€  ProfilesCache
+        // saveProfiles
         // ====================================================
 
         const saveProfiles =
@@ -2750,7 +3402,7 @@ async function handleDecodeFriends(
             );
 
         // ====================================================
-        // ط·آ±ط·آ¨ط·آ· saveId ط¸â€¦ط·آ¹ friends
+        // attach saveId
         // ====================================================
 
         attachSaveIdsToFriends(
@@ -2775,7 +3427,7 @@ async function handleDecodeFriends(
         );
 
         // ====================================================
-        // ط·آ·ط·آ¨ط·آ§ط·آ¹ط·آ© ط¸â€ ط·ع¾ط¸ظ¹ط·آ¬ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ·
+        // Logging matches
         // ====================================================
 
         for (
@@ -2846,16 +3498,30 @@ async function handleDecodeFriends(
 // ROUTES
 // ============================================================
 
+// القديم
 router.post(
     "/",
     handleFetchCity
 );
 
+// الجديد + القديم JSON
+//
+// application/octet-stream:
+//   Main file
+//
+// JSON:
+//   cityId / cityVer
+//
 router.post(
     "/fetch-city",
+    express.raw({
+        type: "application/octet-stream",
+        limit: "50mb"
+    }),
     handleFetchCity
 );
 
+// أول ملف - بدون تغيير
 router.post(
     "/decode-friends",
     express.raw({
