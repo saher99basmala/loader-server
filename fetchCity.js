@@ -26,7 +26,7 @@ const TIMEOUT_MS =
     Number(process.env.FETCHCITY_TIMEOUT_MS || 25000);
 
 // ============================================================
-// SAVECRYPTO CONSTANTS - FETCHCITY
+// SAVECRYPTO CONSTANTS
 // ============================================================
 
 const TABLE_SIZE = 0x2D7;
@@ -46,7 +46,7 @@ const LZ4_MAGIC = Buffer.from([
 // ============================================================
 
 const FETCH54_TABLE = Buffer.from(
-    "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlLZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82bG5bc1lkczpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGJmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
+    "d192KFBTVDZLSDBPSkIwNHh4PlJDMyFrUngqfCsyNV5PU2guWCcmTj5gbTlLZklXb3xTMmpoYmMgZlRkN2FTWjZSQmdRYkwpZlcxMWI8J0dXJ00pTiNsbF5xWntdOmJhakBudjlZUXlgKDgnJkUyeSo8biZSak9lb2lPRTNbP0lMTys/ZFNAdXxddlZJSGdpdnR3I19ybG9nTD9yY2xKa0EyVjZkSF9hdiB1OWZ3JFZnaiVBdEJHK2RSRSg6bih0SSdiNDc/c3phSU5rbTh7PDdqTCN0O1NKO0knX3ZyVkNveiFvcGg0cC9kdW1UKDZ4ezNRfiZtbWEpJS9+QlJjbm9qeVRmVC55cW4mc2s5ajtheTNwZyssY2NKRz1URXUySy0qZCVJVSpZMk4pLn17VVBfTip4P1pdX2wsXXZ+J21ydkIpdUcuc3cyUCVRK3xOUUxgPklmeUx3ZF0sST9mK2lnOm84cyNMUk15KCQwWTJWelhCRVZ+UXVCZ1J+eVplb2gtY0NAcUA+Ni1WdlQyLFpTV2xVfnRoKyUwfFdfaVBsfU0wdW4/cHlkcXVsYHxaTGB1N3JtMUwwZXd6NGM5KmZuUlpGOjgoOyYlNltHbj4sTFhXOUY/UVE0MSg6NXN2ckdWI3snMyldMi82bG5bc1lkczpxVGRCaDhPeUI8I1EhVSVRJ1tkK3IlKU9CT3V5XSE9fWFnMEdQNlp+YCs5PnJGmBfOF59Tn5YMDJEKUgjfWFPKTA4dHF4OixPJmZOcHtSJFc+KU1CZUxpfFJYOi56JzVCJWddMTNFZiB5JUs/e1JBcGdrey4xKSxBT1toVXlJLm98cUBwXiBNczFJNyBadWI6YSdPNFknXzA7WG1afnZLPW5KI3dZQ2Njbl5Dekp1NDxmNW9neV19I0s1RklsS25ud1RfXmRWQVpndl1EIFdJdEBzbCFpPSlxeG5XaA==",
     "base64"
 );
 
@@ -56,9 +56,13 @@ const FETCH54_TABLE = Buffer.from(
 
 function u32le(buf, offset) {
 
-    if (offset + 4 > buf.length) {
+    if (
+        !Buffer.isBuffer(buf) ||
+        offset < 0 ||
+        offset + 4 > buf.length
+    ) {
         throw new Error(
-            "u32le ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ­ط·آ¯ط¸ث†ط·آ¯ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
+            `u32le out of bounds: offset=${offset}, size=${buf ? buf.length : 0}`
         );
     }
 
@@ -86,7 +90,10 @@ function sub32(a, b) {
 
 function bufferMagic(buf) {
 
-    if (!buf || buf.length < 4) {
+    if (
+        !buf ||
+        buf.length < 4
+    ) {
         return "";
     }
 
@@ -100,6 +107,19 @@ function bufferMagic(buf) {
                     .padStart(2, "0")
         )
         .join(" ");
+}
+
+function bufferHash(buf) {
+
+    if (!Buffer.isBuffer(buf)) {
+        buf = Buffer.from(buf);
+    }
+
+    return crypto
+        .createHash("sha256")
+        .update(buf)
+        .digest("hex")
+        .slice(0, 16);
 }
 
 function isLz4Magic(buf) {
@@ -126,7 +146,10 @@ function isGzip(buf) {
 
 function looksLikeXml(buf) {
 
-    if (!buf || buf.length === 0) {
+    if (
+        !buf ||
+        buf.length === 0
+    ) {
         return false;
     }
 
@@ -146,6 +169,31 @@ function looksLikeXml(buf) {
         text.startsWith("<") ||
         text.startsWith("<?xml")
     );
+}
+
+// ============================================================
+// VALIDATE GZIP
+// ============================================================
+
+function tryGunzip(buf) {
+
+    if (!isGzip(buf)) {
+        return null;
+    }
+
+    try {
+
+        const result =
+            zlib.gunzipSync(
+                buf
+            );
+
+        return result;
+
+    } catch (err) {
+
+        return null;
+    }
 }
 
 // ============================================================
@@ -187,10 +235,12 @@ function xorDecode79(raw) {
         raw = Buffer.from(raw);
     }
 
-    if (raw.length < 8) {
+    if (
+        raw.length < 8
+    ) {
 
         throw new Error(
-            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x79 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
+            `0x79 layer too short: ${raw.length}`
         );
     }
 
@@ -250,6 +300,10 @@ function xorDecode79(raw) {
             seed
         );
 
+    console.log(
+        `[FetchCity] 0x79 header=${headerValue >>> 0} total=${total} processLen=${processLen} seed=${rawSeed >>> 0}`
+    );
+
     const out =
         Buffer.from(
             raw.subarray(
@@ -258,7 +312,9 @@ function xorDecode79(raw) {
             )
         );
 
-    if (out.length === 0) {
+    if (
+        out.length === 0
+    ) {
         return out;
     }
 
@@ -299,26 +355,30 @@ function xorDecode79(raw) {
 }
 
 // ============================================================
-// FETCHCITY 0x54
+// FETCHCITY 0x54 - ORIGINAL
 // ============================================================
 
-function decode54Layer(raw) {
+function decode54LayerOriginal(raw) {
 
     if (!Buffer.isBuffer(raw)) {
         raw = Buffer.from(raw);
     }
 
-    if (raw.length < 4) {
+    if (
+        raw.length < 4
+    ) {
 
         throw new Error(
-            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
+            `0x54 layer too short: ${raw.length}`
         );
     }
 
-    if (raw[0] !== 0x54) {
+    if (
+        raw[0] !== 0x54
+    ) {
 
         throw new Error(
-            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­ط·آ©. Magic=${bufferMagic(raw)}`
+            `Invalid 0x54 magic: ${bufferMagic(raw)}`
         );
     }
 
@@ -339,14 +399,37 @@ function decode54Layer(raw) {
             raw.length - 3
         );
 
+    console.log(
+        `[FetchCity] 0x54 processLen=${processLen} payload=${raw.length - 3}`
+    );
+
     const out =
         Buffer.from(
             raw.subarray(3)
         );
 
-    if (out.length === 0) {
+    if (
+        out.length === 0
+    ) {
         return out;
     }
+
+    /*
+     * IMPORTANT:
+     *
+     * This is the original algorithm.
+     *
+     * encoded[0] = decoded[0] + 0x54
+     * decoded[0] = (encoded[0] - 0x54) ^ table[0]
+     *
+     * encoded[i] =
+     *      (decoded[i] ^ table[i]) + decoded[i - 1]
+     *
+     * therefore:
+     *
+     * decoded[i] =
+     *      ((encoded[i] - decoded[i-1]) ^ table[i])
+     */
 
     out[0] =
         (
@@ -366,7 +449,9 @@ function decode54Layer(raw) {
         i++
     ) {
 
-        if (i > 0) {
+        if (
+            i > 0
+        ) {
 
             out[i] =
                 (
@@ -389,6 +474,423 @@ function decode54Layer(raw) {
 }
 
 // ============================================================
+// FETCHCITY 0x54 - ALTERNATIVE DECODER
+// ============================================================
+
+function decode54LayerFullPayload(raw) {
+
+    if (!Buffer.isBuffer(raw)) {
+        raw = Buffer.from(raw);
+    }
+
+    if (
+        raw.length < 4 ||
+        raw[0] !== 0x54
+    ) {
+        throw new Error(
+            "Invalid 0x54 data"
+        );
+    }
+
+    const payloadLength =
+        raw.length - 3;
+
+    const out =
+        Buffer.from(
+            raw.subarray(3)
+        );
+
+    if (
+        payloadLength === 0
+    ) {
+        return out;
+    }
+
+    out[0] =
+        (
+            out[0] -
+            0x54
+        ) & 0xFF;
+
+    for (
+        let i = 0;
+        i < payloadLength;
+        i++
+    ) {
+
+        if (
+            i > 0
+        ) {
+
+            out[i] =
+                (
+                    out[i] -
+                    out[i - 1]
+                ) & 0xFF;
+        }
+
+        out[i] =
+            (
+                out[i] ^
+                FETCH54_TABLE[
+                    i %
+                    FETCH54_TABLE.length
+                ]
+            ) & 0xFF;
+    }
+
+    return out;
+}
+
+// ============================================================
+// FETCHCITY 0x54 - CUSTOM LENGTH
+// ============================================================
+
+function decode54LayerWithLength(
+    raw,
+    requestedLength
+) {
+
+    if (!Buffer.isBuffer(raw)) {
+        raw = Buffer.from(raw);
+    }
+
+    const out =
+        Buffer.from(
+            raw.subarray(3)
+        );
+
+    if (
+        out.length === 0
+    ) {
+        return out;
+    }
+
+    const count =
+        Math.min(
+            Math.max(
+                1,
+                requestedLength
+            ),
+            out.length
+        );
+
+    out[0] =
+        (
+            out[0] -
+            0x54
+        ) & 0xFF;
+
+    for (
+        let i = 0;
+        i < count;
+        i++
+    ) {
+
+        if (
+            i > 0
+        ) {
+
+            out[i] =
+                (
+                    out[i] -
+                    out[i - 1]
+                ) & 0xFF;
+        }
+
+        out[i] =
+            (
+                out[i] ^
+                FETCH54_TABLE[
+                    i %
+                    FETCH54_TABLE.length
+                ]
+            ) & 0xFF;
+    }
+
+    return out;
+}
+
+// ============================================================
+// FETCHCITY 0x54 - SMART DECODER
+// ============================================================
+
+function decode54Layer(raw) {
+
+    if (!Buffer.isBuffer(raw)) {
+        raw = Buffer.from(raw);
+    }
+
+    if (
+        raw.length < 4
+    ) {
+        throw new Error(
+            `0x54 layer too short: ${raw.length}`
+        );
+    }
+
+    if (
+        raw[0] !== 0x54
+    ) {
+        throw new Error(
+            `Invalid 0x54 magic=${bufferMagic(raw)}`
+        );
+    }
+
+    const encodedLength =
+        (
+            (
+                (raw[1] & 0xFF) ^
+                FETCH54_TABLE[0]
+            ) |
+            (
+                (raw[2] & 0xFF) << 8
+            )
+        ) >>> 0;
+
+    const payloadLength =
+        raw.length - 3;
+
+    const processLen =
+        Math.min(
+            encodedLength,
+            payloadLength
+        );
+
+    console.log(
+        `[FetchCity] 0x54 encodedLength=${encodedLength} payloadLength=${payloadLength} processLen=${processLen}`
+    );
+
+    /*
+     * Candidate 1:
+     * Exact original decoder.
+     */
+
+    const candidates = [];
+
+    function addCandidate(
+        name,
+        data
+    ) {
+
+        if (!Buffer.isBuffer(data)) {
+            return;
+        }
+
+        candidates.push({
+            name,
+            data
+        });
+
+        console.log(
+            `[FetchCity] 0x54 candidate=${name} magic=${bufferMagic(data)} hash=${bufferHash(data)}`
+        );
+    }
+
+    try {
+
+        addCandidate(
+            "original",
+            decode54LayerOriginal(
+                raw
+            )
+        );
+
+    } catch (err) {
+
+        console.log(
+            `[FetchCity] 0x54 original failed: ${err.message}`
+        );
+    }
+
+    /*
+     * Candidate 2:
+     * Decode entire payload.
+     */
+
+    if (
+        processLen !== payloadLength
+    ) {
+
+        try {
+
+            addCandidate(
+                "full-payload",
+                decode54LayerFullPayload(
+                    raw
+                )
+            );
+
+        } catch (err) {
+
+            console.log(
+                `[FetchCity] 0x54 full-payload failed: ${err.message}`
+            );
+        }
+    }
+
+    /*
+     * Candidate 3:
+     * Decode only the first processLen bytes,
+     * preserving the remaining payload.
+     */
+
+    try {
+
+        const data =
+            decode54LayerWithLength(
+                raw,
+                processLen
+            );
+
+        addCandidate(
+            "encoded-process-length",
+            data
+        );
+
+    } catch (err) {
+
+        console.log(
+            `[FetchCity] 0x54 process-length failed: ${err.message}`
+        );
+    }
+
+    /*
+     * Candidate 4:
+     * Try payload length minus common framing sizes.
+     *
+     * This is only used if the normal candidate
+     * does not produce a valid gzip stream.
+     */
+
+    const alternateLengths = [
+        payloadLength,
+        payloadLength - 1,
+        payloadLength - 2,
+        payloadLength - 4,
+        payloadLength - 8,
+        processLen,
+        processLen + 1,
+        processLen + 2,
+        processLen + 4,
+        processLen + 8
+    ];
+
+    const uniqueLengths =
+        [...new Set(
+            alternateLengths.filter(
+                x =>
+                    Number.isInteger(x) &&
+                    x > 0 &&
+                    x <= payloadLength
+            )
+        )];
+
+    for (
+        const len of uniqueLengths
+    ) {
+
+        if (
+            len === processLen ||
+            len === payloadLength
+        ) {
+            continue;
+        }
+
+        try {
+
+            addCandidate(
+                `length-${len}`,
+                decode54LayerWithLength(
+                    raw,
+                    len
+                )
+            );
+
+        } catch (err) {
+
+            // Ignore candidate.
+        }
+    }
+
+    /*
+     * First priority:
+     * Candidate that decompresses successfully.
+     */
+
+    for (
+        const candidate of candidates
+    ) {
+
+        if (
+            isGzip(
+                candidate.data
+            )
+        ) {
+
+            const inflated =
+                tryGunzip(
+                    candidate.data
+                );
+
+            if (
+                inflated &&
+                inflated.length > 0
+            ) {
+
+                console.log(
+                    `[FetchCity] 0x54 SELECTED=${candidate.name} -> GZIP OK (${inflated.length} bytes)`
+                );
+
+                /*
+                 * We return the decompressed data directly.
+                 *
+                 * This prevents the caller from attempting
+                 * the same GZIP operation again.
+                 */
+                return inflated;
+            }
+        }
+
+        if (
+            looksLikeXml(
+                candidate.data
+            )
+        ) {
+
+            console.log(
+                `[FetchCity] 0x54 SELECTED=${candidate.name} -> XML`
+            );
+
+            return candidate.data;
+        }
+    }
+
+    /*
+     * If none produced valid gzip/XML,
+     * return the exact original result.
+     *
+     * This preserves the old behavior and allows
+     * decodeSaveCity() to handle another layer.
+     */
+
+    console.log(
+        "[FetchCity] 0x54 no candidate produced valid GZIP/XML; using original candidate"
+    );
+
+    if (
+        candidates.length > 0
+    ) {
+
+        return candidates[0].data;
+    }
+
+    throw new Error(
+        "0x54: no decode candidate"
+    );
+}
+
+// ============================================================
 // FETCHCITY TRANSPORT
 // ============================================================
 
@@ -398,7 +900,9 @@ function decodeTransport(raw) {
         raw = Buffer.from(raw);
     }
 
-    if (raw.length === 0) {
+    if (
+        raw.length === 0
+    ) {
         return raw;
     }
 
@@ -423,9 +927,8 @@ function decodeTransport(raw) {
             return raw;
 
         default:
-
             throw new Error(
-                `ط¸â€ ط¸ث†ط·آ¹ FetchCity ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦ ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹: 0x${type
+                `Unknown FetchCity transport: 0x${type
                     .toString(16)
                     .padStart(2, "0")}`
             );
@@ -472,9 +975,8 @@ function lz4DecompressBlock(
                     srcPos >=
                     src.length
                 ) {
-
                     throw new Error(
-                        "LZ4: literal length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
+                        "LZ4: literal length overflow"
                     );
                 }
 
@@ -496,7 +998,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: literals ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
+                "LZ4: literals exceed source"
             );
         }
 
@@ -507,7 +1009,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ literals"
+                "LZ4: literal output overflow"
             );
         }
 
@@ -538,7 +1040,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: offset ط¸â€ ط·آ§ط¸â€ڑط·آµ"
+                "LZ4: missing offset"
             );
         }
 
@@ -565,7 +1067,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                `LZ4: offset ط·آ£ط¸ئ’ط·آ¨ط·آ± ط¸â€¦ط¸â€  output: ${offset} > ${dstPos}`
+                `LZ4: invalid offset ${offset} > ${dstPos}`
             );
         }
 
@@ -586,7 +1088,7 @@ function lz4DecompressBlock(
                 ) {
 
                     throw new Error(
-                        "LZ4: match length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
+                        "LZ4: match length overflow"
                     );
                 }
 
@@ -610,7 +1112,7 @@ function lz4DecompressBlock(
         ) {
 
             throw new Error(
-                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ match"
+                "LZ4: match output overflow"
             );
         }
 
@@ -640,7 +1142,7 @@ function lz4DecompressBlock(
     ) {
 
         throw new Error(
-            `LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑ. expected=${expectedSize}, actual=${dstPos}`
+            `LZ4: output size mismatch. expected=${expectedSize}, actual=${dstPos}`
         );
     }
 
@@ -654,7 +1156,7 @@ function decodeLz4Container(raw) {
     ) {
 
         throw new Error(
-            `LZ4 magic ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­: ${bufferMagic(raw)}`
+            `Invalid LZ4 magic: ${bufferMagic(raw)}`
         );
     }
 
@@ -663,7 +1165,7 @@ function decodeLz4Container(raw) {
     ) {
 
         throw new Error(
-            "LZ4 container ط¸â€ڑط·آµط¸ظ¹ط·آ±"
+            "LZ4 container too short"
         );
     }
 
@@ -852,17 +1354,21 @@ function decodeSaveCity(cityBytes) {
         );
 
     console.log(
-        `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
+        `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)} hash=${bufferHash(data)}`
     );
 
     let rounds = 0;
 
     while (
         data.length > 0 &&
-        rounds < 8
+        rounds < 12
     ) {
 
         rounds++;
+
+        console.log(
+            `[FetchCity] decode round=${rounds} size=${data.length} magic=${bufferMagic(data)} hash=${bufferHash(data)}`
+        );
 
         if (
             looksLikeXml(data)
@@ -901,10 +1407,31 @@ function decodeSaveCity(cityBytes) {
                 "[FetchCity] GZIP detected"
             );
 
-            data =
-                zlib.gunzipSync(
-                    data
+            try {
+
+                data =
+                    zlib.gunzipSync(
+                        data
+                    );
+
+            } catch (err) {
+
+                console.error(
+                    `[FetchCity] GZIP ERROR: ${err.message}`
                 );
+
+                /*
+                 * Do not silently continue.
+                 *
+                 * A gzip stream beginning with 1F 8B
+                 * but failing here means the bytes themselves
+                 * are not a valid gzip stream.
+                 */
+
+                throw new Error(
+                    `GZIP decode failed: ${err.message}. magic=${bufferMagic(data)} size=${data.length}`
+                );
+            }
 
             continue;
         }
@@ -934,7 +1461,7 @@ function decodeSaveCity(cityBytes) {
         }
 
         throw new Error(
-            `ط·ع¾ط¸â€¦ ط¸ظ¾ط¸ئ’ ط·آ·ط·آ¨ط¸â€ڑط·آ§ط·ع¾ FetchCity ط¸â€‍ط¸ئ’ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط·آ­ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ط·آ© ط·ط›ط¸ظ¹ط·آ±ط¸â€¦ط·آ¹ط·آ±ط¸ث†ط¸ظ¾ط·آ©. Magic=${bufferMagic(data)}`
+            `Unknown FetchCity layer. magic=${bufferMagic(data)}`
         );
     }
 
@@ -948,7 +1475,7 @@ function decodeSaveCity(cityBytes) {
     }
 
     throw new Error(
-        `ط·ع¾ط·آ¹ط·آ°ط·آ± ط·آ§ط¸â€‍ط¸ث†ط·آµط¸ث†ط¸â€‍ ط·آ¥ط¸â€‍ط¸â€° XML. Magic=${bufferMagic(data)}`
+        `Failed to reach XML. magic=${bufferMagic(data)} size=${data.length}`
     );
 }
 
@@ -995,8 +1522,11 @@ function encryptRequest(
         tag.toString("hex");
 
     return {
-        body: ciphertext,
-        tsId
+        body:
+            ciphertext,
+
+        tsId:
+            tsId
     };
 }
 
@@ -1012,7 +1542,7 @@ function decryptResponse(
     if (!tsId) {
 
         throw new Error(
-            "ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity ط¸â€‍ط·آ§ ط·ع¾ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ ts-id"
+            "Upstream response missing ts-id"
         );
     }
 
@@ -1022,7 +1552,7 @@ function decryptResponse(
     ) {
 
         throw new Error(
-            `ts-id ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­: ${tsId}`
+            `Invalid ts-id: ${tsId}`
         );
     }
 
@@ -1035,7 +1565,7 @@ function decryptResponse(
     ) {
 
         throw new Error(
-            `ts-id ط¸â€ڑط·آµط¸ظ¹ط·آ±: ${tsId}`
+            `ts-id too short: ${tsId}`
         );
     }
 
@@ -1114,7 +1644,7 @@ function decompressResponse(
     } catch (gzipError) {
 
         console.log(
-            "[FetchCity] GZIP failed"
+            `[FetchCity] GZIP failed: ${gzipError.message}`
         );
     }
 
@@ -1134,7 +1664,7 @@ function decompressResponse(
     } catch (zlibError) {
 
         console.log(
-            "[FetchCity] ZLIB failed"
+            `[FetchCity] ZLIB failed: ${zlibError.message}`
         );
     }
 
@@ -1154,7 +1684,7 @@ function decompressResponse(
     } catch (rawError) {
 
         console.log(
-            "[FetchCity] RAW DEFLATE failed"
+            `[FetchCity] RAW DEFLATE failed: ${rawError.message}`
         );
     }
 
@@ -1176,7 +1706,7 @@ function decompressResponse(
     }
 
     throw new Error(
-        "ط·ع¾ط·آ¹ط·آ°ط·آ± ط¸ظ¾ط¸ئ’ ط·آ¶ط·ط›ط·آ· ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity. " +
+        "Unable to decompress FetchCity response. " +
         `magic=${bufferMagic(decrypted)} ` +
         `size=${decrypted.length}`
     );
@@ -1196,6 +1726,10 @@ async function requestFetchCity(
 
     console.log(
         `[FetchCity] request cityId=${cityId} cityVer=${cityVer}`
+    );
+
+    console.log(
+        `[FetchCity] request JSON=${requestJson}`
     );
 
     const encrypted =
@@ -1221,7 +1755,8 @@ async function requestFetchCity(
                     cityId
                 ),
                 {
-                    method: "POST",
+                    method:
+                        "POST",
 
                     headers: {
 
@@ -1263,7 +1798,17 @@ async function requestFetchCity(
                 await response.arrayBuffer()
             );
 
-        if (!response.ok) {
+        console.log(
+            `[FetchCity] upstream status=${response.status}`
+        );
+
+        console.log(
+            `[FetchCity] upstream encrypted size=${responseBody.length}`
+        );
+
+        if (
+            !response.ok
+        ) {
 
             const text =
                 responseBody.toString(
@@ -1280,16 +1825,14 @@ async function requestFetchCity(
                 "ts-id"
             );
 
-        if (!responseTsId) {
+        if (
+            !responseTsId
+        ) {
 
             throw new Error(
                 "Upstream response missing ts-id"
             );
         }
-
-        console.log(
-            `[FetchCity] upstream status=${response.status}`
-        );
 
         const decrypted =
             decryptResponse(
@@ -1347,17 +1890,31 @@ async function handleFetchCity(
                 ""
             ).trim();
 
+        /*
+         * Support all possible field names used
+         * by the Lua client.
+         */
+
+        const rawCityVer =
+            body.cityVer ??
+            body.fetched_city_ver ??
+            body.fetchedCityVer ??
+            body.fetchCityVer ??
+            0;
+
         const cityVer =
             Number(
-                body.cityVer || 0
+                rawCityVer
             );
 
-        if (!cityId) {
+        if (
+            !cityId
+        ) {
 
             return res
                 .status(400)
                 .send(
-                    "cityId ط¸â€¦ط·آ·ط¸â€‍ط¸ث†ط·آ¨"
+                    "cityId missing"
                 );
         }
 
@@ -1371,7 +1928,7 @@ async function handleFetchCity(
             return res
                 .status(400)
                 .send(
-                    "cityVer ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
+                    "cityVer invalid"
                 );
         }
 
@@ -1393,7 +1950,7 @@ async function handleFetchCity(
         ) {
 
             throw new Error(
-                "Upstream JSON ط¸â€‍ط·آ§ ط¸ظ¹ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ result.data"
+                "Upstream JSON does not contain result.data"
             );
         }
 
@@ -1411,7 +1968,7 @@ async function handleFetchCity(
             );
 
         console.log(
-            `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
+            `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)} hash=${bufferHash(cityBytes)}`
         );
 
         const xml =
@@ -1432,7 +1989,9 @@ async function handleFetchCity(
             `[FetchCity] Modified XML size=${modifiedXml.length}`
         );
 
-        res.status(200);
+        res.status(
+            200
+        );
 
         res.set(
             "Content-Type",
@@ -1493,7 +2052,7 @@ function friendReadU32(
     ) {
 
         throw new Error(
-            "ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸ئ’ط·آ§ط¸ظ¾ط¸ظ¹ط·آ© ط¸â€‍ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© UInt32"
+            "Friend UInt32 out of bounds"
         );
     }
 
@@ -1705,7 +2264,7 @@ function friendXorDecode(
     ) {
 
         throw new Error(
-            "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط·آµط·ط›ط¸ظ¹ط·آ± ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
+            "Friend file too short"
         );
     }
 
@@ -1761,7 +2320,9 @@ function friendXorDecode(
     ) {
 
         out[i] =
-            data[8 + i];
+            data[
+                8 + i
+            ];
     }
 
     let j = 0;
@@ -1825,7 +2386,7 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            "LZ4: ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·آµط·ط›ط¸ظ¹ط·آ±ط·آ© ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
+            "Friend LZ4 data too short"
         );
     }
 
@@ -1837,7 +2398,7 @@ function friendLz4Decompress(
 
     let src = 8;
 
-    let output =
+    const output =
         Buffer.alloc(
             size
         );
@@ -1852,7 +2413,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: ط¸â€ ط¸â€،ط·آ§ط¸ظ¹ط·آ© ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹ط·آ©"
+                "LZ4: unexpected end of input"
             );
         }
 
@@ -1900,7 +2461,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: Literal ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
+                "LZ4: literal overflow"
             );
         }
 
@@ -1911,7 +2472,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: ط·آ­ط·آ¬ط¸â€¦ Literal ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­"
+                "LZ4: literal output overflow"
             );
         }
 
@@ -1942,7 +2503,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: ط¸â€‍ط·آ§ ط¸ظ¹ط¸ث†ط·آ¬ط·آ¯ Offset"
+                "LZ4: missing offset"
             );
         }
 
@@ -1957,7 +2518,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: Offset ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
+                "LZ4: offset = 0"
             );
         }
 
@@ -1994,7 +2555,7 @@ function friendLz4Decompress(
         ) {
 
             throw new Error(
-                "LZ4: Offset ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
+                "LZ4: invalid offset"
             );
         }
 
@@ -2010,7 +2571,7 @@ function friendLz4Decompress(
             ) {
 
                 throw new Error(
-                    "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ع¾ط·آ¬ط·آ§ط¸ث†ط·آ² ط·آ§ط¸â€‍ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹"
+                    "LZ4: output overflow"
                 );
             }
 
@@ -2030,11 +2591,7 @@ function friendLz4Decompress(
     ) {
 
         throw new Error(
-            "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­\n" +
-            "Expected: " +
-            size +
-            "\nActual: " +
-            outLen
+            `LZ4 output size mismatch. Expected=${size}, Actual=${outLen}`
         );
     }
 
@@ -2084,7 +2641,7 @@ function friendTrimXml(
 }
 
 // ============================================================
-// EXACT decodeFile()
+// DECODE FRIEND FILE
 // ============================================================
 
 function decodeFriendFile(
@@ -2106,11 +2663,10 @@ function decodeFriendFile(
     ) {
 
         throw new Error(
-            "ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
+            "Friend file is empty"
         );
     }
 
-    // XML ط·آ£ط·آµط¸â€‍ط·آ§ط¸â€¹
     if (
         data[0] === 0x3C
     ) {
@@ -2118,13 +2674,12 @@ function decodeFriendFile(
         return data;
     }
 
-    // ط¸ظ¹ط·آ¬ط·آ¨ ط·آ£ط¸ث† ط¸ظ¹ط·آ¨ط·آ¯ط·آ£ ط·آ¨ط¸â‚¬ 0x79
     if (
         data[0] !== 0x79
     ) {
 
         throw new Error(
-            "ط¸â€ ط¸ث†ط·آ¹ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦\nMagic: 0x" +
+            "Unknown friend file format. Magic=0x" +
             data[0]
                 .toString(16)
                 .padStart(
@@ -2359,8 +2914,8 @@ function parseFriends(
                     "bc"
                 ),
 
-            // ط·آ³ط¸ظ¹ط·آ¶ط·آ§ط¸ظ¾ saveId ط·آ¨ط·آ¹ط·آ¯ ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© ProfilesCache
-            saveId: ""
+            saveId:
+                ""
         });
     }
 
@@ -2368,7 +2923,7 @@ function parseFriends(
 }
 
 // ============================================================
-// SAVE PROFILES / saveId
+// SAVE PROFILES
 // ============================================================
 
 function parseSaveProfiles(
@@ -2450,7 +3005,8 @@ function parseSaveProfiles(
 
         if (
             !profile ||
-            typeof profile !== "object"
+            typeof profile !==
+                "object"
         ) {
 
             continue;
@@ -2468,26 +3024,20 @@ function parseSaveProfiles(
             continue;
         }
 
-        const cityname =
-            String(
-                profile.cityname || ""
-            ).trim();
-
-        const level =
-            String(
-                profile.level || ""
-            ).trim();
-
         profiles.push({
 
             cityname:
-                cityname,
+                String(
+                    profile.cityname || ""
+                ).trim(),
 
             saveId:
                 saveId,
 
             level:
-                level
+                String(
+                    profile.level || ""
+                ).trim()
         });
     }
 
@@ -2499,7 +3049,7 @@ function parseSaveProfiles(
 }
 
 // ============================================================
-// ATTACH saveId TO FRIENDS
+// ATTACH saveId
 // ============================================================
 
 function attachSaveIdsToFriends(
@@ -2508,19 +3058,23 @@ function attachSaveIdsToFriends(
 ) {
 
     if (
-        !Array.isArray(friends)
+        !Array.isArray(
+            friends
+        )
     ) {
 
         return [];
     }
 
     if (
-        !Array.isArray(saveProfiles) ||
+        !Array.isArray(
+            saveProfiles
+        ) ||
         saveProfiles.length === 0
     ) {
 
         console.log(
-            "[Friends] ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ saveProfiles ط¸â€‍ط·آ±ط·آ¨ط·آ·ط¸â€،ط·آ§"
+            "[Friends] no saveProfiles available"
         );
 
         return friends;
@@ -2546,9 +3100,10 @@ function attachSaveIdsToFriends(
             continue;
         }
 
-        // ط·آ£ط¸ث†ط¸â€‍ saveId ط¸â€‍ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط¸ظ¹ط·آ¨ط¸â€ڑط¸â€° ط¸â€،ط¸ث† ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦
         if (
-            !profileMap.has(key)
+            !profileMap.has(
+                key
+            )
         ) {
 
             profileMap.set(
@@ -2574,9 +3129,9 @@ function attachSaveIdsToFriends(
                 friend.name
             );
 
-        let saveId = "";
+        let saveId =
+            "";
 
-        // ط·آ§ط¸â€‍ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑط¸â€° ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹ط·آ©: city_name
         if (
             cityNameKey &&
             profileMap.has(
@@ -2590,7 +3145,6 @@ function attachSaveIdsToFriends(
                 );
         }
 
-        // ط·آ§ط·آ­ط·ع¾ط¸ظ¹ط·آ§ط·آ·ط¸ظ¹ط·آ§ط¸â€¹: name
         if (
             !saveId &&
             friendNameKey &&
@@ -2624,7 +3178,7 @@ function attachSaveIdsToFriends(
 }
 
 // ============================================================
-// DECODE FRIEND FILE API
+// DECODE FRIENDS API
 // ============================================================
 
 async function handleDecodeFriends(
@@ -2634,7 +3188,7 @@ async function handleDecodeFriends(
 
     try {
 
-        let encryptedFile =
+        const encryptedFile =
             req.body;
 
         if (
@@ -2647,10 +3201,11 @@ async function handleDecodeFriends(
                 .status(400)
                 .json({
 
-                    ok: false,
+                    ok:
+                        false,
 
                     error:
-                        "ط¸ظ¹ط·آ¬ط·آ¨ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ .123.xml ط·آ¨ط·آµط¸ظ¹ط·ط›ط·آ© application/octet-stream"
+                        "Send .123.xml as application/octet-stream"
                 });
         }
 
@@ -2662,10 +3217,11 @@ async function handleDecodeFriends(
                 .status(400)
                 .json({
 
-                    ok: false,
+                    ok:
+                        false,
 
                     error:
-                        "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
+                        "File is empty"
                 });
         }
 
@@ -2677,10 +3233,6 @@ async function handleDecodeFriends(
             `[Friends] encrypted magic=${bufferMagic(encryptedFile)}`
         );
 
-        // ====================================================
-        // decodeFile ط·آ§ط¸â€‍ط·آ­ط¸â€ڑط¸ظ¹ط¸â€ڑط¸ظ¹
-        // ====================================================
-
         const xmlBuffer =
             decodeFriendFile(
                 encryptedFile
@@ -2688,7 +3240,9 @@ async function handleDecodeFriends(
 
         const xml =
             xmlBuffer
-                .toString("utf8")
+                .toString(
+                    "utf8"
+                )
                 .replace(
                     /^\uFEFF/,
                     ""
@@ -2704,7 +3258,7 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ط·آ¨ط·آ¹ط·آ¯ ط¸ظ¾ط¸ئ’ .123.xml ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آµط¸ث†ط¸â€‍ ط·آ¹ط¸â€‍ط¸â€° XML"
+                "Decoded friend file is not XML"
             );
         }
 
@@ -2718,7 +3272,7 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.version"
+                "Version.version missing"
             );
         }
 
@@ -2727,31 +3281,19 @@ async function handleDecodeFriends(
         ) {
 
             throw new Error(
-                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.FVer"
+                "Version.FVer missing"
             );
         }
-
-        // ====================================================
-        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ friends
-        // ====================================================
 
         const friends =
             parseFriends(
                 xml
             );
 
-        // ====================================================
-        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ saveId ط¸â€¦ط¸â€  ProfilesCache
-        // ====================================================
-
         const saveProfiles =
             parseSaveProfiles(
                 xml
             );
-
-        // ====================================================
-        // ط·آ±ط·آ¨ط·آ· saveId ط¸â€¦ط·آ¹ friends
-        // ====================================================
 
         attachSaveIdsToFriends(
             friends,
@@ -2774,10 +3316,6 @@ async function handleDecodeFriends(
             `[Friends] saveProfiles=${saveProfiles.length}`
         );
 
-        // ====================================================
-        // ط·آ·ط·آ¨ط·آ§ط·آ¹ط·آ© ط¸â€ ط·ع¾ط¸ظ¹ط·آ¬ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ·
-        // ====================================================
-
         for (
             const friend of friends
         ) {
@@ -2792,15 +3330,12 @@ async function handleDecodeFriends(
             }
         }
 
-        // ====================================================
-        // RESPONSE
-        // ====================================================
-
         return res
             .status(200)
             .json({
 
-                ok: true,
+                ok:
+                    true,
 
                 bver:
                     version.bver,
@@ -2829,7 +3364,8 @@ async function handleDecodeFriends(
             .status(500)
             .json({
 
-                ok: false,
+                ok:
+                    false,
 
                 error:
                     String(
@@ -2843,14 +3379,8 @@ async function handleDecodeFriends(
 }
 
 // ============================================================
+// COPY FARM ENGINE
 // ============================================================
-// COPY FARM ENGINE - NEW
-// ============================================================
-// ============================================================
-
-// هذه الأقسام تبقى من الحفظ الرئيسي ولا يتم استبدالها
-// حتى لا يتم نقل بيانات الجهاز/الحساب/المشتريات/الجلسات
-// الخاصة بالمزرعة الأخرى.
 
 const COPY_FARM_KEEP_MAIN = new Set([
 
@@ -2897,7 +3427,7 @@ const COPY_FARM_KEEP_MAIN = new Set([
 ]);
 
 // ============================================================
-// COPY FARM XML TOP LEVEL PARSER
+// COPY FARM XML PARSER
 // ============================================================
 
 function copyFarmGetTagName(
@@ -2960,7 +3490,7 @@ function copyFarmFindTopLevelSections(
     if (!rootMatch) {
 
         throw new Error(
-            "COPY FARM: root XML غير موجود"
+            "COPY FARM: root XML missing"
         );
     }
 
@@ -2978,7 +3508,7 @@ function copyFarmFindTopLevelSections(
     ) {
 
         throw new Error(
-            "COPY FARM: </root> غير موجود"
+            "COPY FARM: </root> missing"
         );
     }
 
@@ -3001,7 +3531,9 @@ function copyFarmFindTopLevelSections(
 
     while (
         (match =
-            tokenRegex.exec(body)) !== null
+            tokenRegex.exec(
+                body
+            )) !== null
     ) {
 
         const token =
@@ -3086,7 +3618,6 @@ function copyFarmFindTopLevelSections(
             if (
                 !name
             ) {
-
                 continue;
             }
 
@@ -3138,7 +3669,7 @@ function copyFarmFindTopLevelSections(
 }
 
 // ============================================================
-// FIND TOP LEVEL SECTION
+// FIND SECTION
 // ============================================================
 
 function copyFarmFindSection(
@@ -3168,7 +3699,7 @@ function copyFarmFindSection(
 }
 
 // ============================================================
-// REPLACE TOP LEVEL SECTION
+// REPLACE SECTION
 // ============================================================
 
 function copyFarmReplaceSection(
@@ -3209,7 +3740,7 @@ function copyFarmReplaceSection(
     ) {
 
         throw new Error(
-            "COPY FARM: root end غير موجود أثناء الإضافة"
+            "COPY FARM: root end missing"
         );
     }
 
@@ -3389,7 +3920,7 @@ function decodeSaveWithLayers(
             ) {
 
                 throw new Error(
-                    "COPY FARM: 0x79 layer قصيرة"
+                    "COPY FARM: 0x79 layer too short"
                 );
             }
 
@@ -3461,17 +3992,15 @@ function decodeSaveWithLayers(
             ) {
 
                 throw new Error(
-                    "COPY FARM: 0x54 layer قصيرة"
+                    "COPY FARM: 0x54 layer too short"
                 );
             }
 
             const processLen =
                 (
                     (
-                        (
-                            data[1] ^
-                            FETCH54_TABLE[0]
-                        ) & 0xff
+                        data[1] ^
+                        FETCH54_TABLE[0]
                     ) |
                     (
                         data[2] << 8
@@ -3517,7 +4046,7 @@ function decodeSaveWithLayers(
         }
 
         throw new Error(
-            `COPY FARM: layer غير معروف. magic=${bufferMagic(data)}`
+            `COPY FARM: unknown layer magic=${bufferMagic(data)}`
         );
     }
 
@@ -3540,7 +4069,7 @@ function decodeSaveWithLayers(
     }
 
     throw new Error(
-        `COPY FARM: لم يتم الوصول إلى XML. magic=${bufferMagic(data)}`
+        `COPY FARM: failed to reach XML. magic=${bufferMagic(data)}`
     );
 }
 
@@ -3584,11 +4113,10 @@ function encode79Layer(
 
     const encodedPayload =
         Buffer.from(
-            decoded
-                .subarray(
-                    0,
-                    actualLen
-                )
+            decoded.subarray(
+                0,
+                actualLen
+            )
         );
 
     if (
@@ -3603,7 +4131,6 @@ function encode79Layer(
 
         for (
             let i = 1;
-            i < decoded.length &&
             i < actualLen;
             i++
         ) {
@@ -3613,8 +4140,7 @@ function encode79Layer(
                     (
                         decoded[i] ^
                         table[
-                            i %
-                            TABLE_SIZE
+                            i % TABLE_SIZE
                         ]
                     ) +
                     decoded[i - 1]
@@ -3767,7 +4293,7 @@ function encode54Layer(
 }
 
 // ============================================================
-// XXHASH32 FOR LZ4 HEADER
+// XXHASH32
 // ============================================================
 
 function xxhash32(
@@ -3849,8 +4375,7 @@ function xxhash32(
                         v1 +
                         Math.imul(
                             input.readUInt32LE(
-                                p,
-                                true
+                                p
                             ),
                             PRIME2
                         )
@@ -3936,16 +4461,13 @@ function xxhash32(
         h =
             (
                 (
-                    (
-                        (v1 << 1) |
-                        (v1 >>> 31)
-                    ) +
-                    (
-                        (v2 << 7) |
-                        (v2 >>> 25)
-                    )
-                ) ^
-                0
+                    (v1 << 1) |
+                    (v1 >>> 31)
+                ) +
+                (
+                    (v2 << 7) |
+                    (v2 >>> 25)
+                )
             ) >>> 0;
 
         h =
@@ -4087,10 +4609,10 @@ function encodeLz4Uncompressed(
     const length =
         decoded.length;
 
-    let literalLength =
+    const literalLength =
         length;
 
-    let token =
+    const token =
         Math.min(
             literalLength,
             15
@@ -4259,9 +4781,7 @@ function encodeSaveWithLayers(
                 data =
                     encode54Layer(
                         data,
-                        layer.processLen == null
-                            ? data.length
-                            : data.length
+                        data.length
                     );
 
                 break;
@@ -4269,13 +4789,13 @@ function encodeSaveWithLayers(
             case "raw-1f":
 
                 throw new Error(
-                    "COPY FARM: لا يمكن إعادة ترميز raw-1f تلقائيًا"
+                    "COPY FARM: raw-1f cannot be re-encoded automatically"
                 );
 
             default:
 
                 throw new Error(
-                    `COPY FARM: layer encoder غير معروف: ${layer.type}`
+                    `COPY FARM: unknown encoder ${layer.type}`
                 );
         }
     }
@@ -4284,7 +4804,7 @@ function encodeSaveWithLayers(
 }
 
 // ============================================================
-// FIND FETCHCITY DATA
+// FETCH FRIEND CITY XML
 // ============================================================
 
 async function fetchFriendCityXml(
@@ -4306,7 +4826,7 @@ async function fetchFriendCityXml(
     ) {
 
         throw new Error(
-            "COPY FARM: FetchCity لم يرجع result.data"
+            "COPY FARM: FetchCity did not return result.data"
         );
     }
 
@@ -4336,7 +4856,7 @@ async function fetchFriendCityXml(
 }
 
 // ============================================================
-// COPY FARM INFO API
+// COPY FARM INFO
 // ============================================================
 
 async function handleCopyFarmInfo(
@@ -4363,7 +4883,7 @@ async function handleCopyFarmInfo(
                         false,
 
                     error:
-                        "COPY FARM INFO: أرسل ملف الأصدقاء بصيغة application/octet-stream"
+                        "COPY FARM INFO: send friend file as application/octet-stream"
                 });
         }
 
@@ -4379,7 +4899,7 @@ async function handleCopyFarmInfo(
                         false,
 
                     error:
-                        "COPY FARM INFO: الملف فارغ"
+                        "COPY FARM INFO: file is empty"
                 });
         }
 
@@ -4498,7 +5018,7 @@ async function handleCopyFarmInfo(
 }
 
 // ============================================================
-// COPY FARM API
+// COPY FARM
 // ============================================================
 
 async function handleCopyFarm(
@@ -4520,7 +5040,7 @@ async function handleCopyFarm(
             return res
                 .status(400)
                 .send(
-                    "COPY FARM: أرسل الحفظ الرئيسي بصيغة application/octet-stream"
+                    "COPY FARM: send main save as application/octet-stream"
                 );
         }
 
@@ -4531,7 +5051,7 @@ async function handleCopyFarm(
             return res
                 .status(400)
                 .send(
-                    "COPY FARM: الحفظ الرئيسي فارغ"
+                    "COPY FARM: main save is empty"
                 );
         }
 
@@ -4561,7 +5081,7 @@ async function handleCopyFarm(
             return res
                 .status(400)
                 .send(
-                    "COPY FARM: x-city-id مفقود"
+                    "COPY FARM: x-city-id missing"
                 );
         }
 
@@ -4575,7 +5095,7 @@ async function handleCopyFarm(
             return res
                 .status(400)
                 .send(
-                    "COPY FARM: x-city-ver غير صالح"
+                    "COPY FARM: x-city-ver invalid"
                 );
         }
 
@@ -4636,7 +5156,7 @@ async function handleCopyFarm(
         );
 
         // ====================================================
-        // BASIC VALIDATION
+        // VALIDATION
         // ====================================================
 
         if (
@@ -4646,7 +5166,7 @@ async function handleCopyFarm(
         ) {
 
             throw new Error(
-                "COPY FARM: الحفظ الرئيسي ليس XML صالحًا"
+                "COPY FARM: main save is not valid XML"
             );
         }
 
@@ -4657,7 +5177,7 @@ async function handleCopyFarm(
         ) {
 
             throw new Error(
-                "COPY FARM: حفظ الصديق ليس XML صالحًا"
+                "COPY FARM: friend save is not valid XML"
             );
         }
 
@@ -4676,7 +5196,7 @@ async function handleCopyFarm(
         );
 
         // ====================================================
-        // KEEP MAIN ACCOUNT IDENTIFIERS
+        // KEEP MAIN IDENTIFIERS
         // ====================================================
 
         let finalXml =
@@ -4692,7 +5212,7 @@ async function handleCopyFarm(
             );
 
         // ====================================================
-        // RE-ENCODE USING MAIN SAVE LAYERS
+        // RE-ENCODE
         // ====================================================
 
         const encoded =
@@ -4708,10 +5228,6 @@ async function handleCopyFarm(
         console.log(
             `[CopyFarm] final magic=${bufferMagic(encoded)}`
         );
-
-        // ====================================================
-        // RESPONSE
-        // ====================================================
 
         res.status(
             200
@@ -4776,21 +5292,21 @@ router.post(
 router.post(
     "/decode-friends",
     express.raw({
-        type: "application/octet-stream",
-        limit: "50mb"
+        type:
+            "application/octet-stream",
+        limit:
+            "50mb"
     }),
     handleDecodeFriends
 );
 
-// ============================================================
-// NEW COPY FARM ROUTES
-// ============================================================
-
 router.post(
     "/copy-farm-info",
     express.raw({
-        type: "application/octet-stream",
-        limit: "50mb"
+        type:
+            "application/octet-stream",
+        limit:
+            "50mb"
     }),
     handleCopyFarmInfo
 );
@@ -4798,11 +5314,17 @@ router.post(
 router.post(
     "/copy-farm",
     express.raw({
-        type: "application/octet-stream",
-        limit: "100mb"
+        type:
+            "application/octet-stream",
+        limit:
+            "100mb"
     }),
     handleCopyFarm
 );
+
+// ============================================================
+// MODULE
+// ============================================================
 
 console.log(
     "[FetchCity] module loaded"
@@ -4816,4 +5338,5 @@ console.log(
     "[CopyFarm] /copy-farm loaded"
 );
 
-module.exports = router;
+module.exports =
+    router;
