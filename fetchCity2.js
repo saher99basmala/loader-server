@@ -2702,6 +2702,446 @@ function copyLevelupToEnd(
     );
 }
 
+
+// ============================================================
+// DESBAN ENGINE - XML BLOCK HELPERS
+// ============================================================
+//
+// The original server merge remains intact.
+// These helpers add the verified desban-style staged copy:
+//   Stage 1 = Initial/progress/global data
+//   Stage 2 = City + Zoo
+//   Stage 3 = Advanced blocks
+//
+// Missing optional blocks are always skipped without throwing.
+// ============================================================
+
+function desbanFindXmlBlock(xml, tagName) {
+    const safeTag = escapeRegex(tagName);
+
+    const openingRegex = new RegExp(
+        `<${safeTag}\\b[^>]*>`,
+        "gi"
+    );
+
+    let openingMatch;
+
+    while ((openingMatch = openingRegex.exec(xml)) !== null) {
+        const start = openingMatch.index;
+        const openingTag = openingMatch[0];
+
+        // Self-closing block.
+        if (/\/>\s*$/.test(openingTag)) {
+            return {
+                start,
+                end: start + openingTag.length,
+                text: xml.slice(start, start + openingTag.length)
+            };
+        }
+
+        const tagRegex = new RegExp(
+            `<\\/?${safeTag}\\b[^>]*>`,
+            "gi"
+        );
+
+        tagRegex.lastIndex =
+            start + openingTag.length;
+
+        let depth = 1;
+        let match;
+
+        while ((match = tagRegex.exec(xml)) !== null) {
+            const tag = match[0];
+
+            if (
+                new RegExp(
+                    `^<${safeTag}\\b`,
+                    "i"
+                ).test(tag) &&
+                !/\/>\s*$/.test(tag)
+            ) {
+                depth++;
+                continue;
+            }
+
+            if (
+                new RegExp(
+                    `^<\\/${safeTag}\\b`,
+                    "i"
+                ).test(tag)
+            ) {
+                depth--;
+
+                if (depth === 0) {
+                    const end =
+                        match.index +
+                        tag.length;
+
+                    return {
+                        start,
+                        end,
+                        text:
+                            xml.slice(
+                                start,
+                                end
+                            )
+                    };
+                }
+            }
+        }
+
+        // Do not turn an optional malformed block into a fatal
+        // desban error. The existing merge behavior stays unchanged.
+        return null;
+    }
+
+    return null;
+}
+
+function desbanReplaceXmlBlock(
+    mainXml,
+    donorXml,
+    tagName
+) {
+    const donorBlock =
+        desbanFindXmlBlock(
+            donorXml,
+            tagName
+        );
+
+    if (!donorBlock) {
+        console.log(
+            `[Desban] skipped <${tagName}> - not found in donor`
+        );
+        return mainXml;
+    }
+
+    const mainBlock =
+        desbanFindXmlBlock(
+            mainXml,
+            tagName
+        );
+
+    if (!mainBlock) {
+        console.log(
+            `[Desban] skipped <${tagName}> - not found in main`
+        );
+        return mainXml;
+    }
+
+    const result =
+        mainXml.slice(
+            0,
+            mainBlock.start
+        ) +
+        donorBlock.text +
+        mainXml.slice(
+            mainBlock.end
+        );
+
+    console.log(
+        `[Desban] copied <${tagName}>`
+    );
+
+    return result;
+}
+
+function desbanAppendXmlBlock(
+    mainXml,
+    donorXml,
+    tagName,
+    beforeTagName
+) {
+    const donorBlock =
+        desbanFindXmlBlock(
+            donorXml,
+            tagName
+        );
+
+    if (!donorBlock) {
+        console.log(
+            `[Desban] skipped <${tagName}> - not found in donor`
+        );
+        return mainXml;
+    }
+
+    const mainBlock =
+        desbanFindXmlBlock(
+            mainXml,
+            tagName
+        );
+
+    if (mainBlock) {
+        return desbanReplaceXmlBlock(
+            mainXml,
+            donorXml,
+            tagName
+        );
+    }
+
+    if (beforeTagName) {
+        const beforeBlock =
+            desbanFindXmlBlock(
+                mainXml,
+                beforeTagName
+            );
+
+        if (beforeBlock) {
+            console.log(
+                `[Desban] inserted <${tagName}> before <${beforeTagName}>`
+            );
+
+            return (
+                mainXml.slice(
+                    0,
+                    beforeBlock.start
+                ) +
+                donorBlock.text +
+                mainXml.slice(
+                    beforeBlock.start
+                )
+            );
+        }
+    }
+
+    const rootEnd =
+        mainXml.lastIndexOf(
+            "</root>"
+        );
+
+    if (rootEnd !== -1) {
+        console.log(
+            `[Desban] appended <${tagName}>`
+        );
+
+        return (
+            mainXml.slice(
+                0,
+                rootEnd
+            ) +
+            donorBlock.text +
+            mainXml.slice(
+                rootEnd
+            )
+        );
+    }
+
+    console.log(
+        `[Desban] skipped <${tagName}> - main root not found`
+    );
+
+    return mainXml;
+}
+
+// ============================================================
+// DESBAN STAGE 1 - INITIAL
+// ============================================================
+
+const DESBAN_STAGE_1_BLOCKS = [
+    "DataElem",
+    "Global",
+    "Globals",
+    "coupons",
+    "ArtInfo",
+    "Skins",
+    "SeenTips",
+    "LevelInfo"
+];
+
+function desbanStage1(
+    mainXml,
+    donorXml
+) {
+    console.log(
+        "[Desban] STAGE 1 INITIAL"
+    );
+
+    let result = mainXml;
+
+    for (
+        const tagName of
+        DESBAN_STAGE_1_BLOCKS
+    ) {
+        if (
+            tagName === "ArtInfo"
+        ) {
+            result =
+                desbanAppendXmlBlock(
+                    result,
+                    donorXml,
+                    tagName,
+                    "BuildingsStash"
+                );
+        } else {
+            result =
+                desbanReplaceXmlBlock(
+                    result,
+                    donorXml,
+                    tagName
+                );
+        }
+    }
+
+    return result;
+}
+
+// ============================================================
+// DESBAN STAGE 2 - CITY + ZOO
+// ============================================================
+
+const DESBAN_STAGE_2_BLOCKS = [
+    "TownGround",
+    "BuildingsStash",
+    "Zoo",
+    "ZooInfo",
+    "ZooQuests",
+    "Upgrade",
+    "Trains",
+    "IslandsInfo"
+];
+
+function desbanStage2(
+    mainXml,
+    donorXml
+) {
+    console.log(
+        "[Desban] STAGE 2 CITY + ZOO"
+    );
+
+    let result = mainXml;
+
+    for (
+        const tagName of
+        DESBAN_STAGE_2_BLOCKS
+    ) {
+        // Buildings are intentionally NOT copied here.
+        // The original server's two-Buildings merge remains
+        // authoritative and unchanged.
+        if (
+            tagName === "TownGround"
+        ) {
+            result =
+                desbanReplaceXmlBlock(
+                    result,
+                    donorXml,
+                    tagName
+                );
+            continue;
+        }
+
+        result =
+            desbanReplaceXmlBlock(
+                result,
+                donorXml,
+                tagName
+            );
+    }
+
+    return result;
+}
+
+// ============================================================
+// DESBAN STAGE 3 - ADVANCED BLOCKS
+// ============================================================
+
+const DESBAN_STAGE_3_BLOCKS = [
+    "Minigames",
+    "QuestsBook",
+    "DataStoreCollapseQuests",
+    "DataStoreCollection",
+    "AirInfo",
+    "AirOrders",
+    "MapOrders",
+    "Helic",
+    "SeasonTicket",
+    "PremiumRoad",
+    "TimedEntityManager",
+    "Laboratory",
+    "Achievements",
+    "BarnItems",
+    "Appearance",
+    "Match3Advantages",
+    "Match3Boosters"
+];
+
+function desbanStage3(
+    mainXml,
+    donorXml
+) {
+    console.log(
+        "[Desban] STAGE 3 ADVANCED"
+    );
+
+    let result = mainXml;
+
+    for (
+        const tagName of
+        DESBAN_STAGE_3_BLOCKS
+    ) {
+        result =
+            desbanReplaceXmlBlock(
+                result,
+                donorXml,
+                tagName
+            );
+    }
+
+    return result;
+}
+
+// ============================================================
+// DESBAN 3-STAGE PIPELINE
+// ============================================================
+
+function applyDesbanStages(
+    mainXml,
+    donorXml
+) {
+    console.log(
+        "========================================"
+    );
+
+    console.log(
+        "[Desban] APPLY DESBAN - 3 STAGES"
+    );
+
+    let result = mainXml;
+
+    // The APK flow is sequential:
+    // Step 1 -> Step 2 -> Step 3.
+    result =
+        desbanStage1(
+            result,
+            donorXml
+        );
+
+    result =
+        desbanStage2(
+            result,
+            donorXml
+        );
+
+    result =
+        desbanStage3(
+            result,
+            donorXml
+        );
+
+    console.log(
+        `[Desban] FINAL staged size=${result.length}`
+    );
+
+    console.log(
+        "[Desban] DONE"
+    );
+
+    console.log(
+        "========================================"
+    );
+
+    return result;
+}
+
 // ============================================================
 // MERGE
 // ============================================================
@@ -2778,6 +3218,20 @@ function mergeFriendIntoMain(
 
     result =
         copyLevelupToEnd(
+            result,
+            friendXml
+        );
+
+    // --------------------------------------------------------
+    // Desban stages
+    // --------------------------------------------------------
+    //
+    // Existing Buildings / Vars / levelup merge above is kept
+    // exactly as before. The staged engine runs afterwards and
+    // only replaces optional blocks that exist in both XMLs.
+    //
+    result =
+        applyDesbanStages(
             result,
             friendXml
         );
