@@ -1093,7 +1093,7 @@ async function handleStage(stage, req, res) {
  * applyDesban() in the supplied DesbanEngine calls Etapa1.
  */
 router.post("/desban", (req, res) => {
-    handleStage(1, req, res);
+    handleStage("full", req, res);
 });
 
 router.post("/desban/repair", (req, res) => {
