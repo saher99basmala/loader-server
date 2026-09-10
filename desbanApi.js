@@ -202,51 +202,45 @@ function logSkip(message) {
     console.log(`[Desban] SKIP: ${message}`);
 }
 
-function extractTagBlock(xml, tagName) {
+function findFirstBodyBlock(xml, tagName) {
     if (!xml) return null;
-
-    const name = escapeRegExp(tagName);
-
-    // Same general strategy as DesbanEngine: normal block first,
-    // then self-closing block.
-    const normal = new RegExp(
-        `<${name}\\b[^>]*>[\\s\\S]*?<\\/${name}\\s*>`,
-        "i"
-    );
-
-    const selfClosing = new RegExp(
-        `<${name}\\b[^>]*/\\s*>`,
-        "i"
-    );
-
-    const m1 = normal.exec(xml);
-    if (m1) return m1[0];
-
-    const m2 = selfClosing.exec(xml);
-    if (m2) return m2[0];
-
+    const openRe = new RegExp(`<${escapeRegExp(tagName)}\\b[^>]*>`, "ig");
+    let om;
+    while ((om = openRe.exec(xml)) !== null) {
+        if (/\/\s*>$/.test(om[0])) continue; // self-closing is not a body block
+        const closeRe = new RegExp(`</${escapeRegExp(tagName)}\\s*>`, "i");
+        const tail = xml.slice(om.index + om[0].length);
+        const cm = closeRe.exec(tail);
+        if (!cm) continue;
+        const end = om.index + om[0].length + cm.index + cm[0].length;
+        return { start: om.index, end, text: xml.slice(om.index, end) };
+    }
     return null;
 }
 
+function findFirstSelfClosing(xml, tagName) {
+    if (!xml) return null;
+    const re = new RegExp(`<${escapeRegExp(tagName)}\\b[^>]*/\\s*>`, "i");
+    const m = re.exec(xml);
+    return m ? { start: m.index, end: m.index + m[0].length, text: m[0] } : null;
+}
+
+function extractTagBlock(xml, tagName) {
+    const body = findFirstBodyBlock(xml, tagName);
+    if (body) return body.text;
+    const self = findFirstSelfClosing(xml, tagName);
+    return self ? self.text : null;
+}
+
 function replaceFirstTagBlock(target, tagName, replacement) {
-    const name = escapeRegExp(tagName);
-
-    const normal = new RegExp(
-        `<${name}\\b[^>]*>[\\s\\S]*?<\\/${name}\\s*>`,
-        "i"
-    );
-
-    if (normal.test(target)) {
-        return target.replace(normal, () => replacement);
+    const body = findFirstBodyBlock(target, tagName);
+    if (body) {
+        return target.slice(0, body.start) + replacement + target.slice(body.end);
     }
 
-    const selfClosing = new RegExp(
-        `<${name}\\b[^>]*/\\s*>`,
-        "i"
-    );
-
-    if (selfClosing.test(target)) {
-        return target.replace(selfClosing, () => replacement);
+    const self = findFirstSelfClosing(target, tagName);
+    if (self) {
+        return target.slice(0, self.start) + replacement + target.slice(self.end);
     }
 
     return null;
@@ -303,7 +297,7 @@ function findVar(xml, name) {
     if (!xml) return null;
 
     const pattern = new RegExp(
-        `<Var\\s+name="${escapeRegExp(name)}"\\b[^>]*/\\s*>`,
+        `<Var\\s+name="${escapeRegExp(name)}"[^>]*/\\s*>`,
         "i"
     );
 
@@ -333,7 +327,7 @@ function upsertVar(xml, name, value, type = "i", stats = null) {
         `<Var name="${name}" v="${String(value).replace(/"/g, "&quot;")}" t="${type}"/>`;
 
     const pattern = new RegExp(
-        `<Var\\s+name="${safeName}"\\b[^>]*/\\s*>`,
+        `<Var\\s+name="${safeName}"[^>]*/\\s*>`,
         "i"
     );
 
@@ -368,7 +362,7 @@ function copyVar(src, target, name, stats) {
     }
 
     const pattern = new RegExp(
-        `<Var\\s+name="${escapeRegExp(name)}"\\b[^>]*/\\s*>`,
+        `<Var\\s+name="${escapeRegExp(name)}"[^>]*/\\s*>`,
         "i"
     );
 
@@ -396,149 +390,6 @@ function copyVar(src, target, name, stats) {
 
 function cloneUpgradeBlock(src, target, stats) {
     return cloneBlock(src, target, "Upgrade", stats);
-}
-
-// ============================================================
-// Base merge used by the original fetch/merge flow
-// ============================================================
-
-const BASE_COPY_VARS = [
-    "chatEmojis",
-    "unlockAllAvatars",
-    "unlockAllCards",
-    "unlockedExpRanks",
-    "unlockedStyles",
-    "unlockedFrames",
-    "regataTasksCompleted",
-    "m3CompLvls",
-    "livesSent",
-    "fullCardCollections",
-    "firstAttemptM3Levels",
-    "townName",
-    "achievementTeamwork"
-];
-
-function findCompleteBlockAt(xml, tagName, from = 0) {
-    const safe = escapeRegExp(tagName);
-    const openRe = new RegExp(`<${safe}\\b[^>]*>`, "gi");
-    openRe.lastIndex = from;
-    const m = openRe.exec(xml);
-    if (!m) return null;
-
-    const start = m.index;
-    if (/\/\s*>$/.test(m[0])) {
-        return { start, end: start + m[0].length, text: m[0] };
-    }
-
-    const tagRe = new RegExp(`<\\/?${safe}\\b[^>]*>`, "gi");
-    tagRe.lastIndex = start + m[0].length;
-    let depth = 1;
-    let x;
-    while ((x = tagRe.exec(xml)) !== null) {
-        if (new RegExp(`^<${safe}\\b`, "i").test(x[0]) && !/\/\s*>$/.test(x[0])) {
-            depth++;
-        } else if (new RegExp(`^</${safe}\\b`, "i").test(x[0])) {
-            depth--;
-            if (depth === 0) {
-                const end = x.index + x[0].length;
-                return { start, end, text: xml.slice(start, end) };
-            }
-        }
-    }
-    return null;
-}
-
-function findBuildingsSections(xml) {
-    const sections = [];
-    let from = 0;
-
-    while (true) {
-        const marker = "</TownGround><Buildings><Object";
-        const markerPos = xml.indexOf(marker, from);
-        if (markerPos < 0) break;
-
-        const b = findCompleteBlockAt(xml, "Buildings", markerPos + "</TownGround>".length);
-        if (!b) break;
-
-        sections.push(b);
-        from = b.end;
-    }
-
-    // Fallback for formatting/spacing differences.
-    if (sections.length === 0) {
-        let pos = 0;
-        while (true) {
-            const b = findCompleteBlockAt(xml, "Buildings", pos);
-            if (!b) break;
-            sections.push(b);
-            pos = b.end;
-        }
-    }
-
-    return sections;
-}
-
-function replaceSectionsByPosition(target, targetSections, sourceSections, stats) {
-    const count = Math.min(targetSections.length, sourceSections.length);
-
-    for (let i = count - 1; i >= 0; i--) {
-        target =
-            target.slice(0, targetSections[i].start) +
-            sourceSections[i].text +
-            target.slice(targetSections[i].end);
-        stats.replaced.push(`Buildings#${i + 1}`);
-    }
-
-    return target;
-}
-
-function copyBothBuildingsSections(src, target, stats) {
-    const srcSections = findBuildingsSections(src);
-    const tgtSections = findBuildingsSections(target);
-
-    if (!srcSections.length || !tgtSections.length) {
-        logSkip(`Buildings: source=${srcSections.length}, target=${tgtSections.length}`);
-        stats.skipped.push("Buildings");
-        return target;
-    }
-
-    if (srcSections.length !== tgtSections.length) {
-        logSkip(`Buildings: عدد الأقسام مختلف source=${srcSections.length}, target=${tgtSections.length}`);
-    }
-
-    return replaceSectionsByPosition(target, tgtSections, srcSections, stats);
-}
-
-function copyNamedBaseVars(src, target, stats) {
-    for (const name of BASE_COPY_VARS) {
-        target = copyVar(src, target, name, stats);
-    }
-    return target;
-}
-
-function copyLevelupTail(src, target, stats) {
-    const levelRe = /<Var\b[^>]*\bname\s*=\s*["']levelup["'][^>]*\/?>(?:\s*)/i;
-    const sm = levelRe.exec(src);
-    const tm = levelRe.exec(target);
-
-    if (!sm || !tm) {
-        logSkip(`levelup tail: source=${!!sm}, target=${!!tm}`);
-        stats.skipped.push("levelup-tail");
-        return target;
-    }
-
-    // This intentionally mirrors the existing fetch/merge flow:
-    // keep target before levelup, then append source from levelup onward.
-    target = target.slice(0, tm.index) + src.slice(sm.index);
-    stats.replaced.push("levelup-tail");
-    return target;
-}
-
-function applyBaseMerge(src, target, stats) {
-    target = copyBothBuildingsSections(src, target, stats);
-    target = copyNamedBaseVars(src, target, stats);
-    target = copyLevelupTail(src, target, stats);
-    return target;
 }
 
 // ============================================================
@@ -602,32 +453,112 @@ function applyEtapa1(myXml, friendXml, stats) {
 // Etapa 2
 // ============================================================
 
+function extractUserId(xml) {
+    const m = /<Object\b[^>]*\buser="([^"]+)"/i.exec(xml || "");
+    return m ? m[1] : "";
+}
+
+function positionAfterFirstClosing(xml, tagName) {
+    if (!xml) return -1;
+    const close = new RegExp(`</${escapeRegExp(tagName)}\\s*>`, "i");
+    const m = close.exec(xml);
+    return m ? m.index + m[0].length : -1;
+}
+
+function extractBlockAfter(xml, tagName, fromPos) {
+    if (!xml || fromPos < 0) return null;
+
+    // CloneEngine searches from fromPos, then takes the first matching
+    // opening tag and the first matching closing tag after it.
+    const tail = xml.slice(fromPos);
+    const open = new RegExp(`<${escapeRegExp(tagName)}\\b[^>]*>`, "i");
+    const om = open.exec(tail);
+    if (!om) return null;
+
+    const close = new RegExp(`</${escapeRegExp(tagName)}\\s*>`, "i");
+    const cm = close.exec(tail.slice(om.index + om[0].length));
+    if (!cm) return null;
+
+    const start = fromPos + om.index;
+    const end = fromPos + om.index + om[0].length + cm.index + cm[0].length;
+    return { start, end, text: xml.slice(start, end) };
+}
+
 function cloneTownAndBuildings(src, target, stats) {
-    /*
-     * CloneEngine.cloneDecoration is not part of the supplied
-     * DesbanEngine artifact. Therefore we reproduce the visible
-     * XML responsibility conservatively:
-     *   - TownGround
-     *   - Buildings
-     *
-     * The original call uses all cloneDecoration boolean options
-     * as false. We do not invent transformations that are not
-     * supported by the supplied class.
-     */
-    for (const tag of ["TownGround", "Buildings"]) {
-        const before = stats.replaced.length + stats.inserted.length;
+    // This mirrors the city branch of CloneEngine.cloneDecoration
+    // used by DesbanEngine with all CloneOptions set to false.
+    const srcAfterZoo = positionAfterFirstClosing(src, "Zoo");
+    const tgtAfterZoo = positionAfterFirstClosing(target, "Zoo");
 
-        target = cloneBlock(src, target, tag, stats);
-
-        if (
-            before === stats.replaced.length + stats.inserted.length &&
-            !stats.skipped.includes(tag)
-        ) {
-            stats.skipped.push(tag);
-        }
+    if (srcAfterZoo < 0 || tgtAfterZoo < 0) {
+        logSkip("TownGround+Buildings: Zoo غير موجود");
+        stats.skipped.push("TownGround+Buildings");
+        return target;
     }
 
-    return target;
+    const srcTg = extractBlockAfter(src, "TownGround", srcAfterZoo);
+    if (!srcTg) {
+        logSkip("TownGround+Buildings: المصدر لا يحتوي TownGround بعد Zoo");
+        stats.skipped.push("TownGround+Buildings");
+        return target;
+    }
+
+    const srcBld = extractBlockAfter(src, "Buildings", srcTg.start);
+    if (!srcBld) {
+        logSkip("TownGround+Buildings: المصدر لا يحتوي Buildings");
+        stats.skipped.push("TownGround+Buildings");
+        return target;
+    }
+
+    const bldInsideTownGround =
+        srcBld.start >= srcTg.start && srcBld.end <= srcTg.end;
+
+    let srcTown = srcTg.text;
+    let srcBuildings = srcBld.text;
+
+    const srcUser = extractUserId(src);
+    const tgtUser = extractUserId(target);
+
+    if (srcUser && tgtUser && srcUser !== tgtUser) {
+        const userRe = new RegExp(`user="${escapeRegExp(srcUser)}"`, "g");
+        srcTown = srcTown.replace(userRe, `user="${tgtUser}"`);
+        srcBuildings = srcBuildings.replace(userRe, `user="${tgtUser}"`);
+    }
+
+    const tgtTg = extractBlockAfter(target, "TownGround", tgtAfterZoo);
+    if (!tgtTg) {
+        logSkip("TownGround+Buildings: الهدف لا يحتوي TownGround بعد Zoo");
+        stats.skipped.push("TownGround+Buildings");
+        return target;
+    }
+
+    if (bldInsideTownGround) {
+        const before = target.slice(0, tgtTg.start);
+        const after = target.slice(tgtTg.end);
+        stats.replaced.push("TownGround");
+        stats.replaced.push("Buildings");
+        return before + srcTown + after;
+    }
+
+    const tgtBld = extractBlockAfter(target, "Buildings", tgtTg.end);
+
+    if (!tgtBld) {
+        const before = target.slice(0, tgtTg.start);
+        const after = target.slice(tgtTg.end);
+        stats.inserted.push("Buildings");
+        stats.replaced.push("TownGround");
+        return before + srcTown + "\n" + srcBuildings + after;
+    }
+
+    let out = target;
+
+    // Replace from the right-hand side first so indexes remain valid.
+    out = out.slice(0, tgtBld.start) + srcBuildings + out.slice(tgtBld.end);
+    out = out.slice(0, tgtTg.start) + srcTown + out.slice(tgtTg.end);
+
+    stats.replaced.push("TownGround");
+    stats.replaced.push("Buildings");
+    return out;
 }
 
 function cloneGlobalVarsECoupons(src, target, stats) {
@@ -705,7 +636,7 @@ function cloneGlobalBlock(src, target, stats) {
         }
 
         const p = new RegExp(
-            `<Var\\s+name="${escapeRegExp(name)}"\\b[^>]*/\\s*>`,
+            `<Var\\s+name="${escapeRegExp(name)}"[^>]*/\\s*>`,
             "i"
         );
 
@@ -871,7 +802,7 @@ function processUnlockAchievements(xml, stats) {
             `<Var name="${name}" v="4" t="i"/>`;
 
         const pattern = new RegExp(
-            `<Var\\s+name="${escapeRegExp(name)}"\\b[^>]*/\\s*>`,
+            `<Var\\s+name="${escapeRegExp(name)}"[^>]*/\\s*>`,
             "i"
         );
 
@@ -963,14 +894,26 @@ function runStage(stage, myXml, friendXml) {
     } else if (stage === 3) {
         result = applyEtapa3(result, friendXml, stats);
     } else if (stage === "full") {
-        // The full merge follows the existing fetch/merge flow first:
-        // both Buildings sections + named Vars + everything from levelup onward.
-        result = applyBaseMerge(friendXml, result, stats);
-
-        // Then apply the DesbanEngine stages on top of that merged XML.
+        // Safe full pipeline: only operations that are either directly
+        // visible in DesbanEngine or implemented from its exact helper
+        // structure are enabled here. The previous broad/generic merges
+        // are deliberately NOT used.
         result = applyEtapa1(result, friendXml, stats);
         result = applyEtapa2(result, friendXml, stats);
-        result = applyEtapa3(result, friendXml, stats);
+
+        // Stage 3: clone only the explicit blocks named by DesbanEngine.
+        result = cloneArtInfo(friendXml, result, stats);
+        for (const tag of CLONE_BLOCKS_ETAPA3) {
+            result = cloneBlock(friendXml, result, tag, stats);
+        }
+        result = cloneUpgradeBlock(friendXml, result, stats);
+        result = cloneAirInfoAndOrders(friendXml, result, stats);
+        result = cloneDailyBonus(friendXml, result, stats);
+        result = cloneGlobalBlock(friendXml, result, stats);
+
+        // Do NOT run the old heuristic implementations of BarnItems,
+        // Match3, quantity variables, or achievement counters here.
+        // Those heuristics could copy unrelated donor state.
     } else {
         throw new Error("مرحلة غير معروفة");
     }
