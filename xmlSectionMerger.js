@@ -5,6 +5,11 @@ const path = require('path');
 
 const TARGET_FILE = path.join(__dirname, 'BS32.xml');
 
+
+// ============================================================
+// الأقسام التي يتم استبدالها بالكامل من المصدر
+// ============================================================
+
 const SECTION_TAGS = [
     'TownGround',
     'Buildings',
@@ -21,9 +26,14 @@ const SECTION_TAGS = [
     'MIGRATE_AVATAR_IDS'
 ];
 
+
+// ============================================================
+// المتغيرات التي يتم استبدالها بالكامل من المصدر
+// ============================================================
+
 const VAR_NAMES = [
     'NewChatEmoji',
-    'UnlockedChatEmoj',
+    'UnlockedChatEmoji',
     'levelup',
     'townName',
     'unlockAllCards',
@@ -36,157 +46,392 @@ const VAR_NAMES = [
     'unlockAllAvatars'
 ];
 
-const AVATAR_VAR_RE = /^(?:MigrateUnlocked_ava\d+|Unlocked_ava\d+)$/i;
+
+// ============================================================
+// جميع متغيرات الأفاتار
+// ============================================================
+
+const AVATAR_VAR_RE =
+    /^(?:MigrateUnlocked_ava\d+|Unlocked_ava\d+)$/i;
+
+
+// ============================================================
+// Escape RegExp
+// ============================================================
 
 function escapeRegExp(value) {
-    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return String(value).replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+    );
 }
+
+
+// ============================================================
+// البحث عن بداية Tag
+// ============================================================
 
 function findTagStart(xml, tag, fromIndex = 0) {
-    const re = new RegExp(`<${escapeRegExp(tag)}(?:\\s|>|/)`, 'ig');
+
+    const re = new RegExp(
+        `<${escapeRegExp(tag)}(?:\\s|>|/)`,
+        'ig'
+    );
+
     re.lastIndex = fromIndex;
+
     const match = re.exec(xml);
-    return match ? match.index : -1;
+
+    return match
+        ? match.index
+        : -1;
 }
 
+
+// ============================================================
+// إيجاد نهاية Tag
+// مع دعم علامات الاقتباس
+// ============================================================
+
 function findTagEnd(xml, start) {
+
     let quote = null;
 
-    for (let i = start; i < xml.length; i++) {
+    for (
+        let i = start;
+        i < xml.length;
+        i++
+    ) {
+
         const ch = xml[i];
 
         if (quote) {
-            if (ch === quote) quote = null;
+
+            if (ch === quote) {
+                quote = null;
+            }
+
             continue;
         }
 
-        if (ch === '"' || ch === "'") {
+        if (
+            ch === '"' ||
+            ch === "'"
+        ) {
+
             quote = ch;
+
             continue;
         }
 
-        if (ch === '>') return i;
+        if (ch === '>') {
+            return i;
+        }
     }
 
     return -1;
 }
 
-function extractTag(xml, tag, fromIndex = 0) {
-    const start = findTagStart(xml, tag, fromIndex);
-    if (start < 0) return null;
 
-    const openEnd = findTagEnd(xml, start);
-    if (openEnd < 0) return null;
+// ============================================================
+// استخراج Section كامل
+//
+// مثال:
+//
+// <Buildings>
+//     ...
+// </Buildings>
+//
+// يتم أخذ الجزء كاملًا كما هو من المصدر.
+// ============================================================
 
-    const opening = xml.slice(start, openEnd + 1);
+function extractTag(
+    xml,
+    tag,
+    fromIndex = 0
+) {
 
-    if (/\/\s*>$/.test(opening)) {
+    const start =
+        findTagStart(
+            xml,
+            tag,
+            fromIndex
+        );
+
+    if (start < 0) {
+        return null;
+    }
+
+    const openEnd =
+        findTagEnd(
+            xml,
+            start
+        );
+
+    if (openEnd < 0) {
+        return null;
+    }
+
+    const opening =
+        xml.slice(
+            start,
+            openEnd + 1
+        );
+
+
+    // --------------------------------------------------------
+    // Self Closing
+    // --------------------------------------------------------
+
+    if (
+        /\/\s*>$/.test(opening)
+    ) {
+
         return {
             tag,
             start,
             end: openEnd + 1,
-            text: xml.slice(start, openEnd + 1)
+            text: xml.slice(
+                start,
+                openEnd + 1
+            )
         };
     }
 
-    const tokenRe = new RegExp(
-        `<\\/?${escapeRegExp(tag)}(?:\\s|>|/)`,
-        'ig'
-    );
 
-    tokenRe.lastIndex = openEnd + 1;
+    // --------------------------------------------------------
+    // Block
+    // --------------------------------------------------------
+
+    const tokenRe =
+        new RegExp(
+            `<\\/?${escapeRegExp(tag)}(?:\\s|>|/)`,
+            'ig'
+        );
+
+    tokenRe.lastIndex =
+        openEnd + 1;
 
     let depth = 1;
     let match;
 
-    while ((match = tokenRe.exec(xml))) {
-        const tokenStart = match.index;
-        const tokenEnd = findTagEnd(xml, tokenStart);
-        if (tokenEnd < 0) return null;
+    while (
+        (match = tokenRe.exec(xml))
+    ) {
 
-        const token = xml.slice(tokenStart, tokenEnd + 1);
+        const tokenStart =
+            match.index;
 
-        if (/^<\//.test(token)) {
+        const tokenEnd =
+            findTagEnd(
+                xml,
+                tokenStart
+            );
+
+        if (tokenEnd < 0) {
+            return null;
+        }
+
+        const token =
+            xml.slice(
+                tokenStart,
+                tokenEnd + 1
+            );
+
+
+        // ----------------------------------------------------
+        // Closing
+        // ----------------------------------------------------
+
+        if (
+            /^<\//.test(token)
+        ) {
+
             depth--;
 
             if (depth === 0) {
+
                 return {
                     tag,
                     start,
                     end: tokenEnd + 1,
-                    text: xml.slice(start, tokenEnd + 1)
+                    text: xml.slice(
+                        start,
+                        tokenEnd + 1
+                    )
                 };
             }
-        } else if (!/\/\s*>$/.test(token)) {
+
+        }
+
+
+        // ----------------------------------------------------
+        // Opening nested tag
+        // ----------------------------------------------------
+
+        else if (
+            !/\/\s*>$/.test(token)
+        ) {
+
             depth++;
         }
 
-        tokenRe.lastIndex = tokenEnd + 1;
+        tokenRe.lastIndex =
+            tokenEnd + 1;
     }
 
     return null;
 }
 
-function extractVar(xml, name, fromIndex = 0) {
-    const escaped = escapeRegExp(name);
 
-    const selfRe = new RegExp(
-        `<Var\\b[^>]*\\bname\\s*=\\s*(['"])${escaped}\\1[^>]*\\/\\s*>`,
-        'i'
-    );
+// ============================================================
+// استخراج Var كامل
+//
+// مهم:
+// يتم أخذ الـ Var كاملًا من المصدر.
+// لا يتم دمج قيمة v القديمة مع الجديدة.
+// ============================================================
 
-    selfRe.lastIndex = fromIndex;
-    const selfMatch = selfRe.exec(xml);
+function extractVar(
+    xml,
+    name,
+    fromIndex = 0
+) {
+
+    const escaped =
+        escapeRegExp(name);
+
+
+    // --------------------------------------------------------
+    // Self Closing Var
+    //
+    // <Var name="..." .../>
+    // --------------------------------------------------------
+
+    const selfRe =
+        new RegExp(
+            `<Var\\b[^>]*\\bname\\s*=\\s*(['"])${escaped}\\1[^>]*\\/\\s*>`,
+            'i'
+        );
+
+    selfRe.lastIndex =
+        fromIndex;
+
+    const selfMatch =
+        selfRe.exec(xml);
 
     if (selfMatch) {
+
         return {
             start: selfMatch.index,
-            end: selfMatch.index + selfMatch[0].length,
+            end:
+                selfMatch.index +
+                selfMatch[0].length,
             text: selfMatch[0]
         };
     }
 
-    const blockRe = new RegExp(
-        `<Var\\b[^>]*\\bname\\s*=\\s*(['"])${escaped}\\1[^>]*>`,
-        'i'
-    );
 
-    blockRe.lastIndex = fromIndex;
-    const blockMatch = blockRe.exec(xml);
-    if (!blockMatch) return null;
+    // --------------------------------------------------------
+    // Block Var
+    //
+    // <Var name="...">
+    // ...
+    // </Var>
+    // --------------------------------------------------------
 
-    const openStart = blockMatch.index;
-    const openEnd = findTagEnd(xml, openStart);
-    if (openEnd < 0) return null;
+    const blockRe =
+        new RegExp(
+            `<Var\\b[^>]*\\bname\\s*=\\s*(['"])${escaped}\\1[^>]*>`,
+            'i'
+        );
 
-    const closeRe = /<\/Var\s*>/ig;
-    closeRe.lastIndex = openEnd + 1;
-    const closeMatch = closeRe.exec(xml);
+    blockRe.lastIndex =
+        fromIndex;
 
-    if (!closeMatch) return null;
+    const blockMatch =
+        blockRe.exec(xml);
+
+    if (!blockMatch) {
+        return null;
+    }
+
+    const openStart =
+        blockMatch.index;
+
+    const openEnd =
+        findTagEnd(
+            xml,
+            openStart
+        );
+
+    if (openEnd < 0) {
+        return null;
+    }
+
+    const closeRe =
+        /<\/Var\s*>/ig;
+
+    closeRe.lastIndex =
+        openEnd + 1;
+
+    const closeMatch =
+        closeRe.exec(xml);
+
+    if (!closeMatch) {
+        return null;
+    }
 
     return {
         start: openStart,
-        end: closeMatch.index + closeMatch[0].length,
-        text: xml.slice(openStart, closeMatch.index + closeMatch[0].length)
+        end:
+            closeMatch.index +
+            closeMatch[0].length,
+        text:
+            xml.slice(
+                openStart,
+                closeMatch.index +
+                closeMatch[0].length
+            )
     };
 }
 
-function extractMatchingVars(xml, regex) {
+
+// ============================================================
+// استخراج جميع Vars المطابقة
+// ============================================================
+
+function extractMatchingVars(
+    xml,
+    regex
+) {
+
     const result = [];
-    const varRe = /<Var\b[^>]*\bname\s*=\s*(['"])(.*?)\1[^>]*\/\s*>/gi;
+
+    const varRe =
+        /<Var\b[^>]*\bname\s*=\s*(['"])(.*?)\1[^>]*\/\s*>/gi;
 
     let match;
 
-    while ((match = varRe.exec(xml))) {
-        const name = match[2];
+    while (
+        (match = varRe.exec(xml))
+    ) {
+
+        const name =
+            match[2];
 
         regex.lastIndex = 0;
-        if (regex.test(name)) {
+
+        if (
+            regex.test(name)
+        ) {
+
             result.push({
                 name,
                 start: match.index,
-                end: match.index + match[0].length,
+                end:
+                    match.index +
+                    match[0].length,
                 text: match[0]
             });
         }
@@ -195,15 +440,36 @@ function extractMatchingVars(xml, regex) {
     return result;
 }
 
-function insertBeforeRootClose(xml, block) {
-    const rootClose = xml.search(/<\/root\s*>/i);
+
+// ============================================================
+// إدخال قبل </root>
+// فقط إذا لم يكن القسم موجودًا في السيرفر.
+// ============================================================
+
+function insertBeforeRootClose(
+    xml,
+    block
+) {
+
+    const rootClose =
+        xml.search(
+            /<\/root\s*>/i
+        );
 
     if (rootClose < 0) {
-        return xml + '\n' + block;
+
+        return (
+            xml +
+            '\n' +
+            block
+        );
     }
 
     return (
-        xml.slice(0, rootClose) +
+        xml.slice(
+            0,
+            rootClose
+        ) +
         '\n' +
         block +
         '\n' +
@@ -211,10 +477,36 @@ function insertBeforeRootClose(xml, block) {
     );
 }
 
-function replaceTag(target, source, tag) {
-    const sourceBlock = extractTag(source, tag);
+
+// ============================================================
+// استبدال Section
+//
+// المصدر موجود:
+//     يستبدل القسم الموجود في السيرفر بالكامل.
+//
+// المصدر غير موجود:
+//     لا يفعل أي شيء.
+//
+// ============================================================
+
+function replaceTag(
+    target,
+    source,
+    tag
+) {
+
+    const sourceBlock =
+        extractTag(
+            source,
+            tag
+        );
+
+    // --------------------------------------------------------
+    // غير موجود في المصدر = تخطي
+    // --------------------------------------------------------
 
     if (!sourceBlock) {
+
         return {
             xml: target,
             changed: false,
@@ -222,30 +514,97 @@ function replaceTag(target, source, tag) {
         };
     }
 
-    const targetBlock = extractTag(target, tag);
+
+    // --------------------------------------------------------
+    // البحث عن القسم في السيرفر
+    // --------------------------------------------------------
+
+    const targetBlock =
+        extractTag(
+            target,
+            tag
+        );
+
+
+    // --------------------------------------------------------
+    // موجود في السيرفر
+    // استبداله بالكامل
+    // --------------------------------------------------------
 
     if (targetBlock) {
+
         return {
             xml:
-                target.slice(0, targetBlock.start) +
+                target.slice(
+                    0,
+                    targetBlock.start
+                ) +
+
                 sourceBlock.text +
-                target.slice(targetBlock.end),
+
+                target.slice(
+                    targetBlock.end
+                ),
+
             changed: true,
             action: 'replaced'
         };
     }
 
+
+    // --------------------------------------------------------
+    // غير موجود في السيرفر
+    // نضع نسخة المصدر كما هي
+    // --------------------------------------------------------
+
     return {
-        xml: insertBeforeRootClose(target, sourceBlock.text),
+        xml:
+            insertBeforeRootClose(
+                target,
+                sourceBlock.text
+            ),
+
         changed: true,
         action: 'inserted'
     };
 }
 
-function replaceVar(target, source, name) {
-    const sourceVar = extractVar(source, name);
+
+// ============================================================
+// استبدال Var
+//
+// يأخذ الـ Var من المصدر كاملًا.
+//
+// مثال:
+//
+// المصدر:
+// <Var name="UnlockedChatEmoji" v=",st43,,st42,"/>
+//
+// النتيجة:
+// <Var name="UnlockedChatEmoji" v=",st43,,st42,"/>
+//
+// بدون أي قيمة قديمة من BS32.xml
+// ============================================================
+
+function replaceVar(
+    target,
+    source,
+    name
+) {
+
+    const sourceVar =
+        extractVar(
+            source,
+            name
+        );
+
+
+    // --------------------------------------------------------
+    // غير موجود في المصدر = تخطي
+    // --------------------------------------------------------
 
     if (!sourceVar) {
+
         return {
             xml: target,
             changed: false,
@@ -253,46 +612,142 @@ function replaceVar(target, source, name) {
         };
     }
 
-    const targetVar = extractVar(target, name);
+
+    // --------------------------------------------------------
+    // البحث في السيرفر
+    // --------------------------------------------------------
+
+    const targetVar =
+        extractVar(
+            target,
+            name
+        );
+
+
+    // --------------------------------------------------------
+    // موجود
+    // استبداله بالكامل بنسخة المصدر
+    // --------------------------------------------------------
 
     if (targetVar) {
+
         return {
             xml:
-                target.slice(0, targetVar.start) +
+                target.slice(
+                    0,
+                    targetVar.start
+                ) +
+
                 sourceVar.text +
-                target.slice(targetVar.end),
+
+                target.slice(
+                    targetVar.end
+                ),
+
             changed: true,
             action: 'replaced'
         };
     }
 
+
+    // --------------------------------------------------------
+    // غير موجود
+    // إدخال نسخة المصدر
+    // --------------------------------------------------------
+
     return {
-        xml: insertBeforeRootClose(target, sourceVar.text),
+        xml:
+            insertBeforeRootClose(
+                target,
+                sourceVar.text
+            ),
+
         changed: true,
         action: 'inserted'
     };
 }
 
-function replaceAllMatchingVars(target, source, regex) {
-    const sourceVars = extractMatchingVars(source, regex);
 
-    let result = target;
+// ============================================================
+// استبدال جميع Vars الخاصة بالأفاتار
+//
+// Unlocked_ava1
+// Unlocked_ava2
+// Unlocked_ava3
+//
+// MigrateUnlocked_ava1
+// MigrateUnlocked_ava2
+// ...
+//
+// كل Var يستبدل بالكامل بنسخة المصدر.
+// ============================================================
+
+function replaceAllMatchingVars(
+    target,
+    source,
+    regex
+) {
+
+    const sourceVars =
+        extractMatchingVars(
+            source,
+            regex
+        );
+
+    let result =
+        target;
+
     let count = 0;
 
-    for (const sourceVar of sourceVars) {
-        const targetVar = extractVar(result, sourceVar.name);
+
+    for (
+        const sourceVar of sourceVars
+    ) {
+
+        const targetVar =
+            extractVar(
+                result,
+                sourceVar.name
+            );
+
+
+        // ----------------------------------------------------
+        // موجود في السيرفر
+        // ----------------------------------------------------
 
         if (targetVar) {
+
             result =
-                result.slice(0, targetVar.start) +
+                result.slice(
+                    0,
+                    targetVar.start
+                ) +
+
                 sourceVar.text +
-                result.slice(targetVar.end);
-        } else {
-            result = insertBeforeRootClose(result, sourceVar.text);
+
+                result.slice(
+                    targetVar.end
+                );
+
+        }
+
+
+        // ----------------------------------------------------
+        // غير موجود في السيرفر
+        // ----------------------------------------------------
+
+        else {
+
+            result =
+                insertBeforeRootClose(
+                    result,
+                    sourceVar.text
+                );
         }
 
         count++;
     }
+
 
     return {
         xml: result,
@@ -300,23 +755,78 @@ function replaceAllMatchingVars(target, source, regex) {
     };
 }
 
-function mergeSections(sourceXml, targetXml) {
-    if (typeof sourceXml !== 'string' || !sourceXml.trim()) {
-        throw new TypeError('sourceXml is required');
+
+// ============================================================
+// الدمج
+//
+// مبدأ هذه الدالة:
+//
+// BS32.xml = قالب السيرفر.
+//
+// كل قسم موجود في المصدر:
+// يتم أخذ نسخته الكاملة ووضعها مكان نسخة السيرفر.
+//
+// أي شيء غير موجود في المصدر:
+// يبقى كما هو في السيرفر.
+//
+// لا يتم دمج المحتويات الداخلية.
+// ============================================================
+
+function mergeSections(
+    sourceXml,
+    targetXml
+) {
+
+    if (
+        typeof sourceXml !== 'string' ||
+        !sourceXml.trim()
+    ) {
+
+        throw new TypeError(
+            'sourceXml is required'
+        );
     }
 
-    if (typeof targetXml !== 'string' || !targetXml.trim()) {
-        throw new TypeError('targetXml is required');
+    if (
+        typeof targetXml !== 'string' ||
+        !targetXml.trim()
+    ) {
+
+        throw new TypeError(
+            'targetXml is required'
+        );
     }
 
-    let result = targetXml;
+
+    let result =
+        targetXml;
+
     const logs = [];
 
-    for (const tag of SECTION_TAGS) {
-        const merged = replaceTag(result, sourceXml, tag);
-        result = merged.xml;
 
-        if (merged.changed) {
+    // ========================================================
+    // الأقسام
+    // ========================================================
+
+    for (
+        const tag of SECTION_TAGS
+    ) {
+
+        const merged =
+            replaceTag(
+                result,
+                sourceXml,
+                tag
+            );
+
+        result =
+            merged.xml;
+
+
+        if (
+            merged.changed
+        ) {
+
             logs.push({
                 type: 'section',
                 name: tag,
@@ -325,10 +835,25 @@ function mergeSections(sourceXml, targetXml) {
         }
     }
 
-    // Object elements belong to Buildings in BS32.xml.
-    // Buildings is copied as a whole, so its Object entries come with it.
-    if (extractTag(sourceXml, 'Buildings') &&
-        extractTag(result, 'Buildings')) {
+
+    // ========================================================
+    // Object
+    //
+    // Object تابع لـ Buildings.
+    //
+    // لذلك لا يتم وضع Object في root.
+    // عندما نستبدل Buildings كاملًا،
+    // تأتي جميع Objects الموجودة بداخله من المصدر.
+    // ========================================================
+
+    const sourceBuildings =
+        extractTag(
+            sourceXml,
+            'Buildings'
+        );
+
+    if (sourceBuildings) {
+
         logs.push({
             type: 'section',
             name: 'Object',
@@ -336,11 +861,30 @@ function mergeSections(sourceXml, targetXml) {
         });
     }
 
-    for (const name of VAR_NAMES) {
-        const merged = replaceVar(result, sourceXml, name);
-        result = merged.xml;
 
-        if (merged.changed) {
+    // ========================================================
+    // Vars المحددة
+    // ========================================================
+
+    for (
+        const name of VAR_NAMES
+    ) {
+
+        const merged =
+            replaceVar(
+                result,
+                sourceXml,
+                name
+            );
+
+        result =
+            merged.xml;
+
+
+        if (
+            merged.changed
+        ) {
+
             logs.push({
                 type: 'var',
                 name,
@@ -349,21 +893,39 @@ function mergeSections(sourceXml, targetXml) {
         }
     }
 
-    const avatarResult = replaceAllMatchingVars(
-        result,
-        sourceXml,
-        AVATAR_VAR_RE
-    );
 
-    result = avatarResult.xml;
+    // ========================================================
+    // Avatar Vars
+    // ========================================================
 
-    if (avatarResult.count > 0) {
+    const avatarResult =
+        replaceAllMatchingVars(
+            result,
+            sourceXml,
+            AVATAR_VAR_RE
+        );
+
+    result =
+        avatarResult.xml;
+
+
+    if (
+        avatarResult.count > 0
+    ) {
+
         logs.push({
             type: 'vars',
-            name: 'MigrateUnlocked_ava* / Unlocked_ava*',
-            count: avatarResult.count
+            name:
+                'MigrateUnlocked_ava* / Unlocked_ava*',
+            count:
+                avatarResult.count
         });
     }
+
+
+    // ========================================================
+    // النتيجة
+    // ========================================================
 
     return {
         xml: result,
@@ -371,26 +933,78 @@ function mergeSections(sourceXml, targetXml) {
     };
 }
 
+
+// ============================================================
+// قراءة BS32.xml من السيرفر
+// ============================================================
+
 function readTargetXml() {
-    if (!fs.existsSync(TARGET_FILE)) {
-        throw new Error(`Target XML not found: ${TARGET_FILE}`);
+
+    if (
+        !fs.existsSync(
+            TARGET_FILE
+        )
+    ) {
+
+        throw new Error(
+            `Target XML not found: ${TARGET_FILE}`
+        );
     }
 
-    return fs.readFileSync(TARGET_FILE, 'utf8');
+    return fs.readFileSync(
+        TARGET_FILE,
+        'utf8'
+    );
 }
+
+
+// ============================================================
+// حفظ BS32.xml
+// ============================================================
+//
+// يتم الحفظ بشكل مؤقت ثم الاستبدال.
+// ============================================================
 
 function writeTargetXml(xml) {
-    const tempFile = TARGET_FILE + '.tmp';
 
-    fs.writeFileSync(tempFile, xml, 'utf8');
-    fs.renameSync(tempFile, TARGET_FILE);
+    const tempFile =
+        TARGET_FILE + '.tmp';
+
+    fs.writeFileSync(
+        tempFile,
+        xml,
+        'utf8'
+    );
+
+    fs.renameSync(
+        tempFile,
+        TARGET_FILE
+    );
 }
 
-function mergeIntoTarget(sourceXml) {
-    const targetXml = readTargetXml();
-    const merged = mergeSections(sourceXml, targetXml);
 
-    writeTargetXml(merged.xml);
+// ============================================================
+// Merge Into Target
+// ============================================================
+
+function mergeIntoTarget(
+    sourceXml
+) {
+
+    const targetXml =
+        readTargetXml();
+
+    const merged =
+        mergeSections(
+            sourceXml,
+            targetXml
+        );
+
+
+    writeTargetXml(
+        merged.xml
+    );
+
 
     return {
         xml: merged.xml,
@@ -399,12 +1013,25 @@ function mergeIntoTarget(sourceXml) {
     };
 }
 
+
+// ============================================================
+// Exports
+// ============================================================
+
 module.exports = {
+
     TARGET_FILE,
+
     SECTION_TAGS,
+
     VAR_NAMES,
+
     mergeSections,
+
     mergeIntoTarget,
+
     readTargetXml,
+
     writeTargetXml
+
 };
