@@ -7,7 +7,28 @@ const app = express();
 const view = require("./view");
 const api = require("./api");
 
-const desbanApi = require("./desbanApi");
+// ============================================================
+// BSXML Standalone Pipeline
+// ============================================================
+//
+// هذا مستقل عن desbanApi.js
+// Endpoint:
+// POST /api/bsxml/process
+//
+// يستقبل:
+// {
+//     "myXml": "...",
+//     "friendXml": "..."
+// }
+//
+// ============================================================
+
+const pipeline = require("./pipeline");
+
+// ============================================================
+// XML Transfer API - جديد
+// ============================================================
+
 const xmlTransferApi = require("./xmlTransferApi");
 
 const { supabase } = require("./supabase");
@@ -19,15 +40,6 @@ const fetchCity = require("./fetchCity");
 const fetchCity2 = require("./fetchCity2");
 const cityCache = require("./cityCache");
 
-// ============================================================
-// Desban standalone modules
-// ============================================================
-
-const pipeline = require("./pipeline");
-const xmlCore = require("./xml-core");
-const dataCloner = require("./data-cloner");
-const securityCore = require("./security-core");
-
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.SERVER_SECRET || "MY_SECRET_123";
 
@@ -36,7 +48,7 @@ const SECRET = process.env.SERVER_SECRET || "MY_SECRET_123";
 // ============================================================
 
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "25mb" }));
 
 app.use(
     session({
@@ -54,31 +66,195 @@ app.use("/", view);
 app.use("/api", api);
 
 // ============================================================
-// Desban API
+// BSXML Standalone Processing
+// ============================================================
+//
+// مهم:
+// هذا ليس desbanApi.js
+//
+// لا يستخدم:
+// /api/desban
+// /api/desban/full
+//
+// endpoint الجديد:
+// /api/bsxml/process
+//
 // ============================================================
 
-app.use("/api", desbanApi);
+app.post("/api/bsxml/process", async (req, res) => {
+    try {
+
+        const myXml = req.body && req.body.myXml;
+        const friendXml = req.body && req.body.friendXml;
+
+        // --------------------------------------------------------
+        // التأكد من وجود XML الأول
+        // --------------------------------------------------------
+
+        if (
+            typeof myXml !== "string" ||
+            !myXml.trim()
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: "myXml is required"
+            });
+        }
+
+        // --------------------------------------------------------
+        // التأكد من وجود XML الثاني
+        // --------------------------------------------------------
+
+        if (
+            typeof friendXml !== "string" ||
+            !friendXml.trim()
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: "friendXml is required"
+            });
+        }
+
+        console.log(
+            "[BSXML] POST /api/bsxml/process"
+        );
+
+        console.log(
+            "[BSXML] myXml length:",
+            myXml.length
+        );
+
+        console.log(
+            "[BSXML] friendXml length:",
+            friendXml.length
+        );
+
+        // --------------------------------------------------------
+        // تشغيل الـ Pipeline المستقل
+        // --------------------------------------------------------
+
+        const result =
+            await Promise.resolve(
+                pipeline.applyDesban(
+                    myXml,
+                    friendXml
+                )
+            );
+
+        // --------------------------------------------------------
+        // التحقق من النتيجة
+        // --------------------------------------------------------
+
+        if (
+            !result ||
+            result.ok === false
+        ) {
+
+            console.error(
+                "[BSXML] Processing failed"
+            );
+
+            return res.status(422).json({
+                ok: false,
+                error: "XML processing failed",
+                log:
+                    result && result.log
+                        ? result.log
+                        : [],
+                stages:
+                    result && result.stages
+                        ? result.stages
+                        : []
+            });
+        }
+
+        // --------------------------------------------------------
+        // نجاح المعالجة
+        // --------------------------------------------------------
+
+        console.log(
+            "[BSXML] Processing completed successfully"
+        );
+
+        return res.status(200).json({
+
+            ok: true,
+
+            xml: result.xml,
+
+            log:
+                result.log || [],
+
+            stages:
+                result.stages || []
+
+        });
+
+    } catch (e) {
+
+        console.error(
+            "[BSXML] Processing error:",
+            e
+        );
+
+        return res.status(500).json({
+
+            ok: false,
+
+            error:
+                "Internal server error",
+
+            message:
+                e.message
+
+        });
+    }
+});
 
 // ============================================================
 // XML Transfer API
 // ============================================================
+//
+// المصدر يأتي من Lua
+// الهدف الثابت على السيرفر هو:
+// ./BS32.xml
+//
+// POST:
+// /api/xml-transfer/merge
+//
+// ============================================================
 
-app.use("/api/xml-transfer", xmlTransferApi);
+app.use(
+    "/api/xml-transfer",
+    xmlTransferApi
+);
 
 // ============================================================
 // FetchCity Proxy
 // ============================================================
 
-console.log("[FetchCity] module loaded");
+console.log(
+    "[FetchCity] module loaded"
+);
 
-app.use("/api", fetchCity);
-app.use("/api2", fetchCity2);
+app.use(
+    "/api",
+    fetchCity
+);
+
+app.use(
+    "/api2",
+    fetchCity2
+);
 
 // ============================================================
 // City Cache
 // ============================================================
 
-app.use("/api", cityCache);
+app.use(
+    "/api",
+    cityCache
+);
 
 // ============================================================
 // Decode
@@ -92,22 +268,40 @@ app.use(
     })
 );
 
-app.post("/api/decode", (req, res) => {
-    try {
-        const decoded = mGameInfoDecoder.decodeFile(req.body);
+app.post(
+    "/api/decode",
+    (req, res) => {
 
-        res.set("Content-Type", "application/octet-stream");
+        try {
 
-        return res.send(decoded);
+            const decoded =
+                mGameInfoDecoder.decodeFile(
+                    req.body
+                );
 
-    } catch (e) {
-        console.error("Decode error:", e);
+            res.set(
+                "Content-Type",
+                "application/octet-stream"
+            );
 
-        return res.status(400).send(
-            "Decode error: " + e.message
-        );
+            return res.send(
+                decoded
+            );
+
+        } catch (e) {
+
+            console.error(
+                "Decode error:",
+                e
+            );
+
+            return res.status(400).send(
+                "Decode error: " +
+                e.message
+            );
+        }
     }
-});
+);
 
 // ============================================================
 // Edit
@@ -121,218 +315,318 @@ app.use(
     })
 );
 
-app.post("/api/edit", (req, res) => {
-    try {
-        const editsText = req.query.edits;
-
-        if (!editsText) {
-            return res.status(400).send("Missing edits");
-        }
-
-        let edits;
+app.post(
+    "/api/edit",
+    (req, res) => {
 
         try {
-            edits = JSON.parse(editsText);
+
+            const editsText =
+                req.query.edits;
+
+            if (!editsText) {
+
+                return res.status(400).send(
+                    "Missing edits"
+                );
+            }
+
+            let edits;
+
+            try {
+
+                edits =
+                    JSON.parse(
+                        editsText
+                    );
+
+            } catch (e) {
+
+                console.error(
+                    "Invalid edits JSON:",
+                    e
+                );
+
+                return res.status(400).send(
+                    "Invalid edits JSON"
+                );
+            }
+
+            const edited =
+                mGameInfoEditor.applyEdits(
+                    req.body,
+                    edits
+                );
+
+            res.set(
+                "Content-Type",
+                "application/octet-stream"
+            );
+
+            return res.send(
+                edited
+            );
 
         } catch (e) {
-            console.error("Invalid edits JSON:", e);
+
+            console.error(
+                "Edit error:",
+                e
+            );
 
             return res.status(400).send(
-                "Invalid edits JSON"
+                "Edit error: " +
+                e.message
             );
         }
-
-        const edited =
-            mGameInfoEditor.applyEdits(
-                req.body,
-                edits
-            );
-
-        res.set(
-            "Content-Type",
-            "application/octet-stream"
-        );
-
-        return res.send(edited);
-
-    } catch (e) {
-        console.error("Edit error:", e);
-
-        return res.status(400).send(
-            "Edit error: " + e.message
-        );
     }
-});
+);
 
 // ============================================================
 // Check Key
 // ============================================================
 
-app.get("/api/check", async (req, res) => {
-    try {
-        const key = req.query.key;
-        const deviceid = req.query.deviceid;
+app.get(
+    "/api/check",
+    async (req, res) => {
 
-        if (!key || !deviceid) {
-            return res.json({
-                status: "invalid"
-            });
-        }
+        try {
 
-        const {
-            data: item,
-            error
-        } = await supabase
-            .from("keys")
-            .select("*")
-            .eq("key", key)
-            .single();
+            const key =
+                req.query.key;
 
-        if (error || !item) {
-            return res.json({
-                status: "invalid"
-            });
-        }
+            const deviceid =
+                req.query.deviceid;
 
-        if (item.status === "banned") {
-            return res.json({
-                status: "banned"
-            });
-        }
+            if (!key || !deviceid) {
 
-        if (!item.deviceid) {
-            const {
-                error: updateError
-            } = await supabase
-                .from("keys")
-                .update({ deviceid })
-                .eq("key", key)
-                .is("deviceid", null);
-
-            if (updateError) {
                 return res.json({
                     status: "invalid"
                 });
             }
 
-        } else if (item.deviceid !== deviceid) {
-            return res.json({
-                status: "another_device"
-            });
-        }
-
-        const now = new Date();
-        const expire = new Date(item.expireat);
-
-        if (expire <= now) {
-            await supabase
+            const {
+                data: item,
+                error
+            } = await supabase
                 .from("keys")
-                .update({
+                .select("*")
+                .eq("key", key)
+                .single();
+
+            if (error || !item) {
+
+                return res.json({
+                    status: "invalid"
+                });
+            }
+
+            if (
+                item.status === "banned"
+            ) {
+
+                return res.json({
+                    status: "banned"
+                });
+            }
+
+            if (!item.deviceid) {
+
+                const {
+                    error: updateError
+                } = await supabase
+                    .from("keys")
+                    .update({
+                        deviceid
+                    })
+                    .eq("key", key)
+                    .is(
+                        "deviceid",
+                        null
+                    );
+
+                if (updateError) {
+
+                    return res.json({
+                        status: "invalid"
+                    });
+                }
+
+            } else if (
+                item.deviceid !== deviceid
+            ) {
+
+                return res.json({
+                    status: "another_device"
+                });
+            }
+
+            const now =
+                new Date();
+
+            const expire =
+                new Date(
+                    item.expireat
+                );
+
+            if (expire <= now) {
+
+                await supabase
+                    .from("keys")
+                    .update({
+                        status: "expired"
+                    })
+                    .eq("key", key);
+
+                return res.json({
                     status: "expired"
-                })
-                .eq("key", key);
+                });
+            }
+
+            const diff =
+                expire.getTime() -
+                now.getTime();
+
+            const days =
+                Math.floor(
+                    diff /
+                    (
+                        1000 *
+                        60 *
+                        60 *
+                        24
+                    )
+                );
+
+            const hours =
+                Math.floor(
+                    (
+                        diff /
+                        (
+                            1000 *
+                            60 *
+                            60
+                        )
+                    ) % 24
+                );
+
+            const minutes =
+                Math.floor(
+                    (
+                        diff /
+                        (
+                            1000 *
+                            60
+                        )
+                    ) % 60
+                );
 
             return res.json({
-                status: "expired"
+
+                status: "active",
+
+                name:
+                    item.name,
+
+                days,
+
+                hours,
+
+                minutes
+
+            });
+
+        } catch (e) {
+
+            console.error(
+                "Check error:",
+                e
+            );
+
+            return res.status(500).json({
+                status: "error"
             });
         }
-
-        const diff =
-            expire.getTime() -
-            now.getTime();
-
-        const days =
-            Math.floor(
-                diff /
-                (1000 * 60 * 60 * 24)
-            );
-
-        const hours =
-            Math.floor(
-                (
-                    diff /
-                    (1000 * 60 * 60)
-                ) % 24
-            );
-
-        const minutes =
-            Math.floor(
-                (
-                    diff /
-                    (1000 * 60)
-                ) % 60
-            );
-
-        return res.json({
-            status: "active",
-            name: item.name,
-            days,
-            hours,
-            minutes
-        });
-
-    } catch (e) {
-        console.error("Check error:", e);
-
-        return res.status(500).json({
-            status: "error"
-        });
     }
-});
+);
 
 // ============================================================
 // Script
 // ============================================================
 
-app.get("/script", async (req, res) => {
+app.get(
+    "/script",
+    async (req, res) => {
 
-    if (req.query.key !== "12345") {
-        return res.send("DENIED");
-    }
+        if (
+            req.query.key !==
+            "12345"
+        ) {
 
-    if (req.headers["x-secret"] !== SECRET) {
-        return res.send(
-            "تم سحب معلومات جهازك بنجاح🤣🤣"
-        );
-    }
-
-    try {
-        const response =
-            await fetch(
-                "https://pastebin.com/raw/JnWRrGcn"
+            return res.send(
+                "DENIED"
             );
-
-        const script =
-            await response.text();
-
-        if (!script || script.length < 10) {
-            return res.send("ERROR");
         }
 
-        return res.send(script);
+        if (
+            req.headers["x-secret"] !==
+            SECRET
+        ) {
 
-    } catch (e) {
-        console.log(e);
+            return res.send(
+                "تم سحب معلومات جهازك بنجاح🤣🤣"
+            );
+        }
 
-        return res.send("ERROR");
+        try {
+
+            const response =
+                await fetch(
+                    "https://pastebin.com/raw/JnWRrGcn"
+                );
+
+            const script =
+                await response.text();
+
+            if (
+                !script ||
+                script.length < 10
+            ) {
+
+                return res.send(
+                    "ERROR"
+                );
+            }
+
+            return res.send(
+                script
+            );
+
+        } catch (e) {
+
+            console.log(e);
+
+            return res.send(
+                "ERROR"
+            );
+        }
     }
-});
+);
 
 // ============================================================
 // Health
 // ============================================================
 
-app.get("/health", (req, res) => {
-    res.json({
-        status: "ok",
-        modules: {
-            pipeline: !!pipeline,
-            xmlCore: !!xmlCore,
-            dataCloner: !!dataCloner,
-            securityCore: !!securityCore
-        }
-    });
-});
+app.get(
+    "/health",
+    (req, res) => {
+
+        res.json({
+            status: "ok"
+        });
+
+    }
+);
 
 // ============================================================
 // تشغيل السيرفر
@@ -347,13 +641,17 @@ app.listen(
             `Server running on port ${PORT}`
         );
 
-        console.log(
-            "[Desban] POST /api/desban"
-        );
+        // ----------------------------------------------------
+        // BSXML الجديد
+        // ----------------------------------------------------
 
         console.log(
-            "[Desban] POST /api/desban/full"
+            "[BSXML] POST /api/bsxml/process"
         );
+
+        // ----------------------------------------------------
+        // XML Transfer
+        // ----------------------------------------------------
 
         console.log(
             "[XML Transfer] POST /api/xml-transfer/merge"
@@ -363,16 +661,20 @@ app.listen(
             "[XML Transfer] GET /api/xml-transfer/status"
         );
 
+        // ----------------------------------------------------
+        // FetchCity
+        // ----------------------------------------------------
+
         console.log(
             "[FetchCity] POST /api/fetch-city"
         );
 
-        console.log(
-            "[FetchCity2] POST /api2/fetch-city"
-        );
+        // ----------------------------------------------------
+        // FetchCity2
+        // ----------------------------------------------------
 
         console.log(
-            "[Desban] standalone modules connected"
+            "[FetchCity2] POST /api2/fetch-city"
         );
     }
 );
