@@ -1,4 +1,3 @@
-
 const express = require("express");
 const fetch = require("node-fetch");
 const session = require("express-session");
@@ -13,6 +12,12 @@ const api = require("./api");
 // ============================================================
 
 const desbanApi = require("./desbanApi");
+
+// ============================================================
+// XML Transfer API - جديد
+// ============================================================
+
+const xmlTransferApi = require("./xmlTransferApi");
 
 const { supabase } = require("./supabase");
 
@@ -55,6 +60,21 @@ app.use("/api", api);
 // مهم:
 // desbanApi.js يجب أن يكون في نفس مجلد server.js
 app.use("/api", desbanApi);
+
+// ============================================================
+// XML Transfer API
+// ============================================================
+//
+// المصدر يأتي من Lua
+// الهدف الثابت على السيرفر هو:
+// ./BS32.xml
+//
+// POST:
+// /api/xml-transfer/merge
+//
+// ============================================================
+
+app.use("/api/xml-transfer", xmlTransferApi);
 
 // ============================================================
 // FetchCity Proxy
@@ -359,6 +379,14 @@ app.listen(
 
         console.log(
             "[Desban] POST /api/desban/full"
+        );
+
+        console.log(
+            "[XML Transfer] POST /api/xml-transfer/merge"
+        );
+
+        console.log(
+            "[XML Transfer] GET /api/xml-transfer/status"
         );
 
         console.log(
