@@ -7,16 +7,7 @@ const app = express();
 const view = require("./view");
 const api = require("./api");
 
-// ============================================================
-// Desban API - الملف الجديد
-// ============================================================
-
 const desbanApi = require("./desbanApi");
-
-// ============================================================
-// XML Transfer API - جديد
-// ============================================================
-
 const xmlTransferApi = require("./xmlTransferApi");
 
 const { supabase } = require("./supabase");
@@ -27,6 +18,15 @@ const mGameInfoEditor = require("./mGameInfoEditor");
 const fetchCity = require("./fetchCity");
 const fetchCity2 = require("./fetchCity2");
 const cityCache = require("./cityCache");
+
+// ============================================================
+// Desban standalone modules
+// ============================================================
+
+const pipeline = require("./pipeline");
+const xmlCore = require("./xml-core");
+const dataCloner = require("./data-cloner");
+const securityCore = require("./security-core");
 
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.SERVER_SECRET || "MY_SECRET_123";
@@ -57,21 +57,10 @@ app.use("/api", api);
 // Desban API
 // ============================================================
 
-// مهم:
-// desbanApi.js يجب أن يكون في نفس مجلد server.js
 app.use("/api", desbanApi);
 
 // ============================================================
 // XML Transfer API
-// ============================================================
-//
-// المصدر يأتي من Lua
-// الهدف الثابت على السيرفر هو:
-// ./BS32.xml
-//
-// POST:
-// /api/xml-transfer/merge
-//
 // ============================================================
 
 app.use("/api/xml-transfer", xmlTransferApi);
@@ -134,13 +123,10 @@ app.use(
 
 app.post("/api/edit", (req, res) => {
     try {
-
         const editsText = req.query.edits;
 
         if (!editsText) {
-            return res.status(400).send(
-                "Missing edits"
-            );
+            return res.status(400).send("Missing edits");
         }
 
         let edits;
@@ -149,11 +135,7 @@ app.post("/api/edit", (req, res) => {
             edits = JSON.parse(editsText);
 
         } catch (e) {
-
-            console.error(
-                "Invalid edits JSON:",
-                e
-            );
+            console.error("Invalid edits JSON:", e);
 
             return res.status(400).send(
                 "Invalid edits JSON"
@@ -174,11 +156,7 @@ app.post("/api/edit", (req, res) => {
         return res.send(edited);
 
     } catch (e) {
-
-        console.error(
-            "Edit error:",
-            e
-        );
+        console.error("Edit error:", e);
 
         return res.status(400).send(
             "Edit error: " + e.message
@@ -192,7 +170,6 @@ app.post("/api/edit", (req, res) => {
 
 app.get("/api/check", async (req, res) => {
     try {
-
         const key = req.query.key;
         const deviceid = req.query.deviceid;
 
@@ -224,7 +201,6 @@ app.get("/api/check", async (req, res) => {
         }
 
         if (!item.deviceid) {
-
             const {
                 error: updateError
             } = await supabase
@@ -240,7 +216,6 @@ app.get("/api/check", async (req, res) => {
             }
 
         } else if (item.deviceid !== deviceid) {
-
             return res.json({
                 status: "another_device"
             });
@@ -250,7 +225,6 @@ app.get("/api/check", async (req, res) => {
         const expire = new Date(item.expireat);
 
         if (expire <= now) {
-
             await supabase
                 .from("keys")
                 .update({
@@ -298,11 +272,7 @@ app.get("/api/check", async (req, res) => {
         });
 
     } catch (e) {
-
-        console.error(
-            "Check error:",
-            e
-        );
+        console.error("Check error:", e);
 
         return res.status(500).json({
             status: "error"
@@ -327,7 +297,6 @@ app.get("/script", async (req, res) => {
     }
 
     try {
-
         const response =
             await fetch(
                 "https://pastebin.com/raw/JnWRrGcn"
@@ -343,7 +312,6 @@ app.get("/script", async (req, res) => {
         return res.send(script);
 
     } catch (e) {
-
         console.log(e);
 
         return res.send("ERROR");
@@ -356,7 +324,13 @@ app.get("/script", async (req, res) => {
 
 app.get("/health", (req, res) => {
     res.json({
-        status: "ok"
+        status: "ok",
+        modules: {
+            pipeline: !!pipeline,
+            xmlCore: !!xmlCore,
+            dataCloner: !!dataCloner,
+            securityCore: !!securityCore
+        }
     });
 });
 
@@ -395,6 +369,10 @@ app.listen(
 
         console.log(
             "[FetchCity2] POST /api2/fetch-city"
+        );
+
+        console.log(
+            "[Desban] standalone modules connected"
         );
     }
 );
