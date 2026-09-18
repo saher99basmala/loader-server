@@ -99,28 +99,6 @@ const MATCH3_VARS = [
     "m3Reshuffle"
 ];
 
-// Additional labels requested from mGameInfoEditor.js.
-// Only the XML labels are copied; no editor logic is imported.
-const EXTRA_VARS = [
-    "townName",
-    "Achievement_Teamwork",
-    "FirstAttemptM3Levels",
-    "FullCardCollections",
-    "LivesSent",
-    "m3_comp_lvls",
-    "RegataTasksCompleted",
-    "levelup",
-    "NewChatEmoji",
-    "UnlockedChatEmoji"
-];
-
-const EXTRA_DATAELEMS = [
-    "UnlockedFrames",
-    "UnlockedStyles",
-    "UnlockedExpRanks",
-    "OwnedCards"
-];
-
 const COUPON_IDS = [
     "HireDealer",
     "LoadTrainAirport",
@@ -224,51 +202,45 @@ function logSkip(message) {
     console.log(`[Desban] SKIP: ${message}`);
 }
 
-function extractTagBlock(xml, tagName) {
+function findFirstBodyBlock(xml, tagName) {
     if (!xml) return null;
-
-    const name = escapeRegExp(tagName);
-
-    // Same general strategy as DesbanEngine: normal block first,
-    // then self-closing block.
-    const normal = new RegExp(
-        `<${name}\\b[^>]*>[\\s\\S]*?<\\/${name}\\s*>`,
-        "i"
-    );
-
-    const selfClosing = new RegExp(
-        `<${name}\\b[^>]*/\\s*>`,
-        "i"
-    );
-
-    const m1 = normal.exec(xml);
-    if (m1) return m1[0];
-
-    const m2 = selfClosing.exec(xml);
-    if (m2) return m2[0];
-
+    const openRe = new RegExp(`<${escapeRegExp(tagName)}\\b[^>]*>`, "ig");
+    let om;
+    while ((om = openRe.exec(xml)) !== null) {
+        if (/\/\s*>$/.test(om[0])) continue; // self-closing is not a body block
+        const closeRe = new RegExp(`</${escapeRegExp(tagName)}\\s*>`, "i");
+        const tail = xml.slice(om.index + om[0].length);
+        const cm = closeRe.exec(tail);
+        if (!cm) continue;
+        const end = om.index + om[0].length + cm.index + cm[0].length;
+        return { start: om.index, end, text: xml.slice(om.index, end) };
+    }
     return null;
 }
 
+function findFirstSelfClosing(xml, tagName) {
+    if (!xml) return null;
+    const re = new RegExp(`<${escapeRegExp(tagName)}\\b[^>]*/\\s*>`, "i");
+    const m = re.exec(xml);
+    return m ? { start: m.index, end: m.index + m[0].length, text: m[0] } : null;
+}
+
+function extractTagBlock(xml, tagName) {
+    const body = findFirstBodyBlock(xml, tagName);
+    if (body) return body.text;
+    const self = findFirstSelfClosing(xml, tagName);
+    return self ? self.text : null;
+}
+
 function replaceFirstTagBlock(target, tagName, replacement) {
-    const name = escapeRegExp(tagName);
-
-    const normal = new RegExp(
-        `<${name}\\b[^>]*>[\\s\\S]*?<\\/${name}\\s*>`,
-        "i"
-    );
-
-    if (normal.test(target)) {
-        return target.replace(normal, () => replacement);
+    const body = findFirstBodyBlock(target, tagName);
+    if (body) {
+        return target.slice(0, body.start) + replacement + target.slice(body.end);
     }
 
-    const selfClosing = new RegExp(
-        `<${name}\\b[^>]*/\\s*>`,
-        "i"
-    );
-
-    if (selfClosing.test(target)) {
-        return target.replace(selfClosing, () => replacement);
+    const self = findFirstSelfClosing(target, tagName);
+    if (self) {
+        return target.slice(0, self.start) + replacement + target.slice(self.end);
     }
 
     return null;
@@ -287,10 +259,6 @@ function insertBeforeClosing(target, tagName, block) {
  * before </Global>, otherwise before </root>.
  */
 function cloneBlock(src, target, tagName, stats, options = {}) {
-    if (stats && stats.copied && stats.copied.includes(`Block:${tagName}`)) {
-        return target;
-    }
-
     const block = extractTagBlock(src, tagName);
 
     if (!block) {
@@ -303,7 +271,6 @@ function cloneBlock(src, target, tagName, stats, options = {}) {
 
     if (replaced !== null) {
         stats.replaced.push(tagName);
-        if (stats.copied) stats.copied.push(`Block:${tagName}`);
         return replaced;
     }
 
@@ -311,7 +278,6 @@ function cloneBlock(src, target, tagName, stats, options = {}) {
     if (globalClose.test(target)) {
         target = target.replace(globalClose, () => block + "</Global>");
         stats.inserted.push(tagName);
-        if (stats.copied) stats.copied.push(`Block:${tagName}`);
         return target;
     }
 
@@ -319,7 +285,6 @@ function cloneBlock(src, target, tagName, stats, options = {}) {
     if (rootClose.test(target)) {
         target = target.replace(rootClose, () => block + "</root>");
         stats.inserted.push(tagName);
-        if (stats.copied) stats.copied.push(`Block:${tagName}`);
         return target;
     }
 
@@ -330,11 +295,12 @@ function cloneBlock(src, target, tagName, stats, options = {}) {
 
 function findVar(xml, name) {
     if (!xml) return null;
-    const safeName = escapeRegExp(name);
+
     const pattern = new RegExp(
-        `<Var\\b[^>]*\\bname\\s*=\\s*["']${safeName}["'][^>]*\\/?>`,
+        `<Var\\s+name="${escapeRegExp(name)}"[^>]*/\\s*>`,
         "i"
     );
+
     const m = pattern.exec(xml);
     return m ? m[0] : null;
 }
@@ -361,7 +327,7 @@ function upsertVar(xml, name, value, type = "i", stats = null) {
         `<Var name="${name}" v="${String(value).replace(/"/g, "&quot;")}" t="${type}"/>`;
 
     const pattern = new RegExp(
-        `<Var\\b[^>]*\\bname\\s*=\\s*["']${safeName}["'][^>]*\\/?>`,
+        `<Var\\s+name="${safeName}"[^>]*/\\s*>`,
         "i"
     );
 
@@ -386,147 +352,7 @@ function upsertVar(xml, name, value, type = "i", stats = null) {
     return xml;
 }
 
-function extractNamedDataElem(xml, name) {
-    if (!xml) return null;
-
-    const wanted = String(name);
-    const openRe = /<DataElem\b[^>]*>/gi;
-    let m;
-
-    while ((m = openRe.exec(xml)) !== null) {
-        const openTag = m[0];
-        const nameMatch = /\bname="([^"]*)"/i.exec(openTag);
-        if (!nameMatch || nameMatch[1] !== wanted) continue;
-
-        if (/\/\s*>$/.test(openTag)) return openTag;
-
-        const tokenRe = /<DataElem\b[^>]*>|<\/DataElem\s*>/gi;
-        tokenRe.lastIndex = m.index;
-        let depth = 0;
-        let token;
-
-        while ((token = tokenRe.exec(xml)) !== null) {
-            if (/^<DataElem\b/i.test(token[0])) {
-                if (!/\/\s*>$/.test(token[0])) depth++;
-            } else {
-                depth--;
-                if (depth === 0) {
-                    return xml.slice(m.index, tokenRe.lastIndex);
-                }
-            }
-        }
-        return null;
-    }
-
-    return null;
-}
-
-function replaceNamedDataElem(target, name, replacement) {
-    const wanted = String(name);
-    const openRe = /<DataElem\b[^>]*>/gi;
-    let m;
-
-    while ((m = openRe.exec(target)) !== null) {
-        const openTag = m[0];
-        const nameMatch = /\bname="([^"]*)"/i.exec(openTag);
-        if (!nameMatch || nameMatch[1] !== wanted) continue;
-
-        if (/\/\s*>$/.test(openTag)) {
-            return target.slice(0, m.index) + replacement + target.slice(openRe.lastIndex);
-        }
-
-        const tokenRe = /<DataElem\b[^>]*>|<\/DataElem\s*>/gi;
-        tokenRe.lastIndex = m.index;
-        let depth = 0;
-        let token;
-
-        while ((token = tokenRe.exec(target)) !== null) {
-            if (/^<DataElem\b/i.test(token[0])) {
-                if (!/\/\s*>$/.test(token[0])) depth++;
-            } else {
-                depth--;
-                if (depth === 0) {
-                    return target.slice(0, m.index) + replacement + target.slice(tokenRe.lastIndex);
-                }
-            }
-        }
-        return null;
-    }
-
-    return null;
-}
-
-function copyDataElem(src, target, name, stats) {
-    if (stats && stats.copied && stats.copied.includes(`DataElem:${name}`)) {
-        return target;
-    }
-
-    const sourceElem = extractNamedDataElem(src, name);
-    if (!sourceElem) {
-        logSkip(`DataElem ${name}: غير موجود في XML المصدر`);
-        stats.skipped.push(`DataElem:${name}`);
-        return target;
-    }
-
-    const replaced = replaceNamedDataElem(target, name, sourceElem);
-    if (replaced !== null) {
-        stats.replaced.push(`DataElem:${name}`);
-        if (stats.copied) stats.copied.push(`DataElem:${name}`);
-        return replaced;
-    }
-
-    // If absent in target, prefer Global as the insertion container.
-    const globalClose = /<\/Global\s*>/i;
-    if (globalClose.test(target)) {
-        stats.inserted.push(`DataElem:${name}`);
-        if (stats.copied) stats.copied.push(`DataElem:${name}`);
-        return target.replace(globalClose, () => sourceElem + "</Global>");
-    }
-
-    const rootClose = /<\/root\s*>/i;
-    if (rootClose.test(target)) {
-        stats.inserted.push(`DataElem:${name}`);
-        if (stats.copied) stats.copied.push(`DataElem:${name}`);
-        return target.replace(rootClose, () => sourceElem + "</root>");
-    }
-
-    logSkip(`DataElem ${name}: لا توجد نقطة إدراج`);
-    stats.skipped.push(`DataElem:${name}`);
-    return target;
-}
-
-function copyRequestedExtras(src, target, stats) {
-    for (const name of EXTRA_VARS) {
-        target = copyVar(src, target, name, stats);
-    }
-
-    for (const name of EXTRA_DATAELEMS) {
-        target = copyDataElem(src, target, name, stats);
-    }
-
-    // Copy all avatar Vars that actually exist in the donor XML.
-    // This uses only the XML naming convention, not editor behavior.
-    const sourceGlobal = extractTagBlock(src, "Global");
-    if (sourceGlobal) {
-        const avatarRe = /<Var\s+name="((?:Unlocked_ava|MigrateUnlocked_ava)[^"]*)"\b[^>]*\/\s*>/gi;
-        let m;
-        while ((m = avatarRe.exec(sourceGlobal)) !== null) {
-            target = copyVar(src, target, m[1], stats);
-        }
-    } else {
-        logSkip("Avatars: Global غير موجود في XML المصدر");
-    }
-
-    return target;
-}
-
 function copyVar(src, target, name, stats) {
-    // Prevent the same XML part from being copied more than once during
-    // the full pipeline (some existing stages intentionally overlap).
-    if (stats && stats.copied && stats.copied.includes(`Var:${name}`)) {
-        return target;
-    }
-
     const sourceTag = findVar(src, name);
 
     if (!sourceTag) {
@@ -536,27 +362,24 @@ function copyVar(src, target, name, stats) {
     }
 
     const pattern = new RegExp(
-        `<Var\\s+name="${escapeRegExp(name)}"\\b[^>]*/\\s*>`,
+        `<Var\\s+name="${escapeRegExp(name)}"[^>]*/\\s*>`,
         "i"
     );
 
     if (pattern.test(target)) {
         stats.updatedVars.push(name);
-        if (stats.copied) stats.copied.push(`Var:${name}`);
         return target.replace(pattern, () => sourceTag);
     }
 
     const globalClose = /<\/Global\s*>/i;
     if (globalClose.test(target)) {
         stats.createdVars.push(name);
-        if (stats.copied) stats.copied.push(`Var:${name}`);
         return target.replace(globalClose, () => sourceTag + "</Global>");
     }
 
     const rootClose = /<\/root\s*>/i;
     if (rootClose.test(target)) {
         stats.createdVars.push(name);
-        if (stats.copied) stats.copied.push(`Var:${name}`);
         return target.replace(rootClose, () => sourceTag + "</root>");
     }
 
@@ -630,32 +453,112 @@ function applyEtapa1(myXml, friendXml, stats) {
 // Etapa 2
 // ============================================================
 
+function extractUserId(xml) {
+    const m = /<Object\b[^>]*\buser="([^"]+)"/i.exec(xml || "");
+    return m ? m[1] : "";
+}
+
+function positionAfterFirstClosing(xml, tagName) {
+    if (!xml) return -1;
+    const close = new RegExp(`</${escapeRegExp(tagName)}\\s*>`, "i");
+    const m = close.exec(xml);
+    return m ? m.index + m[0].length : -1;
+}
+
+function extractBlockAfter(xml, tagName, fromPos) {
+    if (!xml || fromPos < 0) return null;
+
+    // CloneEngine searches from fromPos, then takes the first matching
+    // opening tag and the first matching closing tag after it.
+    const tail = xml.slice(fromPos);
+    const open = new RegExp(`<${escapeRegExp(tagName)}\\b[^>]*>`, "i");
+    const om = open.exec(tail);
+    if (!om) return null;
+
+    const close = new RegExp(`</${escapeRegExp(tagName)}\\s*>`, "i");
+    const cm = close.exec(tail.slice(om.index + om[0].length));
+    if (!cm) return null;
+
+    const start = fromPos + om.index;
+    const end = fromPos + om.index + om[0].length + cm.index + cm[0].length;
+    return { start, end, text: xml.slice(start, end) };
+}
+
 function cloneTownAndBuildings(src, target, stats) {
-    /*
-     * CloneEngine.cloneDecoration is not part of the supplied
-     * DesbanEngine artifact. Therefore we reproduce the visible
-     * XML responsibility conservatively:
-     *   - TownGround
-     *   - Buildings
-     *
-     * The original call uses all cloneDecoration boolean options
-     * as false. We do not invent transformations that are not
-     * supported by the supplied class.
-     */
-    for (const tag of ["TownGround", "Buildings"]) {
-        const before = stats.replaced.length + stats.inserted.length;
+    // This mirrors the city branch of CloneEngine.cloneDecoration
+    // used by DesbanEngine with all CloneOptions set to false.
+    const srcAfterZoo = positionAfterFirstClosing(src, "Zoo");
+    const tgtAfterZoo = positionAfterFirstClosing(target, "Zoo");
 
-        target = cloneBlock(src, target, tag, stats);
-
-        if (
-            before === stats.replaced.length + stats.inserted.length &&
-            !stats.skipped.includes(tag)
-        ) {
-            stats.skipped.push(tag);
-        }
+    if (srcAfterZoo < 0 || tgtAfterZoo < 0) {
+        logSkip("TownGround+Buildings: Zoo غير موجود");
+        stats.skipped.push("TownGround+Buildings");
+        return target;
     }
 
-    return target;
+    const srcTg = extractBlockAfter(src, "TownGround", srcAfterZoo);
+    if (!srcTg) {
+        logSkip("TownGround+Buildings: المصدر لا يحتوي TownGround بعد Zoo");
+        stats.skipped.push("TownGround+Buildings");
+        return target;
+    }
+
+    const srcBld = extractBlockAfter(src, "Buildings", srcTg.start);
+    if (!srcBld) {
+        logSkip("TownGround+Buildings: المصدر لا يحتوي Buildings");
+        stats.skipped.push("TownGround+Buildings");
+        return target;
+    }
+
+    const bldInsideTownGround =
+        srcBld.start >= srcTg.start && srcBld.end <= srcTg.end;
+
+    let srcTown = srcTg.text;
+    let srcBuildings = srcBld.text;
+
+    const srcUser = extractUserId(src);
+    const tgtUser = extractUserId(target);
+
+    if (srcUser && tgtUser && srcUser !== tgtUser) {
+        const userRe = new RegExp(`user="${escapeRegExp(srcUser)}"`, "g");
+        srcTown = srcTown.replace(userRe, `user="${tgtUser}"`);
+        srcBuildings = srcBuildings.replace(userRe, `user="${tgtUser}"`);
+    }
+
+    const tgtTg = extractBlockAfter(target, "TownGround", tgtAfterZoo);
+    if (!tgtTg) {
+        logSkip("TownGround+Buildings: الهدف لا يحتوي TownGround بعد Zoo");
+        stats.skipped.push("TownGround+Buildings");
+        return target;
+    }
+
+    if (bldInsideTownGround) {
+        const before = target.slice(0, tgtTg.start);
+        const after = target.slice(tgtTg.end);
+        stats.replaced.push("TownGround");
+        stats.replaced.push("Buildings");
+        return before + srcTown + after;
+    }
+
+    const tgtBld = extractBlockAfter(target, "Buildings", tgtTg.end);
+
+    if (!tgtBld) {
+        const before = target.slice(0, tgtTg.start);
+        const after = target.slice(tgtTg.end);
+        stats.inserted.push("Buildings");
+        stats.replaced.push("TownGround");
+        return before + srcTown + "\n" + srcBuildings + after;
+    }
+
+    let out = target;
+
+    // Replace from the right-hand side first so indexes remain valid.
+    out = out.slice(0, tgtBld.start) + srcBuildings + out.slice(tgtBld.end);
+    out = out.slice(0, tgtTg.start) + srcTown + out.slice(tgtTg.end);
+
+    stats.replaced.push("TownGround");
+    stats.replaced.push("Buildings");
+    return out;
 }
 
 function cloneGlobalVarsECoupons(src, target, stats) {
@@ -733,7 +636,7 @@ function cloneGlobalBlock(src, target, stats) {
         }
 
         const p = new RegExp(
-            `<Var\\s+name="${escapeRegExp(name)}"\\b[^>]*/\\s*>`,
+            `<Var\\s+name="${escapeRegExp(name)}"[^>]*/\\s*>`,
             "i"
         );
 
@@ -899,7 +802,7 @@ function processUnlockAchievements(xml, stats) {
             `<Var name="${name}" v="4" t="i"/>`;
 
         const pattern = new RegExp(
-            `<Var\\s+name="${escapeRegExp(name)}"\\b[^>]*/\\s*>`,
+            `<Var\\s+name="${escapeRegExp(name)}"[^>]*/\\s*>`,
             "i"
         );
 
@@ -948,7 +851,6 @@ function applyEtapa3(myXml, friendXml, stats) {
     result = cloneGlobalBlock(friendXml, result, stats);
     result = processUnlockAchievements(result, stats);
     result = cloneGlobalVarsECoupons(friendXml, result, stats);
-    result = copyRequestedExtras(friendXml, result, stats);
 
     return result;
 }
@@ -964,8 +866,7 @@ function createStats() {
         replaced: [],
         inserted: [],
         skipped: [],
-        errors: [],
-        copied: []
+        errors: []
     };
 }
 
@@ -993,9 +894,26 @@ function runStage(stage, myXml, friendXml) {
     } else if (stage === 3) {
         result = applyEtapa3(result, friendXml, stats);
     } else if (stage === "full") {
+        // Safe full pipeline: only operations that are either directly
+        // visible in DesbanEngine or implemented from its exact helper
+        // structure are enabled here. The previous broad/generic merges
+        // are deliberately NOT used.
         result = applyEtapa1(result, friendXml, stats);
         result = applyEtapa2(result, friendXml, stats);
-        result = applyEtapa3(result, friendXml, stats);
+
+        // Stage 3: clone only the explicit blocks named by DesbanEngine.
+        result = cloneArtInfo(friendXml, result, stats);
+        for (const tag of CLONE_BLOCKS_ETAPA3) {
+            result = cloneBlock(friendXml, result, tag, stats);
+        }
+        result = cloneUpgradeBlock(friendXml, result, stats);
+        result = cloneAirInfoAndOrders(friendXml, result, stats);
+        result = cloneDailyBonus(friendXml, result, stats);
+        result = cloneGlobalBlock(friendXml, result, stats);
+
+        // Do NOT run the old heuristic implementations of BarnItems,
+        // Match3, quantity variables, or achievement counters here.
+        // Those heuristics could copy unrelated donor state.
     } else {
         throw new Error("مرحلة غير معروفة");
     }
@@ -1093,7 +1011,7 @@ async function handleStage(stage, req, res) {
  * applyDesban() in the supplied DesbanEngine calls Etapa1.
  */
 router.post("/desban", (req, res) => {
-    handleStage("full", req, res);
+    handleStage(1, req, res);
 });
 
 router.post("/desban/repair", (req, res) => {
