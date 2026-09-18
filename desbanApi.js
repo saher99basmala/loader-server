@@ -76,7 +76,6 @@ const CLONE_BLOCKS_ETAPA2 = [
 ];
 
 const CLONE_BLOCKS_ETAPA3 = [
-    "Trains",
     "IslandsInfo",
     "Minigames",
     "DSCollapseQuests",
@@ -154,8 +153,8 @@ const EXTRA_DATAELEMS = [
 
 
 // Requested complete XML blocks.
+// Skins intentionally removed.
 const EXTRA_BLOCKS = [
-    "Skins",
     "AVATAR_IDS",
     "MIGRATE_AVATAR_IDS"
 ];
@@ -1242,9 +1241,10 @@ function copyRequestedExtras(
     /*
      * Requested complete blocks:
      *
-     * Skins
      * AVATAR_IDS
      * MIGRATE_AVATAR_IDS
+     *
+     * Skins intentionally excluded.
      */
     for (const name of EXTRA_BLOCKS) {
         target = copyRequestedPart(
@@ -2079,6 +2079,11 @@ function applyEtapa3(
         );
 
 
+    /*
+     * Trains intentionally removed.
+     *
+     * The remaining Etapa3 blocks are copied normally.
+     */
     for (
         const tag
         of CLONE_BLOCKS_ETAPA3
@@ -2187,9 +2192,10 @@ function applyEtapa3(
      * UnlockedFrames
      * UnlockedExpRanks
      * UnlockedBadges
-     * Skins
      * AVATAR_IDS
      * MIGRATE_AVATAR_IDS
+     *
+     * Skins intentionally excluded.
      */
     result =
         copyRequestedExtras(
