@@ -1,0 +1,7 @@
+{
+  "name": "desban-independent-server",
+  "version": "1.0.0",
+  "description": "Standalone XML processing server",
+  "port": 3000,
+  "maxBodyBytes": 26214400
+}
