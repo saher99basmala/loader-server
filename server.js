@@ -6,6 +6,7 @@ const app = express();
 
 const view = require("./view");
 const api = require("./api");
+const cardsApi = require("./cardsApi");
 
 // ============================================================
 // BSXML Standalone Pipeline
@@ -64,6 +65,7 @@ app.use(
 
 app.use("/", view);
 app.use("/api", api);
+app.use("/api/cards", cardsApi);
 
 // ============================================================
 // BSXML Standalone Processing
