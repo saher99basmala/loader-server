@@ -1,1057 +1,851 @@
-"use strict";
-
 const express = require("express");
 const { XMLParser } = require("fast-xml-parser");
 
 const router = express.Router();
 
 const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: "@_",
-    trimValues: false,
-    parseTagValue: false,
-    parseAttributeValue: false
+  ignoreAttributes: false,
+  attributeNamePrefix: "@_",
+  textNodeName: "#text",
+  trimValues: false,
 });
 
-/* ============================================================
-   Helpers
-============================================================ */
-
 function arr(value) {
-    if (value == null) return [];
-    return Array.isArray(value) ? value : [value];
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
 }
 
-function valueOf(value) {
-    if (value == null) return "";
-
-    if (typeof value === "object") {
-        if (value["@_value"] != null) return value["@_value"];
-        if (value["@_v"] != null) return value["@_v"];
-        if (value["#text"] != null) return value["#text"];
-    }
-
-    return value;
+function attr(node, name, fallback = "") {
+  if (!node || typeof node !== "object") return fallback;
+  return node[`@_${name}`] ?? fallback;
 }
 
-function numberValue(value, fallback = 0) {
-    const n = Number(valueOf(value));
-    return Number.isFinite(n) ? n : fallback;
+function toInt(value, fallback = 0) {
+  const n = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(n) ? n : fallback;
 }
 
-/* ============================================================
-   Recursive search
-============================================================ */
+function walk(node, callback, path = []) {
+  if (node == null) return;
 
-function findNamed(node, wantedName, out = []) {
-    if (node == null) return out;
+  if (Array.isArray(node)) {
+    node.forEach((item, i) => walk(item, callback, path.concat(i)));
+    return;
+  }
 
-    if (Array.isArray(node)) {
-        for (const item of node) {
-            findNamed(item, wantedName, out);
-        }
-        return out;
-    }
+  if (typeof node !== "object") return;
 
-    if (typeof node !== "object") {
-        return out;
-    }
+  callback(node, path);
 
-    for (const [key, value] of Object.entries(node)) {
-
-        if (key === wantedName) {
-            for (const item of arr(value)) {
-                out.push(item);
-            }
-        }
-
-        if (value && typeof value === "object") {
-            findNamed(value, wantedName, out);
-        }
-    }
-
-    return out;
+  for (const [key, value] of Object.entries(node)) {
+    if (key.startsWith("@_")) continue;
+    walk(value, callback, path.concat(key));
+  }
 }
 
-function findValue(root, names) {
+function findNodesByName(root, name) {
+  const result = [];
 
-    const wanted = new Set(
-        Array.isArray(names) ? names : [names]
-    );
+  walk(root, (node, path) => {
+    const last = path[path.length - 1];
 
-    function walk(node) {
-
-        if (node == null) {
-            return null;
-        }
-
-        if (Array.isArray(node)) {
-
-            for (const item of node) {
-                const result = walk(item);
-
-                if (result != null) {
-                    return result;
-                }
-            }
-
-            return null;
-        }
-
-        if (typeof node !== "object") {
-            return null;
-        }
-
-        for (const [key, value] of Object.entries(node)) {
-
-            const cleanKey =
-                key.startsWith("@_")
-                    ? key.slice(2)
-                    : key;
-
-            if (wanted.has(cleanKey)) {
-                return valueOf(value);
-            }
-
-            if (value && typeof value === "object") {
-
-                const result = walk(value);
-
-                if (result != null) {
-                    return result;
-                }
-            }
-        }
-
-        return null;
+    if (last === name) {
+      result.push(node);
     }
+  });
 
-    return walk(root);
+  return result;
 }
 
-/* ============================================================
-   DataElem helpers
-============================================================ */
+function findFirstByName(root, name) {
+  const nodes = findNodesByName(root, name);
+  return nodes.length ? nodes[0] : null;
+}
 
-function findDataElemsByName(
-    node,
-    wantedName,
-    result = []
-) {
-    if (node == null) {
-        return result;
+function collectVars(root) {
+  const result = [];
+
+  walk(root, (node) => {
+    const name = attr(node, "name");
+
+    if (name) {
+      result.push({
+        name,
+        value: attr(node, "v", attr(node, "value", "")),
+        node,
+      });
     }
+  });
 
-    if (Array.isArray(node)) {
+  return result;
+}
 
-        for (const item of node) {
-            findDataElemsByName(
-                item,
-                wantedName,
-                result
-            );
-        }
+function getVar(root, name, fallback = "") {
+  const vars = collectVars(root);
+  const item = vars.find((v) => v.name === name);
 
-        return result;
+  return item ? item.value : fallback;
+}
+
+function parseXml(xml) {
+  if (typeof xml !== "string" || !xml.trim()) {
+    throw new Error("myXml is empty");
+  }
+
+  return parser.parse(xml);
+}
+
+/*
+ * ============================================================
+ * OwnedCards
+ * ============================================================
+ */
+
+function findOwnedCards(root) {
+  const owned = findFirstByName(root, "OwnedCards");
+
+  if (!owned) {
+    return [];
+  }
+
+  const candidates = [];
+
+  walk(owned, (node, path) => {
+    const cardId = attr(node, "cardId");
+    const inStock = attr(node, "inStockCount");
+
+    if (cardId !== "" && inStock !== "") {
+      candidates.push({
+        cardId: String(cardId),
+        generatedCount: toInt(
+          attr(node, "generatedCount"),
+          0
+        ),
+        inStockCount: toInt(
+          inStock,
+          0
+        ),
+        isNew: String(
+          attr(node, "isNew", "false")
+        ),
+        maxInStockCount: toInt(
+          attr(node, "maxInStockCount"),
+          0
+        ),
+        path,
+      });
     }
+  });
 
-    if (typeof node !== "object") {
-        return result;
+  /*
+   * Merge duplicate card IDs if they appear more than once.
+   */
+  const map = new Map();
+
+  for (const card of candidates) {
+    const old = map.get(card.cardId);
+
+    if (!old) {
+      map.set(card.cardId, {
+        cardId: card.cardId,
+        generatedCount: card.generatedCount,
+        inStockCount: card.inStockCount,
+        isNew: card.isNew,
+        maxInStockCount: card.maxInStockCount,
+      });
+    } else {
+      old.generatedCount += card.generatedCount;
+      old.inStockCount += card.inStockCount;
+      old.maxInStockCount = Math.max(
+        old.maxInStockCount,
+        card.maxInStockCount
+      );
     }
+  }
 
-    if (node["@_name"] === wantedName) {
-        result.push(node);
-    }
+  return Array.from(map.values());
+}
 
-    for (const value of Object.values(node)) {
+/*
+ * ============================================================
+ * Friends
+ * ============================================================
+ */
 
-        if (value && typeof value === "object") {
-            findDataElemsByName(
-                value,
-                wantedName,
-                result
-            );
-        }
-    }
+function findFriends(root) {
+  const result = [];
+  const seen = new Set();
 
+  const friendsList = findFirstByName(
+    root,
+    "FriendsList"
+  );
+
+  if (!friendsList) {
     return result;
-}
+  }
 
-function getDataElemValue(node, name) {
+  walk(friendsList, (node) => {
+    const cityId =
+      attr(node, "cityId") ||
+      attr(node, "cityID") ||
+      attr(node, "gameId") ||
+      attr(node, "id");
 
-    const matches =
-        findDataElemsByName(
-            node,
-            name,
-            []
-        );
+    const name =
+      attr(node, "name") ||
+      attr(node, "cityName") ||
+      attr(node, "townName") ||
+      attr(node, "friendName");
 
-    if (!matches.length) {
-        return "";
+    if (!cityId) {
+      return;
     }
 
-    return String(
-        matches[0]["@_value"] ?? ""
-    );
-}
+    const key = String(cityId);
 
-/* ============================================================
-   Extract OwnedCards
-============================================================ */
-
-function extractCards(root) {
-
-    const cards = [];
-
-    const ownedCardsArrays =
-        findDataElemsByName(
-            root,
-            "OwnedCards",
-            []
-        );
-
-    for (const ownedCardsArray of ownedCardsArrays) {
-
-        let entries =
-            ownedCardsArray.DataElem;
-
-        if (!entries) {
-            continue;
-        }
-
-        if (!Array.isArray(entries)) {
-            entries = [entries];
-        }
-
-        for (const entry of entries) {
-
-            if (!entry || typeof entry !== "object") {
-                continue;
-            }
-
-            if (entry["@_type"] !== "dataStore") {
-                continue;
-            }
-
-            const cardId =
-                getDataElemValue(
-                    entry,
-                    "cardId"
-                );
-
-            if (!cardId) {
-                continue;
-            }
-
-            const generatedCount =
-                numberValue(
-                    getDataElemValue(
-                        entry,
-                        "generatedCount"
-                    )
-                );
-
-            const inStockCount =
-                numberValue(
-                    getDataElemValue(
-                        entry,
-                        "inStockCount"
-                    )
-                );
-
-            const maxInStockCount =
-                numberValue(
-                    getDataElemValue(
-                        entry,
-                        "maxInStockCount"
-                    )
-                );
-
-            const isNewValue =
-                getDataElemValue(
-                    entry,
-                    "isNew"
-                );
-
-            cards.push({
-                cardId: String(cardId),
-                generatedCount,
-                inStockCount,
-                maxInStockCount,
-                isNew:
-                    isNewValue === "true" ||
-                    isNewValue === "1"
-            });
-        }
+    if (seen.has(key)) {
+      return;
     }
 
-    /*
-     * دمج أي تكرار لنفس cardId
-     */
-    const map = new Map();
+    seen.add(key);
 
-    for (const card of cards) {
+    result.push({
+      friendId: key,
+      name: String(name || key),
+      cityId: key,
+      gameId: String(
+        attr(node, "gameId", "")
+      ),
+      pic: String(
+        attr(node, "MyPicture") ||
+        attr(node, "pic") ||
+        attr(node, "picture") ||
+        ""
+      ),
+      raw: node,
+    });
+  });
 
-        if (!map.has(card.cardId)) {
-
-            map.set(
-                card.cardId,
-                { ...card }
-            );
-
-            continue;
-        }
-
-        const old =
-            map.get(card.cardId);
-
-        old.inStockCount +=
-            card.inStockCount;
-
-        old.generatedCount =
-            Math.max(
-                old.generatedCount,
-                card.generatedCount
-            );
-
-        old.maxInStockCount =
-            Math.max(
-                old.maxInStockCount,
-                card.maxInStockCount
-            );
-
-        old.isNew =
-            old.isNew ||
-            card.isNew;
-    }
-
-    return Array.from(map.values());
+  return result;
 }
 
-/* ============================================================
-   Extract Friends
-============================================================ */
-
-function extractFriends(root) {
-
-    const friendNodes =
-        findNamed(
-            root,
-            "friend"
-        );
-
-    const friends = [];
-    const seen = new Set();
-
-    for (const friend of friendNodes) {
-
-        if (!friend || typeof friend !== "object") {
-            continue;
-        }
-
-        const cityId = String(
-            friend["@_city_id"] ??
-            friend["@_cityId"] ??
-            friend["@_id"] ??
-            friend["@_friend_id"] ??
-            friend["@_friendId"] ??
-            ""
-        );
-
-        if (!cityId) {
-            continue;
-        }
-
-        if (seen.has(cityId)) {
-            continue;
-        }
-
-        seen.add(cityId);
-
-        const cityName = String(
-            friend["@_city_name"] ??
-            friend["@_cityName"] ??
-            ""
-        );
-
-        const rawName =
-            String(
-                friend["@_name"] ?? ""
-            );
-
-        const levelRaw =
-            friend["@_level"];
-
-        const xpRaw =
-            friend["@_xp"];
-
-        const level =
-            levelRaw === undefined ||
-            levelRaw === ""
-                ? null
-                : Number(levelRaw);
-
-        const xp =
-            xpRaw === undefined ||
-            xpRaw === ""
-                ? null
-                : Number(xpRaw);
-
-        const pic =
-            String(
-                friend["@_pic"] ?? ""
-            );
-
-        friends.push({
-
-            id: cityId,
-
-            cityId,
-
-            name:
-                cityName ||
-                rawName ||
-                cityId,
-
-            cityName,
-
-            level:
-                Number.isFinite(level)
-                    ? level
-                    : null,
-
-            xp:
-                Number.isFinite(xp)
-                    ? xp
-                    : null,
-
-            pic
-        });
-    }
-
-    return friends;
-}
-
-/* ============================================================
-   Meta
-============================================================ */
+/*
+ * ============================================================
+ * City metadata
+ * ============================================================
+ */
 
 function extractMeta(root) {
+  const cityId =
+    getVar(root, "gameId") ||
+    getVar(root, "cityId") ||
+    "";
 
-    return {
+  const cityName =
+    getVar(root, "name") ||
+    getVar(root, "townName") ||
+    "";
 
-        cityId:
-            String(
-                findValue(
-                    root,
-                    ["cityId", "city_id"]
-                ) || ""
-            ),
+  return {
+    cityId: String(cityId),
+    gameId: String(
+      getVar(root, "gameId", "")
+    ),
+    name: String(cityName),
+    picture: String(
+      getVar(root, "MyPicture", "")
+    ),
+    experience: toInt(
+      getVar(root, "experience", "0"),
+      0
+    ),
+  };
+}
 
+/*
+ * ============================================================
+ * Build all card jobs
+ * ============================================================
+ */
+
+function buildCardJobs(
+  cards,
+  friend,
+  meta
+) {
+  return cards
+    .filter(
+      (card) =>
+        card.inStockCount > 0
+    )
+    .map((card) => ({
+      cardId: card.cardId,
+
+      quantity:
+        card.inStockCount,
+
+      generatedCount:
+        card.generatedCount,
+
+      inStockCount:
+        card.inStockCount,
+
+      isNew:
+        card.isNew,
+
+      maxInStockCount:
+        card.maxInStockCount,
+
+      from: {
+        cityId: meta.cityId,
+        gameId: meta.gameId,
+        name: meta.name,
+      },
+
+      to: {
+        cityId: friend.friendId,
         gameId:
-            String(
-                findValue(
-                    root,
-                    ["gameId", "game_id"]
-                ) || ""
-            ),
+          friend.gameId ||
+          friend.friendId,
+        name: friend.name,
+      },
+    }));
+}
 
-        experience:
-            numberValue(
-                findValue(
-                    root,
-                    ["experience"]
-                ),
-                0
-            )
+/*
+ * ============================================================
+ * Build complete XML data
+ * ============================================================
+ */
+
+function buildPayload(body) {
+  const root = parseXml(
+    body.myXml
+  );
+
+  const friends =
+    findFriends(root);
+
+  const cards =
+    findOwnedCards(root);
+
+  const meta =
+    extractMeta(root);
+
+  return {
+    root,
+    friends,
+    cards,
+    meta,
+  };
+}
+
+/*
+ * ============================================================
+ * Select friend
+ * ============================================================
+ */
+
+function selectFriend(
+  friends,
+  friendId
+) {
+  const wanted =
+    String(friendId || "");
+
+  if (!wanted) {
+    throw new Error(
+      "friendId is required"
+    );
+  }
+
+  const friend =
+    friends.find(
+      (f) =>
+        String(f.friendId) === wanted ||
+        String(f.cityId) === wanted ||
+        String(f.gameId) === wanted
+    );
+
+  if (!friend) {
+    throw new Error(
+      `Friend not found: ${wanted}`
+    );
+  }
+
+  return friend;
+}
+
+/*
+ * ============================================================
+ * Authorized sending configuration
+ * ============================================================
+ */
+
+function requiredConfig() {
+  const url =
+    process.env.CARD_SEND_URL;
+
+  if (!url) {
+    throw new Error(
+      "CARD_SEND_URL is not configured. Configure the authorized card-send endpoint before sending."
+    );
+  }
+
+  return {
+    url,
+
+    token:
+      process.env.CARD_SEND_TOKEN ||
+      "",
+
+    tsBver:
+      process.env.CARD_TS_BVER ||
+      "",
+
+    tsFver:
+      process.env.CARD_TS_FVER ||
+      "",
+
+    xVersion:
+      process.env.CARD_X_VERSION ||
+      "",
+  };
+}
+
+/*
+ * ============================================================
+ * POST to authorized endpoint
+ * ============================================================
+ */
+
+async function postAuthorized(
+  payload
+) {
+  const config =
+    requiredConfig();
+
+  const headers = {
+    "content-type":
+      "application/json",
+
+    accept:
+      "application/json",
+  };
+
+  if (config.token) {
+    headers.authorization =
+      `Bearer ${config.token}`;
+
+    headers["ts-token"] =
+      config.token;
+  }
+
+  if (config.tsBver) {
+    headers["ts-bver"] =
+      config.tsBver;
+  }
+
+  if (config.tsFver) {
+    headers["ts-fver"] =
+      config.tsFver;
+  }
+
+  if (config.xVersion) {
+    headers["x-version"] =
+      config.xVersion;
+  }
+
+  const response =
+    await fetch(
+      config.url,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(
+          payload
+        ),
+      }
+    );
+
+  const raw =
+    await response.text();
+
+  let data;
+
+  try {
+    data =
+      raw
+        ? JSON.parse(raw)
+        : {};
+  } catch {
+    data = {
+      raw,
     };
+  }
+
+  if (!response.ok) {
+    const error =
+      new Error(
+        `Card send endpoint returned HTTP ${response.status}`
+      );
+
+    error.status =
+      response.status;
+
+    error.response =
+      data;
+
+    throw error;
+  }
+
+  return data;
 }
 
-/* ============================================================
-   XML input
-============================================================ */
+/*
+ * ============================================================
+ * ANALYZE
+ *
+ * POST /api/cards/analyze
+ *
+ * {
+ *   "myXml": "..."
+ * }
+ * ============================================================
+ */
 
-function getXml(req) {
+router.post(
+  "/analyze",
+  (req, res) => {
+    try {
+      const {
+        myXml,
+      } = req.body || {};
 
-    if (
-        req.body &&
-        typeof req.body.xml === "string"
-    ) {
-        return req.body.xml;
-    }
+      const {
+        friends,
+        cards,
+        meta,
+      } =
+        buildPayload({
+          myXml,
+        });
 
-    if (
-        req.body &&
-        typeof req.body.myXml === "string"
-    ) {
-        return req.body.myXml;
-    }
-
-    return "";
-}
-
-/* ============================================================
-   Build one SEND-ALL job
-============================================================ */
-
-function makeJob(friend, cards, meta) {
-
-    const sendCards =
-        cards
-            .filter(
-                card =>
-                    Number(
-                        card.inStockCount
-                    ) > 0
-            )
-            .map(card => ({
-
-                cardId:
-                    card.cardId,
-
-                quantity:
-                    Number(
-                        card.inStockCount
-                    ),
-
-                inStockCount:
-                    Number(
-                        card.inStockCount
-                    ),
-
-                generatedCount:
-                    Number(
-                        card.generatedCount
-                    ),
-
-                maxInStockCount:
-                    Number(
-                        card.maxInStockCount
-                    ),
-
-                isNew:
-                    !!card.isNew
-            }));
-
-    const totalCards =
-        sendCards.reduce(
-            (sum, card) =>
-                sum +
-                Number(
-                    card.quantity || 0
-                ),
-            0
+      const activeCards =
+        cards.filter(
+          (c) =>
+            c.inStockCount > 0
         );
 
-    return {
+      const totalCards =
+        activeCards.reduce(
+          (sum, card) =>
+            sum +
+            card.inStockCount,
+          0
+        );
 
-        type:
-            "send_all_cards",
+      res.json({
+        success: true,
+
+        mode: "ready",
+
+        city: meta,
+
+        friends,
+
+        cards,
+
+        activeCards,
+
+        distinctCards:
+          activeCards.length,
+
+        totalCards,
+
+        message:
+          "تم تحليل XML بنجاح. اختر الصديق فقط وسيتم إرسال كل البطاقات الموجودة بالمخزون.",
+      });
+    } catch (error) {
+      console.error(
+        "[CARDS] analyze error:",
+        error
+      );
+
+      res.status(400).json({
+        success: false,
+        error:
+          error.message,
+      });
+    }
+  }
+);
+
+/*
+ * ============================================================
+ * SEND ALL
+ *
+ * POST /api/cards/send-all
+ *
+ * {
+ *   "myXml": "...",
+ *   "friendId": "..."
+ * }
+ *
+ * المستخدم يختار الصديق فقط.
+ * كل البطاقات التي inStockCount > 0 يتم إرسالها.
+ * ============================================================
+ */
+
+router.post(
+  "/send-all",
+  async (req, res) => {
+    try {
+      const {
+        myXml,
+        friendId,
+      } = req.body || {};
+
+      const {
+        friends,
+        cards,
+        meta,
+      } =
+        buildPayload({
+          myXml,
+        });
+
+      const friend =
+        selectFriend(
+          friends,
+          friendId
+        );
+
+      const activeCards =
+        cards.filter(
+          (card) =>
+            card.inStockCount > 0
+        );
+
+      if (
+        !activeCards.length
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            error:
+              "لا توجد بطاقات متوفرة في OwnedCards.",
+
+            city: meta,
+
+            friend,
+
+            distinctCards: 0,
+
+            totalCards: 0,
+          });
+      }
+
+      const cardJobs =
+        buildCardJobs(
+          activeCards,
+          friend,
+          meta
+        );
+
+      /*
+       * البيانات التي سترسل إلى
+       * endpoint المصرح به.
+       */
+
+      const outbound = {
+        operation:
+          "send_all_cards",
+
+        cityId:
+          meta.cityId,
+
+        gameId:
+          meta.gameId,
 
         from: {
-            cityId:
-                meta.cityId,
+          cityId:
+            meta.cityId,
 
-            gameId:
-                meta.gameId
+          gameId:
+            meta.gameId,
+
+          name:
+            meta.name,
         },
 
-        friend: {
+        to: {
+          cityId:
+            friend.friendId,
 
-            id:
-                friend.id,
+          gameId:
+            friend.gameId ||
+            friend.friendId,
 
-            cityId:
-                friend.cityId,
+          name:
+            friend.name,
 
-            name:
-                friend.name,
-
-            cityName:
-                friend.cityName,
-
-            level:
-                friend.level,
-
-            xp:
-                friend.xp,
-
-            pic:
-                friend.pic
+          pic:
+            friend.pic,
         },
 
         cards:
-            sendCards,
+          cardJobs,
 
-        distinctCards:
-            sendCards.length,
+        summary: {
+          distinctCards:
+            cardJobs.length,
 
-        totalCards
-    };
-}
+          totalCards:
+            cardJobs.reduce(
+              (sum, card) =>
+                sum +
+                card.quantity,
+              0
+            ),
+        },
+      };
 
-/* ============================================================
-   Authorized sender
-============================================================ */
+      console.log(
+        `[CARDS] Sending ${outbound.summary.totalCards} cards (${outbound.summary.distinctCards} types) to ${friend.name} [${friend.friendId}]`
+      );
 
-async function sendAuthorized(job) {
+      /*
+       * إرسال فعلي.
+       * لا يوجد preview هنا.
+       */
 
-    const url =
-        process.env.CARD_SEND_URL || "";
-
-    const token =
-        process.env.CARD_SEND_TOKEN || "";
-
-    /*
-     * إذا لم يتم تحديد API مصرح به:
-     * لا يتم إرسال شيء للخارج.
-     * يرجع Preview فقط.
-     */
-    if (!url) {
-
-        return {
-
-            success: true,
-
-            mode:
-                "preview",
-
-            message:
-                "CARD_SEND_URL غير مضبوط؛ تم إنشاء مهمة الإرسال فقط.",
-
-            friend:
-                job.friend,
-
-            distinctCards:
-                job.distinctCards,
-
-            totalCards:
-                job.totalCards,
-
-            sent:
-                0,
-
-            sentCards:
-                0,
-
-            created:
-                0,
-
-            failed:
-                0,
-
-            notFound:
-                0,
-
-            job
-        };
-    }
-
-    const headers = {
-
-        "Content-Type":
-            "application/json",
-
-        "Accept":
-            "application/json"
-    };
-
-    if (token) {
-
-        headers.Authorization =
-            "Bearer " + token;
-    }
-
-    const response =
-        await fetch(
-            url,
-            {
-
-                method:
-                    "POST",
-
-                headers,
-
-                body:
-                    JSON.stringify(job)
-            }
+      const remote =
+        await postAuthorized(
+          outbound
         );
 
-    const text =
-        await response.text();
+      const remoteSuccess =
+        remote?.success === true ||
+        remote?.ok === true ||
+        remote?.status ===
+          "success";
 
-    let data;
+      const sent =
+        toInt(
+          remote?.sent ??
+            remote?.sentCards ??
+            remote?.summary?.sent ??
+            (
+              remoteSuccess
+                ? outbound.summary
+                    .totalCards
+                : 0
+            ),
+          0
+        );
 
-    try {
+      const created =
+        toInt(
+          remote?.created ??
+            remote?.added ??
+            remote?.summary
+              ?.created ??
+            0,
+          0
+        );
 
-        data =
-            JSON.parse(text);
+      const notFound =
+        toInt(
+          remote?.notFound ??
+            remote?.summary
+              ?.notFound ??
+            0,
+          0
+        );
 
-    } catch (_) {
+      const failed =
+        toInt(
+          remote?.failed ??
+            remote?.summary
+              ?.failed ??
+            (
+              remoteSuccess
+                ? 0
+                : outbound.summary
+                    .totalCards
+            ),
+          0
+        );
 
-        data = {
-            raw: text
-        };
-    }
-
-    if (!response.ok) {
-
-        return {
-
-            success: false,
-
-            mode:
-                "authorized",
-
-            status:
-                response.status,
-
-            message:
-                "CARD_SEND_URL returned HTTP " +
-                response.status,
-
-            response:
-                data,
-
-            friend:
-                job.friend,
-
-            distinctCards:
-                job.distinctCards,
-
-            totalCards:
-                job.totalCards
-        };
-    }
-
-    return {
-
-        success: true,
+      return res.json({
+        success:
+          remoteSuccess,
 
         mode:
-            "authorized",
+          "live",
 
-        friend:
-            data.friend ||
-            job.friend,
+        city:
+          meta,
 
-        distinctCards:
-            data.distinctCards ??
-            data.cardsFound ??
-            job.distinctCards,
+        friend,
 
-        totalCards:
-            data.totalCards ??
-            job.totalCards,
+        requested: {
+          distinctCards:
+            outbound.summary
+              .distinctCards,
 
-        sent:
-            data.sent ??
-            data.sentCards ??
-            0,
+          totalCards:
+            outbound.summary
+              .totalCards,
+        },
 
-        sentCards:
-            data.sentCards ??
-            data.sent ??
-            0,
+        result: {
+          sent,
 
-        created:
-            data.created ??
-            0,
+          created,
 
-        failed:
-            data.failed ??
-            0,
+          notFound,
 
-        notFound:
-            data.notFound ??
-            0,
+          failed,
+        },
 
-        response:
-            data
-    };
-}
+        remote,
+      });
+    } catch (error) {
+      console.error(
+        "[CARDS] send-all error:",
+        error
+      );
 
-/* ============================================================
-   POST /api/cards/analyze
-============================================================ */
+      const status =
+        error.status &&
+        Number.isInteger(
+          error.status
+        )
+          ? error.status
+          : 500;
 
-router.post(
-    "/analyze",
-    (req, res) => {
+      return res
+        .status(status)
+        .json({
+          success: false,
 
-        try {
+          mode:
+            "live",
 
-            const xml =
-                getXml(req);
+          error:
+            error.message,
 
-            if (!xml) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    error:
-                        "XML is required"
-                });
-            }
-
-            const root =
-                parser.parse(xml);
-
-            const meta =
-                extractMeta(root);
-
-            const friends =
-                extractFriends(root);
-
-            const cards =
-                extractCards(root);
-
-            const activeCards =
-                cards.filter(
-                    card =>
-                        Number(
-                            card.inStockCount
-                        ) > 0
-                );
-
-            const totalCards =
-                activeCards.reduce(
-                    (sum, card) =>
-                        sum +
-                        Number(
-                            card.inStockCount || 0
-                        ),
-                    0
-                );
-
-            console.log(
-                "[CARDS] ANALYZE",
-                {
-                    friends:
-                        friends.length,
-
-                    distinctCards:
-                        activeCards.length,
-
-                    totalCards
-                }
-            );
-
-            return res.json({
-
-                success: true,
-
-                meta,
-
-                friends,
-
-                cards:
-                    activeCards,
-
-                distinctCards:
-                    activeCards.length,
-
-                totalCards
-            });
-
-        } catch (error) {
-
-            console.error(
-                "[CARDS] ANALYZE ERROR",
-                error
-            );
-
-            return res.status(500).json({
-
-                success: false,
-
-                error:
-                    error.message ||
-                    String(error)
-            });
-        }
+          remote:
+            error.response ||
+            null,
+        });
     }
+  }
 );
-
-/* ============================================================
-   POST /api/cards/send-all
-============================================================ */
-
-router.post(
-    "/send-all",
-    async (req, res) => {
-
-        try {
-
-            const xml =
-                getXml(req);
-
-            if (!xml) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    error:
-                        "XML is required"
-                });
-            }
-
-            const root =
-                parser.parse(xml);
-
-            const meta =
-                extractMeta(root);
-
-            const friends =
-                extractFriends(root);
-
-            const cards =
-                extractCards(root);
-
-            const activeCards =
-                cards.filter(
-                    card =>
-                        Number(
-                            card.inStockCount
-                        ) > 0
-                );
-
-            /*
-             * Lua يرسل friendId فقط.
-             */
-            const requestedFriendId =
-                req.body.friendId ||
-                req.body.friend_id ||
-                (
-                    req.body.friend &&
-                    (
-                        req.body.friend.id ||
-                        req.body.friend.cityId ||
-                        req.body.friend.city_id
-                    )
-                );
-
-            if (!requestedFriendId) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    error:
-                        "friendId is required",
-
-                    friends
-                });
-            }
-
-            const friend =
-                friends.find(
-                    item =>
-                        String(item.id) ===
-                        String(requestedFriendId)
-                );
-
-            if (!friend) {
-
-                return res.status(404).json({
-
-                    success: false,
-
-                    error:
-                        "Friend not found in XML",
-
-                    friendId:
-                        requestedFriendId,
-
-                    availableFriends:
-                        friends
-                });
-            }
-
-            if (!activeCards.length) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    error:
-                        "No cards with inStockCount > 0 were found",
-
-                    cardsDetected:
-                        cards.length,
-
-                    totalCards:
-                        0
-                });
-            }
-
-            /*
-             * هنا يتم تجهيز جميع البطاقات.
-             * لا يوجد اختيار بطاقة.
-             * لا يوجد quantity من المستخدم.
-             */
-            const job =
-                makeJob(
-                    friend,
-                    activeCards,
-                    meta
-                );
-
-            console.log(
-                "[CARDS] SEND ALL",
-                {
-                    friend:
-                        friend.name,
-
-                    cityId:
-                        friend.cityId,
-
-                    distinctCards:
-                        job.distinctCards,
-
-                    totalCards:
-                        job.totalCards
-                }
-            );
-
-            const result =
-                await sendAuthorized(job);
-
-            return res.json({
-
-                ...result,
-
-                success:
-                    result.success !== false,
-
-                friend:
-                    result.friend ||
-                    friend
-            });
-
-        } catch (error) {
-
-            console.error(
-                "[CARDS] SEND-ALL ERROR",
-                error
-            );
-
-            return res.status(500).json({
-
-                success: false,
-
-                error:
-                    error.message ||
-                    String(error)
-            });
-        }
-    }
-);
-
-/* ============================================================
-   Export
-============================================================ */
 
 module.exports = router;
