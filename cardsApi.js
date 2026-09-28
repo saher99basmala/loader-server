@@ -43,23 +43,17 @@ function arr(v) {
     return Array.isArray(v) ? v : [v];
 }
 
-
 function s(v) {
     return v == null ? '' : String(v);
 }
-
 
 function blank(v) {
     return !s(v).trim();
 }
 
-
 function hex(buf) {
-    return Buffer
-        .from(buf)
-        .toString('hex');
+    return Buffer.from(buf).toString('hex');
 }
-
 
 function unhex(str) {
     if (
@@ -71,7 +65,6 @@ function unhex(str) {
 
     return Buffer.from(str, 'hex');
 }
-
 
 function qjsonPairs(pairs) {
     const obj = {};
@@ -531,7 +524,6 @@ function collectionSetId(xml, cardId) {
     const cardNumber =
         Number(match[1]);
 
-
     let x = xml.match(
         /<DataElem\s+name="configId"\s+type="string"\s+value="CardCollections_(\d+)"/i
     );
@@ -543,7 +535,6 @@ function collectionSetId(xml, cardId) {
         return x[1];
     }
 
-
     x = xml.match(
         /<DataElem\s+name="pinnedCardCollectionsBalanceId"\s+type="string"\s+value="CardC(\d+)_Balance"/i
     );
@@ -554,7 +545,6 @@ function collectionSetId(xml, cardId) {
     ) {
         return x[1];
     }
-
 
     const block = xml.match(
         /<DataElem\s+name="LastSeenSetProgress"\s+type="dataStore">([\s\S]*?)<\/DataElem>/i
@@ -938,6 +928,9 @@ function buildBox(
 
 /* ============================================================
    SEND ONE
+   - يرسل الطلب إلى سيرفر اللعبة
+   - يفك الرد
+   - يرجع الرد الحقيقي كاملًا
 ============================================================ */
 
 async function sendOne(
@@ -1004,6 +997,16 @@ async function sendOne(
             config.bver
     };
 
+    console.log(
+        '[CARDS] GAME REQUEST',
+        {
+            cardId,
+            setId,
+            friendId: friend.id,
+            sendCounter
+        }
+    );
+
     const response =
         await fetch(
             url,
@@ -1028,6 +1031,9 @@ async function sendOne(
     let parsed = null;
     let decryptError = null;
 
+    /*
+     * فك الرد الحقيقي من سيرفر اللعبة
+     */
     if (
         responseTsId &&
         raw.length
@@ -1054,6 +1060,10 @@ async function sendOne(
         }
     }
 
+    /*
+     * لا نفترض النجاح من HTTP فقط.
+     * نحاول الاحتفاظ بالمنطق السابق أيضًا.
+     */
     let resultObject = null;
 
     if (
@@ -1065,9 +1075,6 @@ async function sendOne(
             parsed.result;
     }
 
-    /*
-     * لا نعتبر HTTP 200 وحده نجاحًا.
-     */
     const hasEmptyResult =
         resultObject &&
         Object.keys(resultObject).length === 0;
@@ -1077,10 +1084,17 @@ async function sendOne(
         response.status < 300 &&
         hasEmptyResult;
 
+    /*
+     * هذا هو الرد الكامل الحقيقي
+     * الذي سيعود إلى /send-all
+     */
     return {
         cardId,
+
         setId,
+
         sendCounter,
+
         seed,
 
         httpStatus:
@@ -1102,7 +1116,20 @@ async function sendOne(
                     : ''
             ),
 
-        decryptError
+        decryptError,
+
+        /*
+         * معلومات إضافية مفيدة عند الفحص
+         */
+        responseHeaders: {
+            'ts-id':
+                responseTsId,
+
+            'content-type':
+                response.headers.get(
+                    'content-type'
+                ) || null
+        }
     };
 }
 
@@ -1296,6 +1323,11 @@ router.post('/select', (req, res) => {
 
 /* ============================================================
    SEND ALL
+   - Lua يرسل XML + friend
+   - السيرفر يحلل
+   - السيرفر يبني ويشفر
+   - السيرفر يرسل إلى اللعبة
+   - السيرفر يعيد الرد الحقيقي لكل بطاقة
 ============================================================ */
 
 router.post('/send-all', async (req, res) => {
@@ -1325,7 +1357,6 @@ router.post('/send-all', async (req, res) => {
         const meta =
             extractMeta(xml);
 
-
         /*
          * إذا لم يتم تحديد City ID في البيئة،
          * نستخدم City ID الموجود داخل XML.
@@ -1337,7 +1368,6 @@ router.post('/send-all', async (req, res) => {
             config.ownCityId =
                 s(meta.cityId).trim();
         }
-
 
         validateConfig(config);
 
@@ -1523,29 +1553,51 @@ router.post('/send-all', async (req, res) => {
                     result
                 );
 
+                /*
+                 * تسجيل الرد الحقيقي في Render logs
+                 */
                 console.log(
-                    '[CARDS] RESULT',
+                    '[CARDS] GAME RESPONSE',
                     {
                         cardId:
                             result.cardId,
 
-                        status:
+                        httpStatus:
                             result.httpStatus,
 
-                        accepted:
-                            result.accepted,
+                        responseTsId:
+                            result.responseTsId,
 
                         response:
-                            result.response
+                            result.response,
+
+                        responseText:
+                            result.responseText,
+
+                        decryptError:
+                            result.decryptError
                     }
                 );
 
             } catch (error) {
+
                 results.push({
                     cardId,
                     setId,
                     sendCounter,
+
                     accepted: false,
+
+                    httpStatus: null,
+
+                    responseTsId: '',
+
+                    response: null,
+
+                    responseText: '',
+
+                    decryptError: null,
+
                     error:
                         error.message
                 });
@@ -1579,7 +1631,12 @@ router.post('/send-all', async (req, res) => {
             );
 
 
-        return res.json({
+        /*
+         * الرد الذي يصل إلى Lua يحتوي على
+         * الرد الحقيقي لكل بطاقة.
+         */
+        return res.status(200).json({
+
             ok:
                 failed.length === 0,
 
@@ -1605,7 +1662,7 @@ router.post('/send-all', async (req, res) => {
 
             totalSendCardsAfter:
                 startCounter +
-                ids.length,
+                accepted.length,
 
             sentCardIds:
                 accepted.map(
@@ -1616,12 +1673,210 @@ router.post('/send-all', async (req, res) => {
             failedCards:
                 failed,
 
+            /*
+             * أهم جزء:
+             * الرد الحقيقي من سيرفر اللعبة
+             */
             results
+
         });
 
     } catch (error) {
         console.error(
             '[CARDS] send-all:',
+            error
+        );
+
+        return res.status(400).json({
+            ok: false,
+            error: error.message
+        });
+    }
+});
+
+
+/* ============================================================
+   SINGLE SEND
+   اختياري:
+   يسمح بإرسال بطاقة واحدة فقط واختبار رد اللعبة مباشرة
+============================================================ */
+
+router.post('/send', async (req, res) => {
+    try {
+        const body =
+            getBody(req);
+
+        const xml =
+            body.xml ||
+            body.myXml;
+
+        if (!xml) {
+            return res.status(400).json({
+                ok: false,
+                error: 'XML is missing'
+            });
+        }
+
+        const config =
+            configFromEnv();
+
+        const meta =
+            extractMeta(xml);
+
+        if (
+            blank(config.ownCityId) &&
+            !blank(meta.cityId)
+        ) {
+            config.ownCityId =
+                s(meta.cityId).trim();
+        }
+
+        validateConfig(config);
+
+        const friendId =
+            s(
+                body.friendId ||
+                body.toCityId ||
+                body.to_cityId ||
+                (
+                    body.friend &&
+                    body.friend.id
+                )
+            ).trim();
+
+        if (!friendId) {
+            return res.status(400).json({
+                ok: false,
+                error: 'friendId is required'
+            });
+        }
+
+        const friends =
+            extractFriends(xml);
+
+        const known =
+            friends.find(
+                item =>
+                    String(item.id) ===
+                    String(friendId)
+            );
+
+        if (!known) {
+            return res.status(400).json({
+                ok: false,
+                error:
+                    'Selected friend was not found in XML'
+            });
+        }
+
+        const inventory =
+            extractCards(xml);
+
+        let cardId =
+            s(
+                body.cardId
+            ).trim();
+
+        if (!cardId) {
+            cardId =
+                inventory.cards.length
+                    ? inventory.cards[0].cardId
+                    : '';
+        }
+
+        if (!cardId) {
+            return res.status(400).json({
+                ok: false,
+                error:
+                    'No cardId available'
+            });
+        }
+
+        const exists =
+            inventory.cards.some(
+                card =>
+                    String(card.cardId) ===
+                    String(cardId)
+            );
+
+        if (!exists) {
+            return res.status(400).json({
+                ok: false,
+                error:
+                    'cardId was not found in XML inventory'
+            });
+        }
+
+        const setId =
+            collectionSetId(
+                xml,
+                cardId
+            );
+
+        const sendCounter =
+            Number.isFinite(
+                Number(
+                    meta.totalSendCards
+                )
+            )
+                ? Number(
+                    meta.totalSendCards
+                )
+                : 0;
+
+        const friend = {
+            id: friendId,
+            name:
+                s(
+                    body.friendName ||
+                    body.cityName ||
+                    known.name
+                ),
+            pic:
+                s(
+                    body.friendPic ||
+                    body.pic ||
+                    known.pic
+                )
+        };
+
+        console.log(
+            '[CARDS] SINGLE SEND',
+            {
+                cardId,
+                setId,
+                friendId,
+                sendCounter
+            }
+        );
+
+        const result =
+            await sendOne(
+                config,
+                friend,
+                cardId,
+                setId,
+                sendCounter
+            );
+
+        /*
+         * هنا يرجع الرد الحقيقي مباشرة
+         * بدون تغليفه داخل نتائج متعددة.
+         */
+        return res.status(200).json({
+            ok: true,
+
+            cardId,
+
+            friend,
+
+            result
+
+        });
+
+    } catch (error) {
+        console.error(
+            '[CARDS] send:',
             error
         );
 
