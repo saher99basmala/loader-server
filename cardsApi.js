@@ -1,25 +1,9 @@
 'use strict';
 
 const express = require('express');
-const fetch = require('node-fetch');
-const crypto = require('crypto');
-const zlib = require('zlib');
 const { XMLParser } = require('fast-xml-parser');
 
 const router = express.Router();
-
-/* ============================================================
-   CONFIG
-============================================================ */
-
-const KEY = Buffer.from(
-    'Wucai6oj0sheiX3p',
-    'utf8'
-);
-
-const SENDBOX =
-    'https://township.playrix.com/api/1/SendBox?cityId=';
-
 
 /* ============================================================
    XML PARSER
@@ -47,33 +31,18 @@ function s(v) {
     return v == null ? '' : String(v);
 }
 
-function blank(v) {
-    return !s(v).trim();
-}
-
-function hex(buf) {
-    return Buffer.from(buf).toString('hex');
-}
-
-function unhex(str) {
-    if (
-        !/^[0-9a-fA-F]*$/.test(str) ||
-        str.length % 2 !== 0
-    ) {
-        throw new Error('invalid hex');
+function getBody(req) {
+    if (typeof req.body === 'string') {
+        try {
+            return JSON.parse(req.body);
+        } catch (_) {
+            return {
+                xml: req.body
+            };
+        }
     }
 
-    return Buffer.from(str, 'hex');
-}
-
-function qjsonPairs(pairs) {
-    const obj = {};
-
-    for (const [key, value] of pairs) {
-        obj[key] = value;
-    }
-
-    return JSON.stringify(obj);
+    return req.body || {};
 }
 
 
@@ -95,7 +64,10 @@ function walk(node, fn, seen = new Set()) {
     fn(node);
 
     for (const value of Object.values(node)) {
-        if (!value || typeof value !== 'object') {
+        if (
+            !value ||
+            typeof value !== 'object'
+        ) {
             continue;
         }
 
@@ -108,31 +80,6 @@ function walk(node, fn, seen = new Set()) {
             }
         }
     }
-}
-
-
-/* ============================================================
-   FIND NAMED NODE
-============================================================ */
-
-function findNamed(root, names) {
-    const wanted = new Set(names);
-    let result = null;
-
-    walk(root, node => {
-        if (result) return;
-
-        const name = node['@_name'];
-
-        if (
-            name &&
-            wanted.has(name)
-        ) {
-            result = node;
-        }
-    });
-
-    return result;
 }
 
 
@@ -188,13 +135,15 @@ function getField(node, names) {
             continue;
         }
 
-        const name = child['@_name'];
+        const name =
+            child['@_name'];
 
         if (
             name &&
             names.includes(name)
         ) {
-            const value = valueOf(child);
+            const value =
+                valueOf(child);
 
             if (value !== undefined) {
                 return value;
@@ -221,7 +170,8 @@ function extractMeta(xml) {
                 return;
             }
 
-            const name = node['@_name'];
+            const name =
+                node['@_name'];
 
             if (
                 !name ||
@@ -230,7 +180,8 @@ function extractMeta(xml) {
                 return;
             }
 
-            const value = valueOf(node);
+            const value =
+                valueOf(node);
 
             if (value !== undefined) {
                 result = value;
@@ -277,10 +228,22 @@ function extractMeta(xml) {
 
 /* ============================================================
    FRIENDS
+   SOURCE:
+   bs.xml
 ============================================================ */
 
 function extractFriends(xml) {
-    const doc = parser.parse(xml);
+    if (
+        typeof xml !== 'string' ||
+        !xml.trim()
+    ) {
+        throw new Error(
+            'Friends XML is empty'
+        );
+    }
+
+    const doc =
+        parser.parse(xml);
 
     const friends = [];
     const seen = new Set();
@@ -314,25 +277,33 @@ function extractFriends(xml) {
         let name = '';
         let pic = '';
 
-        for (const [key, value] of Object.entries(node)) {
-            if (!key.startsWith('@_')) {
+        for (
+            const [key, value]
+            of Object.entries(node)
+        ) {
+            if (
+                !key.startsWith('@_')
+            ) {
                 continue;
             }
 
-            const field = key.slice(2);
+            const field =
+                key.slice(2);
 
             if (
                 !id &&
                 idNames.has(field)
             ) {
-                id = s(value).trim();
+                id =
+                    s(value).trim();
             }
 
             if (
                 !name &&
                 nameNames.has(field)
             ) {
-                name = s(value);
+                name =
+                    s(value);
             }
 
             if (
@@ -340,22 +311,28 @@ function extractFriends(xml) {
                 field === 'picture' ||
                 field === 'avatar'
             ) {
-                pic = s(value);
+                pic =
+                    s(value);
             }
         }
 
         if (!id) {
-            const value = valueOf(node);
+            const value =
+                valueOf(node);
 
             if (
                 value != null &&
                 s(value).trim()
             ) {
-                id = s(value).trim();
+                id =
+                    s(value).trim();
             }
         }
 
-        if (!id || seen.has(id)) {
+        if (
+            !id ||
+            seen.has(id)
+        ) {
             return;
         }
 
@@ -399,39 +376,73 @@ function extractFriends(xml) {
 
 /* ============================================================
    CARDS
+   SOURCE:
+   my.xml
 ============================================================ */
 
 function extractCards(xml) {
-    const doc = parser.parse(xml);
-
-    const owned = findNamed(doc, [
-        'OwnedCards',
-        'ownedCards',
-        'OwnedCard'
-    ]);
-
-    if (!owned) {
+    if (
+        typeof xml !== 'string' ||
+        !xml.trim()
+    ) {
         throw new Error(
-            'OwnedCards was not found in XML'
+            'Cards XML is empty'
         );
     }
 
-    const map = new Map();
+    const doc =
+        parser.parse(xml);
+
+    /*
+     * لا نبحث عن البطاقات في bs.xml.
+     * هذا الدالة تستقبل my.xml فقط.
+     */
+
+    let owned =
+        null;
+
+    walk(doc, node => {
+        if (owned) {
+            return;
+        }
+
+        const name =
+            node['@_name'];
+
+        if (
+            name === 'OwnedCards' ||
+            name === 'ownedCards' ||
+            name === 'OwnedCard'
+        ) {
+            owned = node;
+        }
+    });
+
+    if (!owned) {
+        throw new Error(
+            'OwnedCards was not found in cards XML'
+        );
+    }
+
+    const map =
+        new Map();
 
     walk(owned, node => {
-        const cardId = getField(node, [
-            'cardId',
-            'card_id',
-            'CardId',
-            'id'
-        ]);
+        const cardId =
+            getField(node, [
+                'cardId',
+                'card_id',
+                'CardId',
+                'id'
+            ]);
 
-        const stock = getField(node, [
-            'inStockCount',
-            'in_stock_count',
-            'InStockCount',
-            'stockCount'
-        ]);
+        const stock =
+            getField(node, [
+                'inStockCount',
+                'in_stock_count',
+                'InStockCount',
+                'stockCount'
+            ]);
 
         if (
             cardId === undefined ||
@@ -440,8 +451,11 @@ function extractCards(xml) {
             return;
         }
 
-        const id = s(cardId).trim();
-        const count = Number(stock);
+        const id =
+            s(cardId).trim();
+
+        const count =
+            Number(stock);
 
         if (
             !id ||
@@ -451,35 +465,41 @@ function extractCards(xml) {
             return;
         }
 
-        const generated = Number(
-            getField(node, [
-                'generatedCount',
-                'generated_count'
-            ]) || 0
-        );
+        const generated =
+            Number(
+                getField(node, [
+                    'generatedCount',
+                    'generated_count'
+                ]) || 0
+            );
 
-        const maxStock = Number(
-            getField(node, [
-                'maxInStockCount',
-                'max_in_stock_count'
-            ]) || 0
-        );
+        const maxStock =
+            Number(
+                getField(node, [
+                    'maxInStockCount',
+                    'max_in_stock_count'
+                ]) || 0
+            );
 
-        const isNew = getField(node, [
-            'isNew',
-            'is_new'
-        ]);
+        const isNew =
+            getField(node, [
+                'isNew',
+                'is_new'
+            ]);
 
         if (!map.has(id)) {
             map.set(id, {
                 cardId: id,
                 count: 0,
+
                 generatedCount:
                     Number.isFinite(generated)
                         ? generated
                         : 0,
+
                 isNew:
                     s(isNew || 'false'),
+
                 maxInStockCount:
                     Number.isFinite(maxStock)
                         ? maxStock
@@ -490,1402 +510,622 @@ function extractCards(xml) {
         map.get(id).count += count;
     });
 
-    const cards = [...map.values()];
+    const cards =
+        [...map.values()];
 
-    const totalCopies = cards.reduce(
-        (total, card) =>
-            total + card.count,
-        0
-    );
+    const totalCopies =
+        cards.reduce(
+            (total, card) =>
+                total + card.count,
+            0
+        );
 
     return {
         cards,
-        distinctCards: cards.length,
+
+        distinctCards:
+            cards.length,
+
         totalCopies,
-        totalCards: totalCopies
+
+        totalCards:
+            totalCopies
     };
 }
 
 
 /* ============================================================
-   COLLECTION SET
+   ANALYZE BOTH FILES
 ============================================================ */
 
-function collectionSetId(xml, cardId) {
-    const match =
-        s(cardId).match(
-            /^card_(\d+)$/i
-        );
+router.post(
+    '/analyze-files',
+    (req, res) => {
 
-    if (!match) {
-        return 'set_01';
-    }
+        try {
 
-    const cardNumber =
-        Number(match[1]);
+            const body =
+                getBody(req);
 
-    let x = xml.match(
-        /<DataElem\s+name="configId"\s+type="string"\s+value="CardCollections_(\d+)"/i
-    );
+            /*
+             * bs.xml
+             */
+            const friendsXml =
+                body.friendsXml ||
+                body.bsXml ||
+                body.bs;
 
-    if (
-        x &&
-        x[1]
-    ) {
-        return x[1];
-    }
-
-    x = xml.match(
-        /<DataElem\s+name="pinnedCardCollectionsBalanceId"\s+type="string"\s+value="CardC(\d+)_Balance"/i
-    );
-
-    if (
-        x &&
-        x[1]
-    ) {
-        return x[1];
-    }
-
-    const block = xml.match(
-        /<DataElem\s+name="LastSeenSetProgress"\s+type="dataStore">([\s\S]*?)<\/DataElem>/i
-    );
-
-    if (block) {
-        const re =
-            /<DataElem\s+name="(set_\d+)"\s+type="int"\s+value="(\d+)"\s*\/>/gi;
-
-        let sum = 0;
-        let z;
-
-        while (
-            (z = re.exec(block[1]))
-        ) {
-            sum += Number(z[2]);
+            /*
+             * my.xml
+             */
+            const cardsXml =
+                body.cardsXml ||
+                body.myXml;
 
             if (
-                cardNumber <= sum
+                typeof friendsXml !== 'string' ||
+                !friendsXml.trim()
             ) {
-                return z[1].toLowerCase();
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'friendsXml is missing'
+                });
             }
-        }
-    }
 
-    return (
-        'set_' +
-        String(
-            Math.floor(
-                (cardNumber - 1) / 10
-            ) + 1
-        ).padStart(2, '0')
-    );
-}
-
-
-/* ============================================================
-   COLLECTION EXPIRATION
-============================================================ */
-
-function colEtNow(
-    nowSec =
-        Math.floor(
-            Date.now() / 1000
-        )
-) {
-    const day = 86400;
-    const nine = 32400;
-
-    const base =
-        Math.floor(
-            nowSec / day
-        ) * day;
-
-    let result =
-        base + nine;
-
-    if (result <= nowSec) {
-        result =
-            base + 118800;
-    }
-
-    return result;
-}
-
-
-/* ============================================================
-   SEED
-============================================================ */
-
-function generateSeed() {
-    const buffer =
-        crypto.randomBytes(4);
-
-    const n =
-        buffer.readInt32BE(0);
-
-    const unsigned =
-        n >>> 1;
-
-    const remainder =
-        unsigned % 90000;
-
-    return 10000 + remainder;
-}
-
-
-/* ============================================================
-   ENCRYPT
-============================================================ */
-
-function encryptPayload(json) {
-    const gz =
-        zlib.gzipSync(
-            Buffer.from(
-                json,
-                'utf8'
-            )
-        );
-
-    const iv =
-        crypto.randomBytes(12);
-
-    const cipher =
-        crypto.createCipheriv(
-            'aes-128-gcm',
-            KEY,
-            iv,
-            {
-                authTagLength: 16
+            if (
+                typeof cardsXml !== 'string' ||
+                !cardsXml.trim()
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'cardsXml is missing'
+                });
             }
-        );
 
-    const encrypted =
-        Buffer.concat([
-            cipher.update(gz),
-            cipher.final()
-        ]);
+            console.log(
+                '[CARDS] ANALYZE FILES',
+                {
+                    friendsXmlLength:
+                        friendsXml.length,
 
-    const tag =
-        cipher.getAuthTag();
-
-    return {
-        body: encrypted,
-
-        tsId:
-            '002' +
-            hex(iv) +
-            hex(tag)
-    };
-}
-
-
-/* ============================================================
-   DECRYPT RESPONSE
-============================================================ */
-
-function decryptResponse(tsId, body) {
-    if (
-        !/^002/i.test(tsId) ||
-        tsId.length !== 59
-    ) {
-        throw new Error(
-            'response ts-id invalid'
-        );
-    }
-
-    const iv =
-        unhex(
-            tsId.slice(
-                3,
-                27
-            )
-        );
-
-    const tag =
-        unhex(
-            tsId.slice(
-                27,
-                59
-            )
-        );
-
-    const decipher =
-        crypto.createDecipheriv(
-            'aes-128-gcm',
-            KEY,
-            iv,
-            {
-                authTagLength: 16
-            }
-        );
-
-    decipher.setAuthTag(tag);
-
-    let output =
-        Buffer.concat([
-            decipher.update(
-                Buffer.from(body)
-            ),
-            decipher.final()
-        ]);
-
-    if (
-        output.length >= 2 &&
-        output[0] === 0x1f &&
-        output[1] === 0x8b
-    ) {
-        output =
-            zlib.gunzipSync(output);
-    }
-
-    return output.toString('utf8');
-}
-
-
-/* ============================================================
-   SERVER CONFIG
-============================================================ */
-
-function configFromEnv() {
-    return {
-        ownCityId:
-            s(
-                process.env.CARD_OWN_CITY_ID
-            ).trim(),
-
-        ownToken:
-            s(
-                process.env.CARD_OWN_TOKEN
-            ).trim(),
-
-        ownCityName:
-            s(
-                process.env.CARD_OWN_CITY_NAME ||
-                'Township'
-            ),
-
-        ownPic:
-            s(
-                process.env.CARD_OWN_PIC ||
-                'ava0'
-            ),
-
-        bver:
-            s(
-                process.env.CARD_BVER
-            ).trim(),
-
-        fver:
-            s(
-                process.env.CARD_FVER
-            ).trim(),
-
-        userAgentVersion:
-            s(
-                process.env.CARD_USER_AGENT_VERSION ||
-                ''
-            ).trim()
-    };
-}
-
-
-/* ============================================================
-   VALIDATE CONFIG
-============================================================ */
-
-function validateConfig(config) {
-    for (
-        const key
-        of [
-            'ownCityId',
-            'ownToken',
-            'bver',
-            'fver'
-        ]
-    ) {
-        if (
-            blank(config[key])
-        ) {
-            throw new Error(
-                `Missing server config: ${key}`
+                    cardsXmlLength:
+                        cardsXml.length
+                }
             );
-        }
-    }
-}
 
-
-/* ============================================================
-   BUILD BOX
-============================================================ */
-
-function buildBox(
-    config,
-    friend,
-    cardId,
-    setId,
-    sendCounter,
-    colEt,
-    seed
-) {
-    const from =
-        qjsonPairs([
-            [
-                'city_id',
-                config.ownCityId
-            ],
-
-            [
-                'friend_city_name',
-                friend.name || ''
-            ],
-
-            [
-                'pic',
-                config.ownPic || 'ava0'
-            ]
-        ]);
-
-    const box =
-        qjsonPairs([
-            [
-                'afg',
-                3
-            ],
-
-            [
-                'box_type',
-                'collections_send_card'
-            ],
-
-            [
-                'card_id',
-                cardId
-            ],
-
-            [
-                'col_et',
-                colEt
-            ],
-
-            [
-                'col_id',
-                setId
-            ],
-
-            [
-                'friend_type',
-                'send_friend'
-            ],
-
-            [
-                'from',
-                from
-            ],
-
-            [
-                'seed',
-                String(seed)
-            ],
-
-            [
-                'sendCounter',
-                sendCounter
-            ],
-
-            [
-                'set_id',
-                setId
-            ],
-
-            [
-                'to',
-                friend.id
-            ],
-
-            [
-                'type',
-                'box'
-            ]
-        ]);
-
-    return qjsonPairs([
-        [
-            'box',
-            box
-        ],
-
-        [
-            'cityId',
-            config.ownCityId
-        ],
-
-        [
-            'to_cityId',
-            friend.id
-        ]
-    ]);
-}
-
-
-/* ============================================================
-   SEND ONE
-   - يرسل الطلب إلى سيرفر اللعبة
-   - يفك الرد
-   - يرجع الرد الحقيقي كاملًا
-============================================================ */
-
-async function sendOne(
-    config,
-    friend,
-    cardId,
-    setId,
-    sendCounter
-) {
-    const seed =
-        generateSeed();
-
-    const payload =
-        buildBox(
-            config,
-            friend,
-            cardId,
-            setId,
-            sendCounter,
-            colEtNow(),
-            seed
-        );
-
-    const encrypted =
-        encryptPayload(
-            payload
-        );
-
-    const url =
-        SENDBOX +
-        encodeURIComponent(
-            config.ownCityId
-        );
-
-    const headers = {
-        'Content-Type':
-            'application/octet-stream',
-
-        'IsNewClanUIEnabled':
-            'true',
-
-        'User-Agent':
-            `Township/${config.userAgentVersion || config.bver} (Android 13)`,
-
-        'ts-bp':
-            'g',
-
-        'ts-bver':
-            config.bver,
-
-        'ts-fver':
-            config.fver,
-
-        'ts-gpid':
-            'new',
-
-        'ts-id':
-            encrypted.tsId,
-
-        'ts-token':
-            config.ownToken,
-
-        'x-version':
-            config.bver
-    };
-
-    console.log(
-        '[CARDS] GAME REQUEST',
-        {
-            cardId,
-            setId,
-            friendId: friend.id,
-            sendCounter
-        }
-    );
-
-    const response =
-        await fetch(
-            url,
-            {
-                method: 'POST',
-                headers,
-                body: encrypted.body
-            }
-        );
-
-    const raw =
-        Buffer.from(
-            await response.arrayBuffer()
-        );
-
-    const responseTsId =
-        response.headers.get(
-            'ts-id'
-        ) || '';
-
-    let decoded = '';
-    let parsed = null;
-    let decryptError = null;
-
-    /*
-     * فك الرد الحقيقي من سيرفر اللعبة
-     */
-    if (
-        responseTsId &&
-        raw.length
-    ) {
-        try {
-            decoded =
-                decryptResponse(
-                    responseTsId,
-                    raw
+            const friends =
+                extractFriends(
+                    friendsXml
                 );
 
-            try {
-                parsed =
-                    JSON.parse(
-                        decoded
-                    );
-            } catch (_) {
-                parsed = null;
-            }
+            const inventory =
+                extractCards(
+                    cardsXml
+                );
 
-        } catch (error) {
-            decryptError =
-                error.message;
-        }
-    }
+            const meta =
+                extractMeta(
+                    cardsXml
+                );
 
-    /*
-     * لا نفترض النجاح من HTTP فقط.
-     * نحاول الاحتفاظ بالمنطق السابق أيضًا.
-     */
-    let resultObject = null;
+            console.log(
+                '[CARDS] RESULT',
+                {
+                    cityId:
+                        meta.cityId,
 
-    if (
-        parsed &&
-        parsed.result &&
-        typeof parsed.result === 'object'
-    ) {
-        resultObject =
-            parsed.result;
-    }
+                    friends:
+                        friends.length,
 
-    const hasEmptyResult =
-        resultObject &&
-        Object.keys(resultObject).length === 0;
+                    distinctCards:
+                        inventory.distinctCards,
 
-    const accepted =
-        response.status >= 200 &&
-        response.status < 300 &&
-        hasEmptyResult;
-
-    /*
-     * هذا هو الرد الكامل الحقيقي
-     * الذي سيعود إلى /send-all
-     */
-    return {
-        cardId,
-
-        setId,
-
-        sendCounter,
-
-        seed,
-
-        httpStatus:
-            response.status,
-
-        accepted:
-            Boolean(accepted),
-
-        responseTsId,
-
-        response:
-            parsed,
-
-        responseText:
-            decoded ||
-            (
-                raw.length
-                    ? raw.toString('utf8')
-                    : ''
-            ),
-
-        decryptError,
-
-        /*
-         * معلومات إضافية مفيدة عند الفحص
-         */
-        responseHeaders: {
-            'ts-id':
-                responseTsId,
-
-            'content-type':
-                response.headers.get(
-                    'content-type'
-                ) || null
-        }
-    };
-}
-
-
-/* ============================================================
-   BODY
-============================================================ */
-
-function getBody(req) {
-    if (
-        typeof req.body === 'string'
-    ) {
-        try {
-            return JSON.parse(
-                req.body
+                    totalCopies:
+                        inventory.totalCopies
+                }
             );
-        } catch (_) {
-            return {
-                xml: req.body
-            };
-        }
-    }
 
-    return req.body || {};
-}
+            return res.json({
+                ok: true,
 
+                meta,
 
-/* ============================================================
-   ANALYZE
-============================================================ */
+                friends,
 
-router.post('/analyze', (req, res) => {
-    try {
-        const body =
-            getBody(req);
-
-        const xml =
-            body.xml ||
-            body.myXml;
-
-        if (!xml) {
-            return res.status(400).json({
-                ok: false,
-                error: 'XML is missing'
-            });
-        }
-
-        const meta =
-            extractMeta(xml);
-
-        const friends =
-            extractFriends(xml);
-
-        const inventory =
-            extractCards(xml);
-
-        console.log(
-            '[CARDS] ANALYZE',
-            {
-                cityId:
-                    meta.cityId,
-
-                friends:
-                    friends.length,
+                cards:
+                    inventory.cards,
 
                 distinctCards:
                     inventory.distinctCards,
 
                 totalCopies:
-                    inventory.totalCopies
-            }
-        );
+                    inventory.totalCopies,
 
-        return res.json({
-            ok: true,
+                totalCards:
+                    inventory.totalCards
+            });
 
-            meta,
+        } catch (error) {
 
-            friends,
+            console.error(
+                '[CARDS] analyze-files:',
+                error
+            );
 
-            cards:
-                inventory.cards,
-
-            distinctCards:
-                inventory.distinctCards,
-
-            totalCopies:
-                inventory.totalCopies,
-
-            totalCards:
-                inventory.totalCards
-        });
-
-    } catch (error) {
-        console.error(
-            '[CARDS] analyze:',
-            error
-        );
-
-        return res.status(400).json({
-            ok: false,
-            error: error.message
-        });
+            return res.status(400).json({
+                ok: false,
+                error:
+                    error.message
+            });
+        }
     }
-});
+);
+
+
+/* ============================================================
+   ANALYZE
+   BACKWARD COMPATIBILITY
+============================================================ */
+
+router.post(
+    '/analyze',
+    (req, res) => {
+
+        try {
+
+            const body =
+                getBody(req);
+
+            const xml =
+                body.xml ||
+                body.myXml;
+
+            if (!xml) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'XML is missing'
+                });
+            }
+
+            /*
+             * هذا endpoint القديم مخصص للبطاقات.
+             * لا يستخدم bs.xml.
+             */
+
+            const meta =
+                extractMeta(xml);
+
+            const inventory =
+                extractCards(xml);
+
+            return res.json({
+                ok: true,
+
+                meta,
+
+                friends: [],
+
+                cards:
+                    inventory.cards,
+
+                distinctCards:
+                    inventory.distinctCards,
+
+                totalCopies:
+                    inventory.totalCopies,
+
+                totalCards:
+                    inventory.totalCards
+            });
+
+        } catch (error) {
+
+            console.error(
+                '[CARDS] analyze:',
+                error
+            );
+
+            return res.status(400).json({
+                ok: false,
+                error:
+                    error.message
+            });
+        }
+    }
+);
 
 
 /* ============================================================
    SELECT FRIEND
+   bs.xml = FRIENDS
+   my.xml = CARDS
 ============================================================ */
 
-router.post('/select', (req, res) => {
-    try {
-        const body =
-            getBody(req);
+router.post(
+    '/select',
+    (req, res) => {
 
-        const xml =
-            body.xml ||
-            body.myXml;
+        try {
 
-        const friend =
-            body.friend;
+            const body =
+                getBody(req);
 
-        if (!xml) {
-            return res.status(400).json({
-                ok: false,
-                error: 'XML is missing'
+            const friendsXml =
+                body.friendsXml ||
+                body.bsXml ||
+                body.bs;
+
+            const cardsXml =
+                body.cardsXml ||
+                body.myXml;
+
+            const friend =
+                body.friend;
+
+            if (
+                typeof friendsXml !== 'string' ||
+                !friendsXml.trim()
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'friendsXml is missing'
+                });
+            }
+
+            if (
+                typeof cardsXml !== 'string' ||
+                !cardsXml.trim()
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'cardsXml is missing'
+                });
+            }
+
+            if (
+                !friend ||
+                !friend.id
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'friend.id is required'
+                });
+            }
+
+            const friends =
+                extractFriends(
+                    friendsXml
+                );
+
+            const selected =
+                friends.find(
+                    x =>
+                        String(x.id) ===
+                        String(friend.id)
+                );
+
+            if (!selected) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'Selected friend was not found in bs.xml'
+                });
+            }
+
+            const inventory =
+                extractCards(
+                    cardsXml
+                );
+
+            const meta =
+                extractMeta(
+                    cardsXml
+                );
+
+            return res.json({
+                ok: true,
+
+                friend:
+                    selected,
+
+                meta,
+
+                distinctCards:
+                    inventory.distinctCards,
+
+                totalCopies:
+                    inventory.totalCopies,
+
+                totalCards:
+                    inventory.totalCards,
+
+                cards:
+                    inventory.cards
             });
-        }
 
-        if (
-            !friend ||
-            !friend.id
-        ) {
-            return res.status(400).json({
-                ok: false,
-                error: 'friend.id is required'
-            });
-        }
+        } catch (error) {
 
-        const friends =
-            extractFriends(xml);
-
-        const selected =
-            friends.find(
-                x =>
-                    String(x.id) ===
-                    String(friend.id)
+            console.error(
+                '[CARDS] select:',
+                error
             );
 
-        if (!selected) {
             return res.status(400).json({
                 ok: false,
                 error:
-                    'Selected friend was not found in XML'
+                    error.message
             });
         }
+    }
+);
 
-        const inventory =
-            extractCards(xml);
+
+/* ============================================================
+   SEND-ALL PREPARATION
+============================================================ */
+
+/*
+ * هذا endpoint لا يرسل إلى خدمة اللعبة.
+ *
+ * وظيفته:
+ * 1. قراءة bs.xml.
+ * 2. قراءة my.xml.
+ * 3. التحقق من الصديق.
+ * 4. استخراج البطاقات.
+ * 5. تجهيز قائمة العملية.
+ *
+ * يمكن لاحقاً ربط طبقة الإرسال
+ * بواجهة مصرح بها من خدمتك.
+ */
+
+router.post(
+    '/send-all',
+    async (req, res) => {
+
+        try {
+
+            const body =
+                getBody(req);
+
+            const friendsXml =
+                body.friendsXml ||
+                body.bsXml ||
+                body.bs;
+
+            const cardsXml =
+                body.cardsXml ||
+                body.myXml;
+
+            if (
+                typeof friendsXml !== 'string' ||
+                !friendsXml.trim()
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'friendsXml is missing'
+                });
+            }
+
+            if (
+                typeof cardsXml !== 'string' ||
+                !cardsXml.trim()
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'cardsXml is missing'
+                });
+            }
+
+            const friends =
+                extractFriends(
+                    friendsXml
+                );
+
+            const inventory =
+                extractCards(
+                    cardsXml
+                );
+
+            const meta =
+                extractMeta(
+                    cardsXml
+                );
+
+            let friend;
+
+            if (
+                body.friend &&
+                typeof body.friend === 'object'
+            ) {
+
+                friend = {
+                    id:
+                        s(
+                            body.friend.id
+                        ).trim(),
+
+                    name:
+                        s(
+                            body.friend.name
+                        ),
+
+                    pic:
+                        s(
+                            body.friend.pic
+                        )
+                };
+
+            } else {
+
+                friend = {
+                    id:
+                        s(
+                            body.friendId ||
+                            body.toCityId ||
+                            body.to_cityId
+                        ).trim(),
+
+                    name:
+                        s(
+                            body.friendName ||
+                            body.cityName
+                        ),
+
+                    pic:
+                        s(
+                            body.friendPic ||
+                            body.pic
+                        )
+                };
+            }
+
+            if (!friend.id) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'friendId is required'
+                });
+            }
+
+            const known =
+                friends.find(
+                    item =>
+                        String(item.id) ===
+                        String(friend.id)
+                );
+
+            if (!known) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'Selected friend was not found in bs.xml'
+                });
+            }
+
+            if (!friend.name) {
+                friend.name =
+                    known.name;
+            }
+
+            if (!friend.pic) {
+                friend.pic =
+                    known.pic;
+            }
+
+            const cards =
+                inventory.cards
+                    .map(card => ({
+                        cardId:
+                            card.cardId,
+
+                        count:
+                            card.count,
+
+                        generatedCount:
+                            card.generatedCount,
+
+                        isNew:
+                            card.isNew,
+
+                        maxInStockCount:
+                            card.maxInStockCount
+                    }));
+
+            if (!cards.length) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        'No sendable cards found in my.xml'
+                });
+            }
+
+            console.log(
+                '[CARDS] SEND PREPARED',
+                {
+                    friendId:
+                        friend.id,
+
+                    cards:
+                        cards.length,
+
+                    totalCopies:
+                        inventory.totalCopies
+                }
+            );
+
+            return res.json({
+                ok: true,
+
+                mode:
+                    'prepared',
+
+                message:
+                    'Files analyzed successfully. Sending to the game service is not performed by this endpoint.',
+
+                friend,
+
+                meta,
+
+                distinctCards:
+                    inventory.distinctCards,
+
+                totalCopies:
+                    inventory.totalCopies,
+
+                totalCards:
+                    cards.length,
+
+                cards
+            });
+
+        } catch (error) {
+
+            console.error(
+                '[CARDS] send-all:',
+                error
+            );
+
+            return res.status(400).json({
+                ok: false,
+                error:
+                    error.message
+            });
+        }
+    }
+);
+
+
+/* ============================================================
+   HEALTH
+============================================================ */
+
+router.get(
+    '/health',
+    (req, res) => {
 
         return res.json({
             ok: true,
-
-            friend:
-                selected,
-
-            distinctCards:
-                inventory.distinctCards,
-
-            totalCopies:
-                inventory.totalCopies,
-
-            cards:
-                inventory.cards
-        });
-
-    } catch (error) {
-        console.error(
-            '[CARDS] select:',
-            error
-        );
-
-        return res.status(400).json({
-            ok: false,
-            error: error.message
-        });
-    }
-});
-
-
-/* ============================================================
-   SEND ALL
-   - Lua يرسل XML + friend
-   - السيرفر يحلل
-   - السيرفر يبني ويشفر
-   - السيرفر يرسل إلى اللعبة
-   - السيرفر يعيد الرد الحقيقي لكل بطاقة
-============================================================ */
-
-router.post('/send-all', async (req, res) => {
-    try {
-        const body =
-            getBody(req);
-
-        const xml =
-            body.xml ||
-            body.myXml;
-
-        if (!xml) {
-            return res.status(400).json({
-                ok: false,
-                error: 'XML is missing'
-            });
-        }
-
-
-        /* ----------------------------------------------------
-           CONFIG
-        ---------------------------------------------------- */
-
-        const config =
-            configFromEnv();
-
-        const meta =
-            extractMeta(xml);
-
-        /*
-         * إذا لم يتم تحديد City ID في البيئة،
-         * نستخدم City ID الموجود داخل XML.
-         */
-        if (
-            blank(config.ownCityId) &&
-            !blank(meta.cityId)
-        ) {
-            config.ownCityId =
-                s(meta.cityId).trim();
-        }
-
-        validateConfig(config);
-
-
-        /* ----------------------------------------------------
-           FRIEND
-        ---------------------------------------------------- */
-
-        let friend;
-
-        if (
-            body.friend &&
-            typeof body.friend === 'object'
-        ) {
-            friend = {
-                id:
-                    body.friend.id,
-
-                name:
-                    body.friend.name || '',
-
-                pic:
-                    body.friend.pic || ''
-            };
-
-        } else {
-            friend = {
-                id:
-                    body.friendId ||
-                    body.toCityId ||
-                    body.to_cityId,
-
-                name:
-                    body.friendName ||
-                    body.cityName ||
-                    '',
-
-                pic:
-                    body.friendPic ||
-                    body.pic ||
-                    ''
-            };
-        }
-
-        friend.id =
-            s(friend.id).trim();
-
-        friend.name =
-            s(friend.name);
-
-        friend.pic =
-            s(friend.pic);
-
-
-        if (!friend.id) {
-            return res.status(400).json({
-                ok: false,
-                error: 'friendId is required'
-            });
-        }
-
-
-        /* ----------------------------------------------------
-           VERIFY FRIEND
-        ---------------------------------------------------- */
-
-        const friends =
-            extractFriends(xml);
-
-        const known =
-            friends.find(
-                item =>
-                    String(item.id) ===
-                    String(friend.id)
-            );
-
-        if (!known) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    'Selected friend was not found in XML'
-            });
-        }
-
-        if (!friend.name) {
-            friend.name =
-                known.name;
-        }
-
-        if (!friend.pic) {
-            friend.pic =
-                known.pic;
-        }
-
-
-        /* ----------------------------------------------------
-           CARDS
-        ---------------------------------------------------- */
-
-        const inventory =
-            extractCards(xml);
-
-        const ids =
-            inventory.cards
-                .map(
-                    card =>
-                        card.cardId
-                )
-                .filter(Boolean);
-
-
-        if (!ids.length) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    'No sendable cards found'
-            });
-        }
-
-
-        /* ----------------------------------------------------
-           COUNTER
-        ---------------------------------------------------- */
-
-        const startCounter =
-            Number.isFinite(
-                Number(
-                    meta.totalSendCards
-                )
-            )
-                ? Number(
-                    meta.totalSendCards
-                )
-                : 0;
-
-
-        const results = [];
-
-
-        /* ----------------------------------------------------
-           SEND
-        ---------------------------------------------------- */
-
-        for (
-            let i = 0;
-            i < ids.length;
-            i++
-        ) {
-            const cardId =
-                ids[i];
-
-            const setId =
-                collectionSetId(
-                    xml,
-                    cardId
-                );
-
-            const sendCounter =
-                startCounter + i;
-
-            try {
-                console.log(
-                    '[CARDS] SEND',
-                    {
-                        cardId,
-                        setId,
-                        friendId:
-                            friend.id,
-                        sendCounter
-                    }
-                );
-
-                const result =
-                    await sendOne(
-                        config,
-                        friend,
-                        cardId,
-                        setId,
-                        sendCounter
-                    );
-
-                results.push(
-                    result
-                );
-
-                /*
-                 * تسجيل الرد الحقيقي في Render logs
-                 */
-                console.log(
-                    '[CARDS] GAME RESPONSE',
-                    {
-                        cardId:
-                            result.cardId,
-
-                        httpStatus:
-                            result.httpStatus,
-
-                        responseTsId:
-                            result.responseTsId,
-
-                        response:
-                            result.response,
-
-                        responseText:
-                            result.responseText,
-
-                        decryptError:
-                            result.decryptError
-                    }
-                );
-
-            } catch (error) {
-
-                results.push({
-                    cardId,
-                    setId,
-                    sendCounter,
-
-                    accepted: false,
-
-                    httpStatus: null,
-
-                    responseTsId: '',
-
-                    response: null,
-
-                    responseText: '',
-
-                    decryptError: null,
-
-                    error:
-                        error.message
-                });
-
-                console.error(
-                    '[CARDS] SEND ERROR',
-                    {
-                        cardId,
-                        error:
-                            error.message
-                    }
-                );
+            service:
+                'cardsApi',
+            sources: {
+                friends:
+                    'bs.xml',
+
+                cards:
+                    'my.xml'
             }
-        }
-
-
-        /* ----------------------------------------------------
-           RESULT
-        ---------------------------------------------------- */
-
-        const accepted =
-            results.filter(
-                item =>
-                    item.accepted === true
-            );
-
-        const failed =
-            results.filter(
-                item =>
-                    item.accepted !== true
-            );
-
-
-        /*
-         * الرد الذي يصل إلى Lua يحتوي على
-         * الرد الحقيقي لكل بطاقة.
-         */
-        return res.status(200).json({
-
-            ok:
-                failed.length === 0,
-
-            friend,
-
-            distinctCards:
-                inventory.distinctCards,
-
-            totalCopies:
-                inventory.totalCopies,
-
-            totalCards:
-                ids.length,
-
-            sentCards:
-                accepted.length,
-
-            failed:
-                failed.length,
-
-            totalSendCardsBefore:
-                startCounter,
-
-            totalSendCardsAfter:
-                startCounter +
-                accepted.length,
-
-            sentCardIds:
-                accepted.map(
-                    item =>
-                        item.cardId
-                ),
-
-            failedCards:
-                failed,
-
-            /*
-             * أهم جزء:
-             * الرد الحقيقي من سيرفر اللعبة
-             */
-            results
-
         });
 
-    } catch (error) {
-        console.error(
-            '[CARDS] send-all:',
-            error
-        );
-
-        return res.status(400).json({
-            ok: false,
-            error: error.message
-        });
     }
-});
-
-
-/* ============================================================
-   SINGLE SEND
-   اختياري:
-   يسمح بإرسال بطاقة واحدة فقط واختبار رد اللعبة مباشرة
-============================================================ */
-
-router.post('/send', async (req, res) => {
-    try {
-        const body =
-            getBody(req);
-
-        const xml =
-            body.xml ||
-            body.myXml;
-
-        if (!xml) {
-            return res.status(400).json({
-                ok: false,
-                error: 'XML is missing'
-            });
-        }
-
-        const config =
-            configFromEnv();
-
-        const meta =
-            extractMeta(xml);
-
-        if (
-            blank(config.ownCityId) &&
-            !blank(meta.cityId)
-        ) {
-            config.ownCityId =
-                s(meta.cityId).trim();
-        }
-
-        validateConfig(config);
-
-        const friendId =
-            s(
-                body.friendId ||
-                body.toCityId ||
-                body.to_cityId ||
-                (
-                    body.friend &&
-                    body.friend.id
-                )
-            ).trim();
-
-        if (!friendId) {
-            return res.status(400).json({
-                ok: false,
-                error: 'friendId is required'
-            });
-        }
-
-        const friends =
-            extractFriends(xml);
-
-        const known =
-            friends.find(
-                item =>
-                    String(item.id) ===
-                    String(friendId)
-            );
-
-        if (!known) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    'Selected friend was not found in XML'
-            });
-        }
-
-        const inventory =
-            extractCards(xml);
-
-        let cardId =
-            s(
-                body.cardId
-            ).trim();
-
-        if (!cardId) {
-            cardId =
-                inventory.cards.length
-                    ? inventory.cards[0].cardId
-                    : '';
-        }
-
-        if (!cardId) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    'No cardId available'
-            });
-        }
-
-        const exists =
-            inventory.cards.some(
-                card =>
-                    String(card.cardId) ===
-                    String(cardId)
-            );
-
-        if (!exists) {
-            return res.status(400).json({
-                ok: false,
-                error:
-                    'cardId was not found in XML inventory'
-            });
-        }
-
-        const setId =
-            collectionSetId(
-                xml,
-                cardId
-            );
-
-        const sendCounter =
-            Number.isFinite(
-                Number(
-                    meta.totalSendCards
-                )
-            )
-                ? Number(
-                    meta.totalSendCards
-                )
-                : 0;
-
-        const friend = {
-            id: friendId,
-            name:
-                s(
-                    body.friendName ||
-                    body.cityName ||
-                    known.name
-                ),
-            pic:
-                s(
-                    body.friendPic ||
-                    body.pic ||
-                    known.pic
-                )
-        };
-
-        console.log(
-            '[CARDS] SINGLE SEND',
-            {
-                cardId,
-                setId,
-                friendId,
-                sendCounter
-            }
-        );
-
-        const result =
-            await sendOne(
-                config,
-                friend,
-                cardId,
-                setId,
-                sendCounter
-            );
-
-        /*
-         * هنا يرجع الرد الحقيقي مباشرة
-         * بدون تغليفه داخل نتائج متعددة.
-         */
-        return res.status(200).json({
-            ok: true,
-
-            cardId,
-
-            friend,
-
-            result
-
-        });
-
-    } catch (error) {
-        console.error(
-            '[CARDS] send:',
-            error
-        );
-
-        return res.status(400).json({
-            ok: false,
-            error: error.message
-        });
-    }
-});
+);
 
 
 /* ============================================================
