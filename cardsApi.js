@@ -1,10 +1,10 @@
 'use strict';
 
 const express = require('express');
+const fetch = require('node-fetch');
 const crypto = require('crypto');
 const zlib = require('zlib');
 const { XMLParser } = require('fast-xml-parser');
-
 const router = express.Router();
 
 const parser = new XMLParser({
