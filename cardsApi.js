@@ -1,5 +1,3 @@
-"use strict";
-
 const express = require("express");
 const { XMLParser } = require("fast-xml-parser");
 
@@ -12,37 +10,9 @@ const parser = new XMLParser({
   trimValues: false,
 });
 
-function arr(value) {
-  if (value == null) return [];
-  return Array.isArray(value) ? value : [value];
-}
-
 function attr(node, name, fallback = "") {
   if (!node || typeof node !== "object") return fallback;
   return node[`@_${name}`] ?? fallback;
-}
-
-function text(value, fallback = "") {
-  if (value == null) return fallback;
-
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-
-  if (typeof value === "object" && value["#text"] != null) {
-    return String(value["#text"]);
-  }
-
-  return fallback;
-}
-
-function toInt(value, fallback = 0) {
-  const n = Number.parseInt(String(value ?? ""), 10);
-  return Number.isFinite(n) ? n : fallback;
 }
 
 function parseXml(xml) {
@@ -69,7 +39,6 @@ function walk(node, callback, path = []) {
 
   for (const [key, value] of Object.entries(node)) {
     if (key.startsWith("@_")) continue;
-
     walk(value, callback, path.concat(key));
   }
 }
@@ -90,7 +59,6 @@ function findNodesByName(root, name) {
 
 function findFirstByName(root, name) {
   const nodes = findNodesByName(root, name);
-
   return nodes.length ? nodes[0] : null;
 }
 
@@ -100,17 +68,13 @@ function collectVars(root) {
   walk(root, (node) => {
     const name = attr(node, "name");
 
-    if (!name) return;
-
-    result.push({
-      name,
-      value: attr(
+    if (name) {
+      result.push({
+        name,
+        value: attr(node, "v", attr(node, "value", "")),
         node,
-        "v",
-        attr(node, "value", "")
-      ),
-      node,
-    });
+      });
+    }
   });
 
   return result;
@@ -119,40 +83,23 @@ function collectVars(root) {
 function getVar(root, name, fallback = "") {
   const vars = collectVars(root);
 
-  const item = vars.find(
-    (v) => v.name === name
-  );
+  const item = vars.find((v) => v.name === name);
 
-  return item
-    ? item.value
-    : fallback;
+  return item ? item.value : fallback;
 }
 
-/*
- * ============================================================
- * OwnedCards
- * ============================================================
- *
- * المصدر:
- *
- * DataStoreCollection
- *   GameEvents
- *     CardCollections
- *       DataLogic
- *         OwnedCards
- *
- * كل عنصر يحتوي:
- *
- * cardId
- * generatedCount
- * inStockCount
- * isNew
- * maxInStockCount
- */
+function toInt(value, fallback = 0) {
+  const n = Number.parseInt(String(value ?? ""), 10);
+
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
 
 function findOwnedCards(root) {
-  const owned =
-    findFirstByName(root, "OwnedCards");
+  const owned = findFirstByName(root, "OwnedCards");
 
   if (!owned) {
     return [];
@@ -161,193 +108,294 @@ function findOwnedCards(root) {
   const candidates = [];
 
   walk(owned, (node, path) => {
-    const cardId =
-      attr(node, "cardId");
+    const cardId = attr(node, "cardId");
+    const inStock = attr(node, "inStockCount");
 
-    const inStock =
-      attr(node, "inStockCount");
+    if (cardId !== "" && inStock !== "") {
+      candidates.push({
+        cardId: String(cardId),
 
-    if (
-      cardId === "" ||
-      inStock === ""
-    ) {
-      return;
-    }
-
-    candidates.push({
-      cardId: String(cardId),
-
-      generatedCount:
-        toInt(
+        generatedCount: toInt(
           attr(node, "generatedCount"),
           0
         ),
 
-      inStockCount:
-        toInt(
+        inStockCount: toInt(
           inStock,
           0
         ),
 
-      isNew:
-        String(
-          attr(
-            node,
-            "isNew",
-            "false"
-          )
+        isNew: String(
+          attr(node, "isNew", "false")
         ),
 
-      maxInStockCount:
-        toInt(
-          attr(
-            node,
-            "maxInStockCount"
-          ),
+        maxInStockCount: toInt(
+          attr(node, "maxInStockCount"),
           0
         ),
 
-      path,
-    });
+        path,
+      });
+    }
   });
 
-  /*
-   * تجميع البطاقات حسب cardId
-   */
   const map = new Map();
 
   for (const card of candidates) {
-    const old =
-      map.get(card.cardId);
+    const old = map.get(card.cardId);
 
     if (!old) {
-      map.set(
-        card.cardId,
-        {
-          cardId:
-            card.cardId,
-
-          generatedCount:
-            card.generatedCount,
-
-          inStockCount:
-            card.inStockCount,
-
-          isNew:
-            card.isNew,
-
-          maxInStockCount:
-            card.maxInStockCount,
-        }
-      );
+      map.set(card.cardId, {
+        cardId: card.cardId,
+        generatedCount: card.generatedCount,
+        inStockCount: card.inStockCount,
+        isNew: card.isNew,
+        maxInStockCount: card.maxInStockCount,
+      });
     } else {
-      old.generatedCount +=
-        card.generatedCount;
+      old.generatedCount += card.generatedCount;
+      old.inStockCount += card.inStockCount;
 
-      old.inStockCount +=
-        card.inStockCount;
-
-      old.maxInStockCount =
-        Math.max(
-          old.maxInStockCount,
-          card.maxInStockCount
-        );
+      old.maxInStockCount = Math.max(
+        old.maxInStockCount,
+        card.maxInStockCount
+      );
     }
   }
 
-  return Array.from(
-    map.values()
-  );
+  return Array.from(map.values());
 }
 
+/* ============================================================
+   FRIENDS
+   ============================================================ */
+
 /*
- * ============================================================
- * Friends
- * ============================================================
+ * مهم:
+ *
+ * ملف XML يحتوي على:
+ *
+ * <friend
+ *     city_id="..."
+ *     city_name="..."
+ *     pic="..."
+ *     ...
+ * />
+ *
+ * لذلك لا نعتمد فقط على FriendsList.
  */
 
-function findFriends(root) {
+function findFriendsFromXml(xml) {
   const result = [];
   const seen = new Set();
 
-  const friendsList =
-    findFirstByName(
-      root,
-      "FriendsList"
-    );
+  /*
+   * نقرأ friend مباشرة من النص الأصلي.
+   * هذا أكثر أمانًا مع XML الخاص باللعبة.
+   */
 
-  if (!friendsList) {
-    return result;
-  }
+  const friendRegex = /<friend\b([^>]*?)\/?>/gi;
 
-  walk(
-    friendsList,
-    (node) => {
-      const cityId =
-        attr(node, "cityId") ||
-        attr(node, "cityID") ||
-        attr(node, "gameId") ||
-        attr(node, "id");
+  let match;
 
-      if (!cityId) {
-        return;
-      }
+  while ((match = friendRegex.exec(xml)) !== null) {
+    const attrs = match[1] || "";
 
-      const name =
-        attr(node, "name") ||
-        attr(node, "cityName") ||
-        attr(node, "townName") ||
-        attr(node, "friendName");
+    function getAttr(name) {
+      const regex = new RegExp(
+        `\\b${name}\\s*=\\s*["']([^"']*)["']`,
+        "i"
+      );
 
-      const key =
-        String(cityId);
+      const found = attrs.match(regex);
 
-      if (seen.has(key)) {
-        return;
-      }
-
-      seen.add(key);
-
-      result.push({
-        friendId: key,
-
-        name:
-          String(
-            name || key
-          ),
-
-        cityId: key,
-
-        gameId:
-          String(
-            attr(
-              node,
-              "gameId",
-              ""
-            )
-          ),
-
-        pic:
-          String(
-            attr(node, "MyPicture") ||
-            attr(node, "pic") ||
-            attr(node, "picture") ||
-            ""
-          ),
-
-        raw: node,
-      });
+      return found ? found[1] : "";
     }
-  );
+
+    const cityId =
+      getAttr("city_id") ||
+      getAttr("cityId") ||
+      getAttr("gameId") ||
+      getAttr("id");
+
+    if (!cityId) {
+      continue;
+    }
+
+    const cityName =
+      getAttr("city_name") ||
+      getAttr("cityName") ||
+      getAttr("name") ||
+      "";
+
+    const pic =
+      getAttr("pic") ||
+      getAttr("MyPicture") ||
+      getAttr("picture") ||
+      "";
+
+    const gameId =
+      getAttr("gameId") ||
+      "";
+
+    const level =
+      getAttr("level");
+
+    const xp =
+      getAttr("xp");
+
+    const fver =
+      getAttr("fver");
+
+    const key = String(cityId);
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+
+    result.push({
+      friendId: key,
+
+      cityId: key,
+
+      name: String(
+        cityName || key
+      ),
+
+      cityName: String(
+        cityName || key
+      ),
+
+      pic: String(pic),
+
+      gameId: String(gameId),
+
+      level:
+        level === ""
+          ? null
+          : toInt(level, 0),
+
+      xp:
+        xp === ""
+          ? null
+          : toInt(xp, 0),
+
+      fver:
+        fver === ""
+          ? null
+          : toInt(fver, 0),
+
+      raw: {
+        city_id: key,
+        city_name: String(cityName),
+        pic: String(pic),
+        name: String(getAttr("name")),
+        level: level,
+        xp: xp,
+        fver: fver,
+        gameId: gameId,
+      },
+    });
+  }
 
   return result;
 }
 
 /*
- * ============================================================
- * XML metadata
- * ============================================================
+ * احتياط:
+ * إذا كان XML في نسخة معينة يحتوي FriendsList
+ * بدل friend المباشر، نحاول أيضًا قراءته.
  */
+
+function findFriendsFromParsedXml(root) {
+  const result = [];
+  const seen = new Set();
+
+  const friendsList =
+    findFirstByName(root, "FriendsList");
+
+  if (!friendsList) {
+    return result;
+  }
+
+  walk(friendsList, (node) => {
+    const cityId =
+      attr(node, "city_id") ||
+      attr(node, "cityId") ||
+      attr(node, "cityID") ||
+      attr(node, "gameId") ||
+      attr(node, "id");
+
+    if (!cityId) {
+      return;
+    }
+
+    const name =
+      attr(node, "city_name") ||
+      attr(node, "cityName") ||
+      attr(node, "name") ||
+      attr(node, "townName") ||
+      attr(node, "friendName");
+
+    const key = String(cityId);
+
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+
+    result.push({
+      friendId: key,
+      cityId: key,
+      name: String(name || key),
+
+      cityName: String(
+        name || key
+      ),
+
+      gameId: String(
+        attr(node, "gameId", "")
+      ),
+
+      pic: String(
+        attr(node, "pic") ||
+        attr(node, "MyPicture") ||
+        attr(node, "picture") ||
+        ""
+      ),
+
+      raw: node,
+    });
+  });
+
+  return result;
+}
+
+function findFriends(root, xml) {
+  /*
+   * الطريقة الأولى:
+   * القراءة المباشرة من XML.
+   */
+  const directFriends =
+    findFriendsFromXml(xml);
+
+  if (directFriends.length > 0) {
+    return directFriends;
+  }
+
+  /*
+   * الطريقة الثانية:
+   * من parsed XML.
+   */
+  return findFriendsFromParsedXml(root);
+}
+
+/* ============================================================
+   CITY META
+   ============================================================ */
 
 function extractMeta(root) {
   const cityId =
@@ -361,124 +409,113 @@ function extractMeta(root) {
     "";
 
   return {
-    cityId:
-      String(cityId),
+    cityId: String(cityId),
 
-    gameId:
-      String(
-        getVar(
-          root,
-          "gameId",
-          ""
-        )
-      ),
+    gameId: String(
+      getVar(root, "gameId", "")
+    ),
 
-    name:
-      String(cityName),
+    name: String(cityName),
 
-    picture:
-      String(
-        getVar(
-          root,
-          "MyPicture",
-          ""
-        )
-      ),
+    picture: String(
+      getVar(root, "MyPicture", "")
+    ),
 
-    experience:
-      toInt(
-        getVar(
-          root,
-          "experience",
-          "0"
-        ),
-        0
-      ),
+    experience: toInt(
+      getVar(root, "experience", "0"),
+      0
+    ),
   };
 }
 
-/*
- * ============================================================
- * Card jobs
- * ============================================================
- */
+/* ============================================================
+   CARD JOBS
+   ============================================================ */
 
-function buildCardJobs(
-  cards,
-  friend,
-  meta
-) {
+function buildCardJobs(cards, friend, meta) {
   return cards
     .filter(
       (card) =>
         card.inStockCount > 0
     )
-    .map(
-      (card) => ({
-        cardId:
-          card.cardId,
+    .map((card) => ({
+      cardId: card.cardId,
 
-        quantity:
-          card.inStockCount,
+      quantity:
+        card.inStockCount,
 
-        generatedCount:
-          card.generatedCount,
+      generatedCount:
+        card.generatedCount,
 
-        inStockCount:
-          card.inStockCount,
+      inStockCount:
+        card.inStockCount,
 
-        isNew:
-          card.isNew,
+      isNew:
+        card.isNew,
 
-        maxInStockCount:
-          card.maxInStockCount,
+      maxInStockCount:
+        card.maxInStockCount,
 
-        from: {
-          cityId:
-            meta.cityId,
+      from: {
+        cityId:
+          meta.cityId,
 
-          gameId:
-            meta.gameId,
+        gameId:
+          meta.gameId,
 
-          name:
-            meta.name,
-        },
+        name:
+          meta.name,
+      },
 
-        to: {
-          cityId:
-            friend.friendId,
+      to: {
+        cityId:
+          friend.friendId,
 
-          gameId:
-            friend.gameId ||
-            friend.friendId,
+        gameId:
+          friend.gameId ||
+          friend.friendId,
 
-          name:
-            friend.name,
-        },
-      })
-    );
+        name:
+          friend.name,
+      },
+    }));
 }
 
-/*
- * ============================================================
- * Build XML data
- * ============================================================
- */
+/* ============================================================
+   BUILD PAYLOAD
+   ============================================================ */
 
 function buildPayload(body) {
-  const root =
-    parseXml(
-      body.myXml
+  if (!body) {
+    throw new Error(
+      "Request body is empty"
     );
+  }
+
+  const xml = body.myXml;
+
+  const root =
+    parseXml(xml);
 
   const friends =
-    findFriends(root);
+    findFriends(
+      root,
+      xml
+    );
 
   const cards =
     findOwnedCards(root);
 
   const meta =
     extractMeta(root);
+
+  console.log(
+    `[CARDS] Friends found: ${friends.length}`
+  );
+
+  console.log(
+    `[CARDS] Cards found: ${cards.length}`
+  );
 
   return {
     root,
@@ -488,20 +525,16 @@ function buildPayload(body) {
   };
 }
 
-/*
- * ============================================================
- * Select friend
- * ============================================================
- */
+/* ============================================================
+   SELECT FRIEND
+   ============================================================ */
 
 function selectFriend(
   friends,
   friendId
 ) {
   const wanted =
-    String(
-      friendId || ""
-    );
+    String(friendId || "");
 
   if (!wanted) {
     throw new Error(
@@ -512,12 +545,9 @@ function selectFriend(
   const friend =
     friends.find(
       (f) =>
-        String(f.friendId) ===
-          wanted ||
-        String(f.cityId) ===
-          wanted ||
-        String(f.gameId) ===
-          wanted
+        String(f.friendId) === wanted ||
+        String(f.cityId) === wanted ||
+        String(f.gameId) === wanted
     );
 
   if (!friend) {
@@ -529,11 +559,9 @@ function selectFriend(
   return friend;
 }
 
-/*
- * ============================================================
- * Authorized remote endpoint
- * ============================================================
- */
+/* ============================================================
+   REMOTE CONFIG
+   ============================================================ */
 
 function requiredConfig() {
   const url =
@@ -541,7 +569,7 @@ function requiredConfig() {
 
   if (!url) {
     throw new Error(
-      "CARD_SEND_URL is not configured."
+      "CARD_SEND_URL is not configured. Configure the authorized card-send endpoint before sending."
     );
   }
 
@@ -566,15 +594,11 @@ function requiredConfig() {
   };
 }
 
-/*
- * ============================================================
- * Remote POST
- * ============================================================
- */
+/* ============================================================
+   REMOTE POST
+   ============================================================ */
 
-async function postAuthorized(
-  payload
-) {
+async function postAuthorized(payload) {
   const config =
     requiredConfig();
 
@@ -614,7 +638,9 @@ async function postAuthorized(
       config.url,
       {
         method: "POST",
+
         headers,
+
         body:
           JSON.stringify(
             payload
@@ -656,33 +682,32 @@ async function postAuthorized(
   return data;
 }
 
-/*
- * ============================================================
- * POST /api/cards/analyze
- * ============================================================
- */
+/* ============================================================
+   ANALYZE
+   ============================================================ */
 
 router.post(
   "/analyze",
   (req, res) => {
     try {
       const {
-        myXml,
-      } = req.body || {};
+        myXml
+      } =
+        req.body || {};
 
       const {
         friends,
         cards,
-        meta,
+        meta
       } =
         buildPayload({
-          myXml,
+          myXml
         });
 
       const activeCards =
         cards.filter(
-          (card) =>
-            card.inStockCount > 0
+          (c) =>
+            c.inStockCount > 0
         );
 
       const totalCards =
@@ -712,8 +737,9 @@ router.post(
         totalCards,
 
         message:
-          "تم تحليل XML بنجاح. اختر الصديق فقط وسيتم إرسال كل البطاقات تلقائياً.",
+          "تم تحليل XML بنجاح. اختر الصديق فقط وسيتم إرسال كل البطاقات الموجودة بالمخزون.",
       });
+
     } catch (error) {
       console.error(
         "[CARDS] analyze error:",
@@ -722,34 +748,27 @@ router.post(
 
       return res.status(400).json({
         success: false,
+
         error:
           error.message,
+
+        friends: [],
+
+        cards: [],
+
+        activeCards: [],
+
+        distinctCards: 0,
+
+        totalCards: 0,
       });
     }
   }
 );
 
-/*
- * ============================================================
- * POST /api/cards/send-all
- * ============================================================
- *
- * Body:
- *
- * {
- *   "myXml": "...",
- *   "friendId": "..."
- * }
- *
- * لا يوجد card selection.
- * لا يوجد quantity input.
- *
- * كل بطاقة:
- *
- * inStockCount > 0
- *
- * تدخل تلقائياً.
- */
+/* ============================================================
+   SEND ALL
+   ============================================================ */
 
 router.post(
   "/send-all",
@@ -757,17 +776,17 @@ router.post(
     try {
       const {
         myXml,
-        friendId,
+        friendId
       } =
         req.body || {};
 
       const {
         friends,
         cards,
-        meta,
+        meta
       } =
         buildPayload({
-          myXml,
+          myXml
         });
 
       const friend =
@@ -782,9 +801,7 @@ router.post(
             card.inStockCount > 0
         );
 
-      if (
-        !activeCards.length
-      ) {
+      if (!activeCards.length) {
         return res.status(400).json({
           success: false,
 
@@ -806,14 +823,6 @@ router.post(
           activeCards,
           friend,
           meta
-        );
-
-      const totalCards =
-        cardJobs.reduce(
-          (sum, card) =>
-            sum +
-            card.quantity,
-          0
         );
 
       const outbound = {
@@ -859,12 +868,18 @@ router.post(
           distinctCards:
             cardJobs.length,
 
-          totalCards,
+          totalCards:
+            cardJobs.reduce(
+              (sum, card) =>
+                sum +
+                card.quantity,
+              0
+            ),
         },
       };
 
       console.log(
-        `[CARDS] Sending ${totalCards} cards (${cardJobs.length} types) to ${friend.name} [${friend.friendId}]`
+        `[CARDS] Sending ${outbound.summary.totalCards} cards (${outbound.summary.distinctCards} types) to ${friend.name} [${friend.friendId}]`
       );
 
       const remote =
@@ -875,8 +890,7 @@ router.post(
       const remoteSuccess =
         remote?.success === true ||
         remote?.ok === true ||
-        remote?.status ===
-          "success";
+        remote?.status === "success";
 
       const sent =
         toInt(
@@ -885,7 +899,7 @@ router.post(
           remote?.summary?.sent ??
           (
             remoteSuccess
-              ? totalCards
+              ? outbound.summary.totalCards
               : 0
           ),
           0
@@ -915,7 +929,7 @@ router.post(
           (
             remoteSuccess
               ? 0
-              : totalCards
+              : outbound.summary.totalCards
           ),
           0
         );
@@ -934,20 +948,27 @@ router.post(
 
         requested: {
           distinctCards:
-            cardJobs.length,
+            outbound.summary
+              .distinctCards,
 
-          totalCards,
+          totalCards:
+            outbound.summary
+              .totalCards,
         },
 
         result: {
           sent,
+
           created,
+
           notFound,
+
           failed,
         },
 
         remote,
       });
+
     } catch (error) {
       console.error(
         "[CARDS] send-all error:",
@@ -962,13 +983,10 @@ router.post(
           ? error.status
           : 500;
 
-      return res.status(
-        status
-      ).json({
+      return res.status(status).json({
         success: false,
 
-        mode:
-          "live",
+        mode: "live",
 
         error:
           error.message,
@@ -980,5 +998,9 @@ router.post(
     }
   }
 );
+
+/* ============================================================
+   EXPORT
+   ============================================================ */
 
 module.exports = router;
