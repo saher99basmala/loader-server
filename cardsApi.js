@@ -313,7 +313,15 @@ router.post('/send-all', async (req, res) => {
     const b = req.body || {};
     const xml = typeof b === 'string' ? b : (b.xml || b.myXml);
     if (!xml) throw new Error('XML is missing');
+    const meta = extractMeta(xml);
     const cfg = configFrom(req);
+
+    // ownCityId can be taken directly from my.xml.
+    // This removes the need for CARD_OWN_CITY_ID when the XML contains cityId.
+    if (blank(cfg.ownCityId) && !blank(meta.cityId)) {
+      cfg.ownCityId = s(meta.cityId).trim();
+    }
+
     validateConfig(cfg);
 
     const friend = typeof b.friend === 'object' && b.friend ? b.friend : {
@@ -330,7 +338,6 @@ router.post('/send-all', async (req, res) => {
     ids = [...new Set(ids.map(x => x.trim()).filter(Boolean))];
     if (!ids.length) throw new Error('No sendable cards found');
 
-    const meta = extractMeta(xml);
     const startCounter = Number.isFinite(Number(b.startCounter)) ? Number(b.startCounter) : meta.totalSendCards;
     const results = [];
     for (let i = 0; i < ids.length; i++) {
