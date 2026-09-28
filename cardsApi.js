@@ -1,370 +1,479 @@
+"use strict";
+
 const express = require("express");
-const { XMLParser } = require("fast-xml-parser");
+const zlib = require("zlib");
+const crypto = require("crypto");
+
 const router = express.Router();
 
-const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: "@_",
-    trimValues: false
-});
+const SEND_BOX_BASE =
+  "https://township.playrix.com/api/1/SendBox?cityId=";
 
-function arr(v) {
-    if (v == null) return [];
-    return Array.isArray(v) ? v : [v];
+const AES_KEY = Buffer.from("Wucai6oj0sheiX3p", "utf8");
+
+/*
+  Verified from the APK:
+  - SendBox endpoint
+  - application/octet-stream
+  - box_type = collections_send_card
+  - friend_type = send_friend
+  - fields: box_type, card_id, col_et, col_id,
+    friend_type, from, seed, sendCounter, set_id, to, type
+  - AES-128-GCM key literal used by the APK.
+
+  The XML parser below extracts the values that are actually
+  present in the supplied save. It deliberately does NOT invent
+  missing live session values such as ts-token.
+*/
+
+function escRe(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function valueOf(node) {
-    if (!node || typeof node !== "object") return undefined;
-    if (node["@_value"] !== undefined) return node["@_value"];
-    if (node["@_v"] !== undefined) return node["@_v"];
-    return undefined;
+function unesc(s) {
+  return String(s ?? "")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 }
 
-function typedValue(node) {
-    const value = valueOf(node);
-    if (value === undefined) return undefined;
-
-    const type = String(node["@_type"] || "").toLowerCase();
-
-    if (["int", "int32", "int64", "float", "double"].includes(type)) {
-        const n = Number(value);
-        return Number.isFinite(n) ? n : 0;
-    }
-
-    if (["bool", "boolean"].includes(type)) {
-        return value === true || value === "true" || value === "1";
-    }
-
-    return value;
+function getVar(xml, name) {
+  const re = new RegExp(
+    '<Var\\s[^>]*name="' + escRe(name) + '"[^>]*v="([^"]*)"',
+    "i"
+  );
+  const m = String(xml).match(re);
+  return m ? unesc(m[1]) : null;
 }
 
-function findNamed(root, name) {
-    const seen = new Set();
-
-    function walk(node) {
-        if (!node || typeof node !== "object" || seen.has(node)) return null;
-        seen.add(node);
-
-        for (const [key, value] of Object.entries(node)) {
-            if (key === "DataElem") {
-                for (const item of arr(value)) {
-                    if (item && typeof item === "object" && item["@_name"] === name) {
-                        return item;
-                    }
-                    const hit = walk(item);
-                    if (hit) return hit;
-                }
-            } else if (value && typeof value === "object") {
-                const hit = walk(value);
-                if (hit) return hit;
-            }
-        }
-        return null;
-    }
-
-    return walk(root);
+function all(regex, text) {
+  const out = [];
+  let m;
+  regex.lastIndex = 0;
+  while ((m = regex.exec(text)) !== null) out.push(m);
+  return out;
 }
 
-function fieldsOf(node) {
-    const out = {};
-    if (!node) return out;
+function parseOwnedCards(xml) {
+  const text = String(xml);
+  const result = [];
 
-    for (const item of arr(node.DataElem)) {
-        if (!item || typeof item !== "object" || !item["@_name"]) continue;
-        out[item["@_name"]] = typedValue(item);
+  const blockRe =
+    /<DataElem\s+name="OwnedCards"\s+type="dataStore">(.*?)<\/DataElem>/gis;
+
+  const blocks = all(blockRe, text);
+
+  for (const block of blocks) {
+    const inner = block[1];
+
+    const elemRe =
+      /<DataElem\s+name="cardId"\s+type="string"\s+value="([^"]+)"\s*\/>\s*<DataElem\s+name="generatedCount"\s+type="int"\s+value="(-?\d+)"\s*\/>\s*<DataElem\s+name="inStockCount"\s+type="int"\s+value="(-?\d+)"\s*\/>\s*<DataElem\s+name="isNew"\s+type="bool"\s+value="([^"]+)"\s*\/>\s*<DataElem\s+name="maxInStockCount"\s+type="int"\s+value="(-?\d+)"/gis;
+
+    for (const m of all(elemRe, inner)) {
+      const inStock = Number(m[3]);
+
+      if (inStock > 0) {
+        result.push({
+          cardId: unesc(m[1]),
+          generatedCount: Number(m[2]),
+          inStockCount: inStock,
+          isNew: String(m[4]).toLowerCase() === "true" || m[4] === "1",
+          maxInStockCount: Number(m[5])
+        });
+      }
     }
+  }
 
-    return out;
+  /*
+    Fallback for saves where attributes are separated by other fields.
+  */
+  if (!result.length) {
+    const generic =
+      /<DataElem\s+name="cardId"\s+type="string"\s+value="([^"]+)"\s*\/>([\s\S]{0,800}?)<DataElem\s+name="inStockCount"\s+type="int"\s+value="(-?\d+)"/gi;
+
+    for (const m of all(generic, text)) {
+      const n = Number(m[3]);
+      if (n > 0) {
+        result.push({
+          cardId: unesc(m[1]),
+          generatedCount: null,
+          inStockCount: n,
+          isNew: null,
+          maxInStockCount: null
+        });
+      }
+    }
+  }
+
+  const map = new Map();
+
+  for (const c of result) {
+    if (!map.has(c.cardId)) {
+      map.set(c.cardId, { ...c });
+    } else {
+      map.get(c.cardId).inStockCount += c.inStockCount;
+      if (c.generatedCount != null)
+        map.get(c.cardId).generatedCount =
+          (map.get(c.cardId).generatedCount || 0) + c.generatedCount;
+    }
+  }
+
+  return [...map.values()];
 }
 
-function extractCards(xml) {
-    const doc = parser.parse(xml);
-    const owned = findNamed(doc, "OwnedCards");
+function parseFriends(xml) {
+  const text = String(xml);
+  const friends = [];
 
-    if (!owned) {
-        throw new Error("OwnedCards was not found in XML");
-    }
+  /*
+    FriendsList entries differ slightly between save versions.
+    We first locate friend blocks and then read common fields.
+  */
+  const listBlocks = all(
+    /<DataElem\s+name="FriendsList"\s+type="dataStore">([\s\S]*?)<\/DataElem>/gi,
+    text
+  );
 
-    const map = new Map();
+  const source = listBlocks.length ? listBlocks.map(x => x[1]).join("\n") : text;
 
-    for (const entry of arr(owned.DataElem)) {
-        if (!entry || typeof entry !== "object") continue;
+  const friendBlocks = all(
+    /<DataElem\s+name="([^"]+)"\s+type="dataStore">([\s\S]*?)<\/DataElem>/gi,
+    source
+  );
 
-        const f = fieldsOf(entry);
-        const cardId = f.cardId == null ? "" : String(f.cardId);
-        const count = Number(f.inStockCount || 0);
+  for (const b of friendBlocks) {
+    const inner = b[2];
 
-        if (!cardId || !Number.isFinite(count) || count <= 0) continue;
+    const city =
+      (inner.match(/name="cityId"[^>]*value="([^"]+)"/i) || [])[1] ||
+      (inner.match(/name="city_id"[^>]*value="([^"]+)"/i) || [])[1];
 
-        if (!map.has(cardId)) {
-            map.set(cardId, {
-                cardId,
-                count: 0,
-                generatedCount: Number(f.generatedCount || 0),
-                isNew: Boolean(f.isNew),
-                maxInStockCount: Number(f.maxInStockCount || 0)
-            });
-        }
+    if (!city) continue;
 
-        map.get(cardId).count += count;
-    }
+    const name =
+      (inner.match(/name="name"[^>]*value="([^"]+)"/i) || [])[1] ||
+      (inner.match(/name="cityName"[^>]*value="([^"]+)"/i) || [])[1] ||
+      b[1];
 
-    const cards = [...map.values()];
+    const pic =
+      (inner.match(/name="MyPicture"[^>]*value="([^"]+)"/i) || [])[1] ||
+      (inner.match(/name="pic"[^>]*value="([^"]+)"/i) || [])[1] ||
+      "";
 
-    return {
-        cards,
-        distinctCards: cards.length,
-        totalCards: cards.reduce((n, c) => n + c.count, 0)
-    };
+    const level =
+      (inner.match(/name="level"[^>]*value="(-?\d+)"/i) || [])[1] || null;
+
+    const xp =
+      (inner.match(/name="experience"[^>]*value="(-?\d+)"/i) || [])[1] ||
+      null;
+
+    friends.push({
+      id: unesc(city),
+      cityId: unesc(city),
+      name: unesc(name),
+      pic: unesc(pic),
+      level: level == null ? null : Number(level),
+      xp: xp == null ? null : Number(xp)
+    });
+  }
+
+  const unique = new Map();
+
+  for (const f of friends) {
+    if (!unique.has(f.cityId)) unique.set(f.cityId, f);
+  }
+
+  return [...unique.values()];
 }
 
-function findValue(root, names) {
-    const wanted = new Set(names);
-    const seen = new Set();
+function parseCollectionData(xml) {
+  const text = String(xml);
 
-    function walk(node) {
-        if (!node || typeof node !== "object" || seen.has(node)) return undefined;
-        seen.add(node);
+  const configId =
+    (text.match(
+      /<DataElem\s+name="configId"\s+type="string"\s+value="CardCollections_(\d+)"/i
+    ) || [])[1] || null;
 
-        for (const [key, value] of Object.entries(node)) {
-            if (key === "DataElem") {
-                for (const item of arr(value)) {
-                    if (item && typeof item === "object" && wanted.has(item["@_name"])) {
-                        return typedValue(item);
-                    }
-                    const hit = walk(item);
-                    if (hit !== undefined) return hit;
-                }
-            } else if (value && typeof value === "object") {
-                const hit = walk(value);
-                if (hit !== undefined) return hit;
-            }
-        }
-        return undefined;
-    }
+  const pinned =
+    (text.match(
+      /<DataElem\s+name="pinnedCardCollectionsBalanceId"\s+type="string"\s+value="CardC(\d+)_Balance"/i
+    ) || [])[1] || null;
 
-    return walk(root);
+  const collectionId =
+    (text.match(
+      /<DataElem\s+name="first"\s+type="string"\s+value="collectionId"\s*\/>\s*<DataElem\s+name="second"\s+type="string"\s+value="(\d+)"/i
+    ) || [])[1] || null;
+
+  const lastSeen = {};
+
+  const progressBlock =
+    (text.match(
+      /<DataElem\s+name="LastSeenSetProgress"\s+type="dataStore">([\s\S]*?)<\/DataElem>/i
+    ) || [])[1] || "";
+
+  for (const m of all(
+    /<DataElem\s+name="(set_\d+)"\s+type="int"\s+value="(-?\d+)"\s*\/>/gi,
+    progressBlock
+  )) {
+    lastSeen[m[1]] = Number(m[2]);
+  }
+
+  return {
+    configId,
+    pinnedCollection: pinned,
+    collectionId,
+    lastSeenSetProgress: lastSeen
+  };
 }
 
-function extractMeta(xml) {
-    const doc = parser.parse(xml);
+function analyze(xml) {
+  const cards = parseOwnedCards(xml);
+  const friends = parseFriends(xml);
+  const collections = parseCollectionData(xml);
 
-    return {
-        cityId: findValue(doc, ["cityId", "city_id"]),
-        gameId: findValue(doc, ["gameId", "game_id"]),
-        townName: findValue(doc, ["townName", "city_name"]),
-        experience: findValue(doc, ["experience"])
-    };
+  return {
+    success: true,
+    friends,
+    cards,
+    distinctCards: cards.length,
+    totalCards: cards.reduce((n, c) => n + c.inStockCount, 0),
+    collections,
+    cityId: getVar(xml, "cityId"),
+    gameId: getVar(xml, "gameId"),
+    experience: getVar(xml, "experience"),
+    townName: getVar(xml, "townName")
+  };
 }
 
-function extractFriends(xml) {
-    const doc = parser.parse(xml);
-    const result = [];
-    const seen = new Set();
-
-    function add(id, extra = {}) {
-        if (id == null || String(id).trim() === "") return;
-        id = String(id);
-        if (seen.has(id)) return;
-        seen.add(id);
-        result.push({ id, ...extra });
-    }
-
-    function walk(node) {
-        if (!node || typeof node !== "object") return;
-
-        for (const [key, value] of Object.entries(node)) {
-            if (key !== "DataElem") {
-                if (value && typeof value === "object") walk(value);
-                continue;
-            }
-
-            for (const item of arr(value)) {
-                if (!item || typeof item !== "object") continue;
-
-                if (item["@_name"] === "FriendsList") {
-                    for (const x of arr(item.DataElem)) {
-                        if (x && typeof x === "object") {
-                            const id = x["@_value"] ?? x["@_v"];
-                            if (id != null) add(id);
-                        }
-                    }
-                }
-
-                walk(item);
-            }
-        }
-    }
-
-    walk(doc);
-    return result;
+/*
+  These are the five values whose final arithmetic/dataflow was
+  not proven completely from LC/i->I in the available source.
+  The function maps only values directly supported by XML and
+  refuses to fabricate the remaining values.
+*/
+function buildCardRecord(card, context) {
+  return {
+    box_type: "collections_send_card",
+    card_id: card.cardId,
+    col_et: context.col_et ?? null,
+    col_id: context.col_id ?? context.collectionId ?? null,
+    friend_type: "send_friend",
+    from: context.from ?? null,
+    seed: context.seed ?? null,
+    sendCounter: context.sendCounter ?? null,
+    set_id: context.set_id ?? null,
+    to: context.to ?? null,
+    type: context.type ?? null
+  };
 }
 
-function getXml(req) {
-    if (typeof req.body === "string" && req.body.trim()) return req.body;
-    if (req.body && typeof req.body.xml === "string") return req.body.xml;
-    if (req.body && typeof req.body.myXml === "string") return req.body.myXml;
-    throw new Error("XML is missing");
+function encodeSendPayload(records) {
+  /*
+    APK crypto path confirmed:
+    UTF-8 -> GZIP -> AES/GCM/NoPadding
+    random 12-byte IV
+    128-bit authentication tag.
+  */
+  const json = JSON.stringify(records);
+  const gz = zlib.gzipSync(Buffer.from(json, "utf8"));
+
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-128-gcm", AES_KEY, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(gz),
+    cipher.final()
+  ]);
+
+  const tag = cipher.getAuthTag();
+
+  return {
+    iv,
+    encrypted,
+    tag,
+    raw: Buffer.concat([iv, encrypted, tag])
+  };
 }
 
-function makeJob(xml, friend) {
-    const meta = extractMeta(xml);
-    const inventory = extractCards(xml);
+async function postRaw(url, body, headers = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
 
-    return {
-        type: "collections_send_card",
-        cityId: meta.cityId ?? null,
-        gameId: meta.gameId ?? null,
-        townName: meta.townName ?? null,
-        experience: meta.experience ?? null,
-        friend,
-        cards: inventory.cards,
-        distinctCards: inventory.distinctCards,
-        totalCards: inventory.totalCards
-    };
-}
-
-async function sendAuthorized(job) {
-    const url = process.env.CARD_SEND_URL;
-
-    if (!url) {
-        return {
-            sent: false,
-            mode: "preview",
-            reason: "CARD_SEND_URL is not configured"
-        };
-    }
-
-    const headers = {
-        "Content-Type": "application/json"
-    };
-
-    if (process.env.CARD_SEND_TOKEN) {
-        headers.Authorization = `Bearer ${process.env.CARD_SEND_TOKEN}`;
-    }
-
+  try {
     const response = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(job)
+      method: "POST",
+      headers,
+      body,
+      signal: controller.signal
     });
 
     const text = await response.text();
 
-    let body;
-    try {
-        body = JSON.parse(text);
-    } catch {
-        body = text;
-    }
-
-    if (!response.ok) {
-        const error = new Error(`Card API returned HTTP ${response.status}`);
-        error.status = response.status;
-        error.response = body;
-        throw error;
-    }
-
     return {
-        sent: true,
-        status: response.status,
-        response: body
+      status: response.status,
+      ok: response.ok,
+      text
     };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-/*
-POST /api/cards/analyze
+router.post("/analyze", express.json({ limit: "25mb" }), (req, res) => {
+  try {
+    const xml = req.body?.myXml;
 
-Body:
-{
-    "xml": "..."
-}
-or:
-{
-    "myXml": "..."
-}
-*/
-router.post("/analyze", (req, res) => {
-    try {
-        const xml = getXml(req);
-        const meta = extractMeta(xml);
-        const friends = extractFriends(xml);
-        const inventory = extractCards(xml);
-
-        res.json({
-            ok: true,
-            meta,
-            friends,
-            cards: inventory.cards,
-            distinctCards: inventory.distinctCards,
-            totalCards: inventory.totalCards
-        });
-    } catch (e) {
-        console.error("[CARDS] analyze:", e);
-        res.status(400).json({
-            ok: false,
-            error: e.message
-        });
+    if (!xml || typeof xml !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "myXml is required"
+      });
     }
+
+    return res.json(analyze(xml));
+  } catch (e) {
+    return res.status(500).json({
+      success: false,
+      error: String(e?.message || e)
+    });
+  }
 });
 
-/*
-POST /api/cards/send-all
+router.post("/send-all", express.json({ limit: "25mb" }), async (req, res) => {
+  try {
+    const xml = req.body?.myXml;
+    const friendId =
+      req.body?.friendId ||
+      req.body?.friend?.cityId ||
+      req.body?.friend?.id;
 
-Body:
-{
-    "xml": "...",
-    "friend": {
-        "id": "..."
+    if (!xml || typeof xml !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "myXml is required"
+      });
     }
-}
 
-لا يوجد اختيار بطاقات.
-كل بطاقة لها inStockCount > 0 تدخل تلقائيًا.
-*/
-router.post("/send-all", async (req, res) => {
-    try {
-        const xml = getXml(req);
-        const rawFriend = req.body && (req.body.friend || req.body.friendId);
-
-        if (!rawFriend) {
-            return res.status(400).json({
-                ok: false,
-                error: "friend or friendId is required"
-            });
-        }
-
-        const friend = typeof rawFriend === "string"
-            ? { id: rawFriend }
-            : rawFriend;
-
-        const job = makeJob(xml, friend);
-
-        console.log("[CARDS] send-all", {
-            friend: friend.id,
-            distinctCards: job.distinctCards,
-            totalCards: job.totalCards
-        });
-
-        const delivery = await sendAuthorized(job);
-
-        res.json({
-            ok: true,
-            friend: job.friend,
-            distinctCards: job.distinctCards,
-            totalCards: job.totalCards,
-            cards: job.cards,
-            delivery
-        });
-    } catch (e) {
-        console.error("[CARDS] send-all:", e);
-
-        res.status(e.status || 400).json({
-            ok: false,
-            error: e.message,
-            response: e.response
-        });
+    if (!friendId) {
+      return res.status(400).json({
+        success: false,
+        error: "friendId is required"
+      });
     }
+
+    const parsed = analyze(xml);
+
+    const friend =
+      parsed.friends.find(
+        f => String(f.cityId) === String(friendId)
+      ) || {
+        cityId: String(friendId),
+        id: String(friendId),
+        name: String(friendId),
+        pic: ""
+      };
+
+    /*
+      Do not silently invent the five unresolved values.
+      Return the complete analysis so the caller can see exactly
+      what was extracted.
+    */
+    const unresolved = parsed.cards.filter(c => {
+      const r = buildCardRecord(c, {
+        collectionId: parsed.collections.collectionId,
+        to: friend.cityId
+      });
+
+      return (
+        r.col_et == null ||
+        r.seed == null ||
+        r.sendCounter == null ||
+        r.set_id == null
+      );
+    }).length;
+
+    if (unresolved > 0) {
+      return res.status(422).json({
+        success: false,
+        mode: "analysis-only",
+        error:
+          "The APK-derived five-field dataflow is not fully resolved; refusing to fabricate SendBox values.",
+        friend,
+        distinctCards: parsed.distinctCards,
+        totalCards: parsed.totalCards,
+        unresolvedCards: unresolved,
+        collections: parsed.collections,
+        cards: parsed.cards
+      });
+    }
+
+    const session = req.body?.session || {};
+
+    if (!session.token) {
+      return res.status(400).json({
+        success: false,
+        error: "Live ts-token is required for an authorized SendBox request."
+      });
+    }
+
+    const records = parsed.cards.map(card =>
+      buildCardRecord(card, {
+        ...req.body?.payloadContext,
+        to: friend.cityId
+      })
+    );
+
+    const encoded = encodeSendPayload(records);
+
+    const cityId =
+      session.cityId ||
+      parsed.cityId;
+
+    if (!cityId) {
+      return res.status(400).json({
+        success: false,
+        error: "cityId is required."
+      });
+    }
+
+    const headers = {
+      "Content-Type": "application/octet-stream",
+      "Accept": "*/*",
+      "IsNewClanUIEnabled": "true",
+      "User-Agent":
+        session.userAgent ||
+        "okhttp/4.9.3",
+      "ts-bp": session.tsBp || "g",
+      "ts-bver": session.tsBver || "",
+      "ts-fver": session.tsFver || "",
+      "ts-gpid": "new",
+      "ts-token": session.token,
+      "x-version": session.xVersion || ""
+    };
+
+    const response = await postRaw(
+      SEND_BOX_BASE + encodeURIComponent(cityId),
+      encoded.raw,
+      headers
+    );
+
+    return res.status(response.ok ? 200 : 502).json({
+      success: response.ok,
+      mode: "sendbox",
+      friend,
+      distinctCards: parsed.distinctCards,
+      totalCards: parsed.totalCards,
+      sentCards: response.ok ? parsed.totalCards : 0,
+      httpCode: response.status,
+      serverResponse: response.text
+    });
+  } catch (e) {
+    return res.status(500).json({
+      success: false,
+      error: String(e?.message || e)
+    });
+  }
 });
 
 module.exports = router;
