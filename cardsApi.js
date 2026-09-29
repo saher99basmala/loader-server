@@ -192,15 +192,19 @@ function extractFriends(xml) {
 
 function extractCards(xml) {
     const doc = parser.parse(xml);
+    const owned = findNamed(doc, [
+        'OwnedCards',
+        'ownedCards',
+        'OwnedCard'
+    ]);
+
+    if (!owned) {
+        throw new Error('OwnedCards was not found in my.xml');
+    }
+
     const map = new Map();
 
-    /*
-     * استخراج جميع card_1 إلى card_150 الموجودة فعلياً
-     * في my.xml، بغض النظر عن inStockCount.
-     */
-    walk(doc, node => {
-        if (!node || typeof node !== 'object') return;
-
+    walk(owned, node => {
         const cardId = getField(node, [
             'cardId',
             'card_id',
@@ -208,111 +212,60 @@ function extractCards(xml) {
             'id'
         ]);
 
-        if (cardId === undefined) return;
-
-        const id = s(cardId).trim();
-
-        const match = id.match(/^card_(\d+)$/i);
-        if (!match) return;
-
-        const number = Number(match[1]);
-
-        if (
-            !Number.isInteger(number) ||
-            number < 1 ||
-            number > 150
-        ) {
-            return;
-        }
-
-        const key = id.toLowerCase();
-
-        // لا نكرر نفس البطاقة إذا ظهرت أكثر من مرة
-        if (map.has(key)) return;
-
-        const stockValue = getField(node, [
+        const stock = getField(node, [
             'inStockCount',
             'in_stock_count',
             'InStockCount',
             'stockCount'
         ]);
 
-        const generatedValue = getField(node, [
-            'generatedCount',
-            'generated_count'
-        ]);
+        if (cardId === undefined || stock === undefined) return;
 
-        const maxStockValue = getField(node, [
-            'maxInStockCount',
-            'max_in_stock_count'
-        ]);
+        const id = s(cardId).trim();
+        const count = Number(stock);
+
+        if (!id || !Number.isFinite(count) || count <= 0) return;
+
+        const generated = Number(
+            getField(node, [
+                'generatedCount',
+                'generated_count'
+            ]) || 0
+        );
+
+        const maxStock = Number(
+            getField(node, [
+                'maxInStockCount',
+                'max_in_stock_count'
+            ]) || 0
+        );
 
         const isNew = getField(node, [
             'isNew',
             'is_new'
         ]);
 
-        const stock = Number(stockValue);
-        const generated = Number(generatedValue);
-        const maxStock = Number(maxStockValue);
+        if (!map.has(id)) {
+            map.set(id, {
+                cardId: id,
+                count: 0,
+                generatedCount: Number.isFinite(generated) ? generated : 0,
+                isNew: s(isNew || 'false'),
+                maxInStockCount: Number.isFinite(maxStock) ? maxStock : 0
+            });
+        }
 
-        map.set(key, {
-            cardId: id,
-
-            // حتى لو كان 0، لا يتم استبعاد البطاقة
-            count:
-                Number.isFinite(stock) && stock >= 0
-                    ? stock
-                    : 0,
-
-            generatedCount:
-                Number.isFinite(generated)
-                    ? generated
-                    : 0,
-
-            isNew:
-                s(
-                    isNew !== undefined
-                        ? isNew
-                        : 'false'
-                ),
-
-            maxInStockCount:
-                Number.isFinite(maxStock)
-                    ? maxStock
-                    : 0
-        });
+        map.get(id).count += count;
     });
 
-    /*
-     * ترتيب:
-     * card_1
-     * card_2
-     * ...
-     * card_150
-     */
-    const cards = [...map.values()].sort((a, b) => {
-        const aNum = Number(
-            a.cardId.match(/^card_(\d+)$/i)[1]
-        );
-
-        const bNum = Number(
-            b.cardId.match(/^card_(\d+)$/i)[1]
-        );
-
-        return aNum - bNum;
-    });
-
-    const totalCopies = cards.reduce(
-        (total, card) => total + card.count,
-        0
-    );
+    const cards = [...map.values()];
+    const totalCopies = cards.reduce((n, c) => n + c.count, 0);
 
     return {
         cards,
         distinctCards: cards.length,
         totalCopies,
-        totalCards: cards.length
+        totalCards: totalCopies
     };
 }
 
@@ -852,9 +805,19 @@ router.post('/send-all', async (req, res) => {
         if (!friend.pic) friend.pic = known.pic;
 
         /* 5. One request for every distinct owned card. */
-        const ids = inventory.cards
-            .map(card => card.cardId)
-            .filter(Boolean);
+        const allIds = inventory.cards
+    .map(card => card.cardId)
+    .filter(Boolean);
+
+const selectedIds = Array.isArray(body.cardIds)
+    ? body.cardIds
+        .map(id => s(id).trim())
+        .filter(Boolean)
+    : null;
+
+const ids = selectedIds
+    ? allIds.filter(id => selectedIds.includes(id))
+    : allIds;
 
         if (!ids.length) {
             return res.status(400).json({
