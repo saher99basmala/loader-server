@@ -1,155 +1,146 @@
-'use strict';
+/*
+ * xmlTransferApi.js
+ *
+ * Drop-in replacement for the existing XML Transfer API.
+ *
+ * Mounted by server.js as:
+ *   app.use("/api/xml-transfer", xmlTransferApi);
+ *
+ * Endpoint:
+ *   POST /api/xml-transfer/merge
+ *
+ * JSON:
+ * {
+ *   "myXml": "...",       // target XML; optional if BS32.xml exists
+ *   "friendXml": "...",  // source XML
+ *   "copySkins": false
+ * }
+ *
+ * The target fallback is:
+ *   ./BS32.xml
+ *
+ * This lets the GameGuardian Lua script send BOTH files.
+ * No extra server endpoint is required.
+ */
 
 const express = require("express");
-
-const {
-    mergeIntoTarget,
-    TARGET_FILE
-} = require("./xmlSectionMerger");
+const fs = require("fs");
+const path = require("path");
 
 const router = express.Router();
+const copyDesign = require("./desbanApi");
 
-/*
- * ============================================================
- * XML BODY
- * ============================================================
- *
- * نستقبل XML كنص خام.
- *
- * الحد الأقصى 20MB.
- * ============================================================
- */
+const MAX_XML = 50 * 1024 * 1024;
+const DEFAULT_TARGET = path.join(process.cwd(), "BS32.xml");
 
-router.use(
-    express.text({
-        type: [
-            "application/xml",
-            "text/xml",
-            "text/plain",
-            "application/octet-stream"
-        ],
-        limit: "20mb"
-    })
-);
+function isXml(value) {
+    return (
+        typeof value === "string" &&
+        value.length > 0 &&
+        value.length <= MAX_XML &&
+        /<root\b[^>]*>/i.test(value) &&
+        /<\/root\s*>/i.test(value)
+    );
+}
 
-/*
- * ============================================================
- * POST /api/xml-transfer/merge
- * ============================================================
- *
- * Lua يرسل:
- *
- * Content-Type: application/xml
- *
- * Body:
- * source XML
- *
- * السيرفر:
- *
- * source XML
- *      +
- * BS32.xml
- *      ↓
- * merge
- *      ↓
- * save BS32.xml
- *      ↓
- * return modified BS32.xml
- *
- * ============================================================
- */
+function firstString(...values) {
+    for (const value of values) {
+        if (typeof value === "string" && value.trim()) {
+            return value;
+        }
+    }
+    return "";
+}
 
-router.post("/merge", (req, res) => {
+function readTargetFromServer() {
+    if (!fs.existsSync(DEFAULT_TARGET)) {
+        return null;
+    }
+
+    const xml = fs.readFileSync(DEFAULT_TARGET, "utf8");
+
+    return isXml(xml) ? xml : null;
+}
+
+router.get("/status", (req, res) => {
+    const targetExists = fs.existsSync(DEFAULT_TARGET);
+
+    return res.json({
+        ok: true,
+        service: "XML Transfer + Copy Design",
+        endpoint: "/api/xml-transfer/merge",
+        serverTarget: "BS32.xml",
+        serverTargetExists: targetExists
+    });
+});
+
+router.post("/merge", async (req, res) => {
     try {
+        const body = req.body || {};
 
-        const sourceXml = req.body;
+        // Lua normally sends both files.
+        // If targetXml is absent, use ./BS32.xml on the server.
+        let targetXml = firstString(
+            body.myXml,
+            body.targetXml
+        );
 
-        /*
-         * إذا لم يصل XML، فقط نرجع خطأ للطلب نفسه.
-         */
-        if (
-            typeof sourceXml !== "string" ||
-            !sourceXml.trim()
-        ) {
+        const sourceXml = firstString(
+            body.friendXml,
+            body.sourceXml,
+            body.friend
+        );
+
+        if (!targetXml) {
+            targetXml = readTargetFromServer();
+        }
+
+        if (!isXml(targetXml)) {
             return res.status(400).json({
-                success: false,
-                error: "XML source is empty"
+                ok: false,
+                status: "invalid_target_xml",
+                error:
+                    "target XML is missing/invalid and ./BS32.xml was not usable"
             });
         }
 
-        /*
-         * تنفيذ الدمج.
-         *
-         * الأقسام غير الموجودة في المصدر
-         * يتم تخطيها تلقائياً.
-         */
-        const result =
-            mergeIntoTarget(sourceXml);
+        if (!isXml(sourceXml)) {
+            return res.status(400).json({
+                ok: false,
+                status: "invalid_source_xml",
+                error: "friendXml/sourceXml is required and must be valid XML"
+            });
+        }
 
-        /*
-         * نرجع XML الكامل بعد الدمج.
-         */
-        res.status(200);
+        const copySkins =
+            body.copySkins === true ||
+            body.copySkins === 1 ||
+            body.copySkins === "1";
 
-        res.set(
-            "Content-Type",
-            "application/xml; charset=utf-8"
+        console.log("[XML Transfer] /merge");
+        console.log("[XML Transfer] target length:", targetXml.length);
+        console.log("[XML Transfer] source length:", sourceXml.length);
+
+        const result = copyDesign.processCopyDesign(
+            targetXml,
+            sourceXml,
+            { copySkins }
         );
 
-        res.set(
-            "X-XML-Merge",
-            "success"
-        );
-
-        res.set(
-            "X-XML-Target",
-            "BS32.xml"
-        );
-
-        return res.send(
-            result.xml
-        );
-
-    } catch (error) {
-
-        console.error(
-            "[XML TRANSFER] merge failed:",
-            error
-        );
-
-        return res.status(500).json({
-            success: false,
-            error: "XML merge failed",
-            message: error.message
-        });
-    }
-});
-
-/*
- * ============================================================
- * GET /api/xml-transfer/status
- * ============================================================
- */
-
-router.get("/status", (req, res) => {
-    try {
-
-        const fs = require("fs");
-
-        const exists =
-            fs.existsSync(TARGET_FILE);
-
-        return res.json({
-            success: true,
-            target: "BS32.xml",
-            exists
+        return res.status(200).json({
+            ok: true,
+            status: "success",
+            xml: result.xml,
+            stats: result.stats
         });
 
-    } catch (error) {
+    } catch (e) {
+        console.error("[XML Transfer] merge error:", e);
 
         return res.status(500).json({
-            success: false,
-            error: error.message
+            ok: false,
+            status: "server_error",
+            error: e.message
         });
     }
 });
