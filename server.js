@@ -9,25 +9,19 @@ const api = require("./api");
 const cardsApi = require("./cardsApi");
 
 // ============================================================
-// BSXML Standalone Pipeline
+// FILES API - رفع ملفات Lua إلى السيرفر
 // ============================================================
-//
-// هذا مستقل عن desbanApi.js
-// Endpoint:
-// POST /api/bsxml/process
-//
-// يستقبل:
-// {
-//     "myXml": "...",
-//     "friendXml": "..."
-// }
-//
+
+const filesApi = require("./filesApi");
+
+// ============================================================
+// BSXML Standalone Pipeline
 // ============================================================
 
 const pipeline = require("./pipeline");
 
 // ============================================================
-// XML Transfer API - جديد
+// XML Transfer API
 // ============================================================
 
 const xmlTransferApi = require("./xmlTransferApi");
@@ -42,19 +36,34 @@ const fetchCity2 = require("./fetchCity2");
 const cityCache = require("./cityCache");
 
 const PORT = process.env.PORT || 3000;
-const SECRET = process.env.SERVER_SECRET || "MY_SECRET_123";
+const SECRET =
+    process.env.SERVER_SECRET ||
+    "MY_SECRET_123";
 
 // ============================================================
 // Middleware
 // ============================================================
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json({ limit: "25mb" }));
+app.use(
+    express.urlencoded({
+        extended: true
+    })
+);
+
+app.use(
+    express.json({
+        limit: "25mb"
+    })
+);
 
 app.use(
     session({
-        secret: process.env.SESSION_SECRET || "BS_ADMIN_SECRET",
+        secret:
+            process.env.SESSION_SECRET ||
+            "BS_ADMIN_SECRET",
+
         resave: false,
+
         saveUninitialized: false
     })
 );
@@ -63,167 +72,204 @@ app.use(
 // الواجهات
 // ============================================================
 
-app.use("/", view);
-app.use("/api", api);
-app.use("/api/cards", cardsApi);
+app.use(
+    "/",
+    view
+);
+
+app.use(
+    "/api",
+    api
+);
+
+app.use(
+    "/api/cards",
+    cardsApi
+);
+
+// ============================================================
+// FILES API
+// ============================================================
+//
+// Lua يرسل الملفات إلى:
+//
+// POST /api/files/upload
+//
+// والسيرفر يحفظها داخل:
+//
+// ./uploads/<deviceid>/
+//
+// ============================================================
+
+app.use(
+    "/api/files",
+    filesApi
+);
 
 // ============================================================
 // BSXML Standalone Processing
 // ============================================================
-//
-// مهم:
-// هذا ليس desbanApi.js
-//
-// لا يستخدم:
-// /api/desban
-// /api/desban/full
-//
-// endpoint الجديد:
-// /api/bsxml/process
-//
-// ============================================================
 
-app.post("/api/bsxml/process", async (req, res) => {
-    try {
+app.post(
+    "/api/bsxml/process",
+    async (req, res) => {
 
-        const myXml = req.body && req.body.myXml;
-        const friendXml = req.body && req.body.friendXml;
+        try {
 
-        // --------------------------------------------------------
-        // التأكد من وجود XML الأول
-        // --------------------------------------------------------
+            const myXml =
+                req.body &&
+                req.body.myXml;
 
-        if (
-            typeof myXml !== "string" ||
-            !myXml.trim()
-        ) {
-            return res.status(400).json({
-                ok: false,
-                error: "myXml is required"
-            });
-        }
+            const friendXml =
+                req.body &&
+                req.body.friendXml;
 
-        // --------------------------------------------------------
-        // التأكد من وجود XML الثاني
-        // --------------------------------------------------------
+            // ------------------------------------------------
+            // التأكد من وجود XML الأول
+            // ------------------------------------------------
 
-        if (
-            typeof friendXml !== "string" ||
-            !friendXml.trim()
-        ) {
-            return res.status(400).json({
-                ok: false,
-                error: "friendXml is required"
-            });
-        }
+            if (
+                typeof myXml !== "string" ||
+                !myXml.trim()
+            ) {
 
-        console.log(
-            "[BSXML] POST /api/bsxml/process"
-        );
+                return res.status(400).json({
 
-        console.log(
-            "[BSXML] myXml length:",
-            myXml.length
-        );
+                    ok: false,
 
-        console.log(
-            "[BSXML] friendXml length:",
-            friendXml.length
-        );
+                    error:
+                        "myXml is required"
 
-        // --------------------------------------------------------
-        // تشغيل الـ Pipeline المستقل
-        // --------------------------------------------------------
+                });
+            }
 
-        const result =
-            await Promise.resolve(
-                pipeline.applyDesban(
-                    myXml,
-                    friendXml
-                )
+            // ------------------------------------------------
+            // التأكد من وجود XML الثاني
+            // ------------------------------------------------
+
+            if (
+                typeof friendXml !== "string" ||
+                !friendXml.trim()
+            ) {
+
+                return res.status(400).json({
+
+                    ok: false,
+
+                    error:
+                        "friendXml is required"
+
+                });
+            }
+
+            console.log(
+                "[BSXML] POST /api/bsxml/process"
             );
 
-        // --------------------------------------------------------
-        // التحقق من النتيجة
-        // --------------------------------------------------------
+            console.log(
+                "[BSXML] myXml length:",
+                myXml.length
+            );
 
-        if (
-            !result ||
-            result.ok === false
-        ) {
+            console.log(
+                "[BSXML] friendXml length:",
+                friendXml.length
+            );
+
+            // ------------------------------------------------
+            // تشغيل Pipeline
+            // ------------------------------------------------
+
+            const result =
+                await Promise.resolve(
+                    pipeline.applyDesban(
+                        myXml,
+                        friendXml
+                    )
+                );
+
+            // ------------------------------------------------
+            // التحقق من النتيجة
+            // ------------------------------------------------
+
+            if (
+                !result ||
+                result.ok === false
+            ) {
+
+                console.error(
+                    "[BSXML] Processing failed"
+                );
+
+                return res.status(422).json({
+
+                    ok: false,
+
+                    error:
+                        "XML processing failed",
+
+                    log:
+                        result &&
+                        result.log
+                            ? result.log
+                            : [],
+
+                    stages:
+                        result &&
+                        result.stages
+                            ? result.stages
+                            : []
+
+                });
+            }
+
+            // ------------------------------------------------
+            // نجاح
+            // ------------------------------------------------
+
+            console.log(
+                "[BSXML] Processing completed successfully"
+            );
+
+            return res.status(200).json({
+
+                ok: true,
+
+                xml:
+                    result.xml,
+
+                log:
+                    result.log || [],
+
+                stages:
+                    result.stages || []
+
+            });
+
+        } catch (e) {
 
             console.error(
-                "[BSXML] Processing failed"
+                "[BSXML] Processing error:",
+                e
             );
 
-            return res.status(422).json({
+            return res.status(500).json({
+
                 ok: false,
-                error: "XML processing failed",
-                log:
-                    result && result.log
-                        ? result.log
-                        : [],
-                stages:
-                    result && result.stages
-                        ? result.stages
-                        : []
+
+                error:
+                    "Internal server error",
+
+                message:
+                    e.message
+
             });
         }
-
-        // --------------------------------------------------------
-        // نجاح المعالجة
-        // --------------------------------------------------------
-
-        console.log(
-            "[BSXML] Processing completed successfully"
-        );
-
-        return res.status(200).json({
-
-            ok: true,
-
-            xml: result.xml,
-
-            log:
-                result.log || [],
-
-            stages:
-                result.stages || []
-
-        });
-
-    } catch (e) {
-
-        console.error(
-            "[BSXML] Processing error:",
-            e
-        );
-
-        return res.status(500).json({
-
-            ok: false,
-
-            error:
-                "Internal server error",
-
-            message:
-                e.message
-
-        });
     }
-});
+);
 
 // ============================================================
 // XML Transfer API
-// ============================================================
-//
-// المصدر يأتي من Lua
-// الهدف الثابت على السيرفر هو:
-// ./BS32.xml
-//
-// POST:
-// /api/xml-transfer/merge
-//
 // ============================================================
 
 app.use(
@@ -644,7 +690,15 @@ app.listen(
         );
 
         // ----------------------------------------------------
-        // BSXML الجديد
+        // FILES
+        // ----------------------------------------------------
+
+        console.log(
+            "[FILES] POST /api/files/upload"
+        );
+
+        // ----------------------------------------------------
+        // BSXML
         // ----------------------------------------------------
 
         console.log(
@@ -678,5 +732,6 @@ app.listen(
         console.log(
             "[FetchCity2] POST /api2/fetch-city"
         );
+
     }
 );
