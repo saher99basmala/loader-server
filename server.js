@@ -6,6 +6,7 @@ const app = express();
 
 const view = require("./view");
 const api = require("./api");
+const { router: townshipApi } = require("./townshipApi");
 const cardsApi = require("./cardsApi");
 
 // ============================================================
@@ -80,6 +81,10 @@ app.use(
 app.use(
     "/api",
     api
+);
+app.use(
+    "/api/township",
+    townshipApi
 );
 
 app.use(
