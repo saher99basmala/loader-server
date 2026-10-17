@@ -3631,7 +3631,8 @@ async function handleRestoreAccount(req, res) {
         if (!Number.isFinite(cityVer) || cityVer < 0) return res.status(400).json({ ok: false, error: "cityVer غير صالح" });
         const upstream = await requestFetchCity(cityId, cityVer);
         if (!upstream || !upstream.result || typeof upstream.result.data !== "string") throw new Error("Upstream JSON لا يحتوي result.data");
-        const donorXml = decodeSaveCity(Buffer.from(upstream.result.data, "base64"));
+        const decodedDonor = decodeSaveCity(Buffer.from(upstream.result.data, "base64"));
+        const donorXml = (Buffer.isBuffer(decodedDonor) ? decodedDonor.toString("utf8") : String(decodedDonor)).replace(/^\uFEFF/, "").trim();
         const merged = mergeRestoreXml(String(serverXml), donorXml);
         console.log(`[Restore] merged cityId=${cityId} base=${String(serverXml).length} donor=${donorXml.length} result=${merged.length}`);
         res.status(200).set("Content-Type", "application/xml; charset=utf-8").set("Cache-Control", "no-store");
