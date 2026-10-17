@@ -3600,15 +3600,32 @@ function mergeRestoreXml(baseXml, donorXml) {
     if (!result.includes("</root>")) throw new Error("XML الناتج غير مكتمل");
     return result;
 }
+function decodeRestoreLocalFile(input) {
+    const raw = Buffer.isBuffer(input) ? input : Buffer.from(input || "");
+    if (!raw.length) throw new Error("ملف الحساب المحلي فارغ");
+    const decoders = [decodeFriendFile, decodeSaveCity];
+    const failures = [];
+    for (const decode of decoders) {
+        try {
+            const decoded = looksLikeXml(raw) ? raw : decode(raw);
+            const xml = trimXml(decoded).toString("utf8").replace(/^\uFEFF/, "").trim();
+            if (/<root(?:\s|>)/i.test(xml) && xml.includes("</root>")) return xml;
+            failures.push("الناتج لم يبدأ بعنصر root");
+        } catch (error) {
+            failures.push(String(error && error.message ? error.message : error));
+        }
+    }
+    throw new Error(`تعذر فك ملف الحساب المحلي بصيغة LocalInfo/FetchCity: ${failures.join(" | ")}`);
+}
 async function handleRestoreAccount(req, res) {
     try {
-        const body = req.body || {};
-        const cityId = String(body.cityId || body.fetchCityId || "").trim();
-        const cityVer = Number(body.cityVer || body.cver || 0);
+        const rawBody = Buffer.isBuffer(req.body) ? req.body : null;
+        const body = rawBody ? {} : (req.body || {});
+        const cityId = String(body.cityId || body.fetchCityId || (req.query && req.query.cityId) || "").trim();
+        const cityVer = Number(body.cityVer || body.cver || (req.query && req.query.cityVer) || 0);
         let serverXml = body.serverXml || body.baseXml || "";
-        if (!serverXml && body.serverXmlBase64) {
-            serverXml = Buffer.from(String(body.serverXmlBase64), "base64").toString("utf8");
-        }
+        if (rawBody) serverXml = decodeRestoreLocalFile(rawBody);
+        else if (body.serverXmlBase64) serverXml = decodeRestoreLocalFile(Buffer.from(String(body.serverXmlBase64), "base64"));
         if (!cityId) return res.status(400).json({ ok: false, error: "cityId مطلوب" });
         if (!serverXml) return res.status(400).json({ ok: false, error: "serverXml مطلوب: XML الحساب الحالي" });
         if (!Number.isFinite(cityVer) || cityVer < 0) return res.status(400).json({ ok: false, error: "cityVer غير صالح" });
@@ -3650,6 +3667,10 @@ router.post(
 
 router.post(
     "/restore-account",
+    express.raw({
+        type: "application/octet-stream",
+        limit: "50mb"
+    }),
     handleRestoreAccount
 );
 
