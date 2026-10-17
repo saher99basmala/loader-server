@@ -6,7 +6,6 @@ const app = express();
 
 const view = require("./view");
 const api = require("./api");
-const { router: townshipApi } = require("./townshipApi");
 const cardsApi = require("./cardsApi");
 
 // ============================================================
@@ -36,12 +35,8 @@ const fetchCity = require("./fetchCity");
 const fetchCity2 = require("./fetchCity2");
 const cityCache = require("./cityCache");
 
-app.use(
-    "/api/township",
-    townshipApi
-);
-
 const PORT = process.env.PORT || 3000;
+
 const SECRET =
     process.env.SERVER_SECRET ||
     "MY_SECRET_123";
@@ -86,10 +81,6 @@ app.use(
 app.use(
     "/api",
     api
-);
-app.use(
-    "/api/township",
-    townshipApi
 );
 
 app.use(
