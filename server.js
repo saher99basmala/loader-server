@@ -35,7 +35,6 @@ const mGameInfoEditor = require("./mGameInfoEditor");
 const fetchCity = require("./fetchCity");
 const fetchCity2 = require("./fetchCity2");
 const cityCache = require("./cityCache");
-const { router: townshipApi } = require("./townshipApi");
 
 app.use(
     "/api/township",
