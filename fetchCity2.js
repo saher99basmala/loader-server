@@ -42,101 +42,6 @@ const LZ4_MAGIC = Buffer.from([
 ]);
 
 // ============================================================
-// TWM2 COMBINED PACKET
-// ============================================================
-//
-// 4 bytes  = "TWM2"
-// 4 bytes  = LocalInfo length  uint32LE
-// 4 bytes  = mGameInfo length   uint32LE
-// LocalInfo
-// mGameInfo
-//
-// ============================================================
-
-const MERGE_MAGIC = Buffer.from("TWM2");
-
-function parseTwoFilesPacket(body) {
-    if (!Buffer.isBuffer(body)) {
-        throw new Error(
-            "TWM2 body ليس Buffer"
-        );
-    }
-
-    if (body.length < 12) {
-        throw new Error(
-            `TWM2 packet قصير جدًا: ${body.length}`
-        );
-    }
-
-    if (
-        !body.subarray(0, 4).equals(MERGE_MAGIC)
-    ) {
-        throw new Error(
-            "Packet غير صالح. Magic: 0x" +
-            body[0]
-                .toString(16)
-                .padStart(2, "0")
-        );
-    }
-
-    const localLen =
-        body.readUInt32LE(4);
-
-    const mainLen =
-        body.readUInt32LE(8);
-
-    const localStart = 12;
-    const localEnd =
-        localStart + localLen;
-
-    const mainEnd =
-        localEnd + mainLen;
-
-    if (localLen === 0) {
-        throw new Error(
-            "LocalInfo داخل TWM2 فارغ"
-        );
-    }
-
-    if (mainLen === 0) {
-        throw new Error(
-            "mGameInfo داخل TWM2 فارغ"
-        );
-    }
-
-    if (mainEnd > body.length) {
-        throw new Error(
-            "TWM2 packet غير مكتمل: " +
-            `localLen=${localLen}, ` +
-            `mainLen=${mainLen}, ` +
-            `body=${body.length}`
-        );
-    }
-
-    if (mainEnd !== body.length) {
-        throw new Error(
-            "TWM2 packet يحتوي بيانات زائدة: " +
-            `expected=${mainEnd}, ` +
-            `actual=${body.length}`
-        );
-    }
-
-    return {
-        localInfo:
-            body.subarray(
-                localStart,
-                localEnd
-            ),
-
-        mainInfo:
-            body.subarray(
-                localEnd,
-                mainEnd
-            )
-    };
-}
-
-// ============================================================
 // FETCH54 TABLE
 // ============================================================
 
@@ -150,12 +55,10 @@ const FETCH54_TABLE = Buffer.from(
 // ============================================================
 
 function u32le(buf, offset) {
-    if (
-        offset + 4 >
-        buf.length
-    ) {
+
+    if (offset + 4 > buf.length) {
         throw new Error(
-            "u32le خارج حدود البيانات"
+            "u32le ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ­ط·آ¯ط¸ث†ط·آ¯ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
         );
     }
 
@@ -182,25 +85,25 @@ function sub32(a, b) {
 }
 
 function bufferMagic(buf) {
-    if (
-        !buf ||
-        buf.length < 4
-    ) {
+
+    if (!buf || buf.length < 4) {
         return "";
     }
 
     return Array.from(
         buf.subarray(0, 4)
     )
-        .map(x =>
-            x
-                .toString(16)
-                .padStart(2, "0")
+        .map(
+            x =>
+                x
+                    .toString(16)
+                    .padStart(2, "0")
         )
         .join(" ");
 }
 
 function isLz4Magic(buf) {
+
     return (
         buf &&
         buf.length >= 4 &&
@@ -212,6 +115,7 @@ function isLz4Magic(buf) {
 }
 
 function isGzip(buf) {
+
     return (
         buf &&
         buf.length >= 2 &&
@@ -221,10 +125,8 @@ function isGzip(buf) {
 }
 
 function looksLikeXml(buf) {
-    if (
-        !buf ||
-        buf.length === 0
-    ) {
+
+    if (!buf || buf.length === 0) {
         return false;
     }
 
@@ -251,6 +153,7 @@ function looksLikeXml(buf) {
 // ============================================================
 
 function build79Table(seed) {
+
     const table =
         Buffer.alloc(
             TABLE_SIZE
@@ -264,6 +167,7 @@ function build79Table(seed) {
         i < TABLE_SIZE;
         i++
     ) {
+
         state =
             Math.imul(
                 state,
@@ -278,21 +182,23 @@ function build79Table(seed) {
 }
 
 function xorDecode79(raw) {
+
     if (!Buffer.isBuffer(raw)) {
-        raw =
-            Buffer.from(raw);
+        raw = Buffer.from(raw);
     }
 
-    if (
-        raw.length < 8
-    ) {
+    if (raw.length < 8) {
+
         throw new Error(
-            `بيانات 0x79 قصيرة: ${raw.length}`
+            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x79 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
         );
     }
 
     const headerValue =
-        u32le(raw, 1);
+        u32le(
+            raw,
+            1
+        );
 
     const total =
         raw.length >>> 0;
@@ -328,7 +234,10 @@ function xorDecode79(raw) {
         );
 
     const rawSeed =
-        u32le(raw, 4);
+        u32le(
+            raw,
+            4
+        );
 
     const seed =
         add32(
@@ -337,7 +246,9 @@ function xorDecode79(raw) {
         );
 
     const table =
-        build79Table(seed);
+        build79Table(
+            seed
+        );
 
     const out =
         Buffer.from(
@@ -347,9 +258,7 @@ function xorDecode79(raw) {
             )
         );
 
-    if (
-        out.length === 0
-    ) {
+    if (out.length === 0) {
         return out;
     }
 
@@ -364,6 +273,7 @@ function xorDecode79(raw) {
         i < out.length;
         i++
     ) {
+
         const current =
             out[i];
 
@@ -393,24 +303,22 @@ function xorDecode79(raw) {
 // ============================================================
 
 function decode54Layer(raw) {
+
     if (!Buffer.isBuffer(raw)) {
-        raw =
-            Buffer.from(raw);
+        raw = Buffer.from(raw);
     }
 
-    if (
-        raw.length < 4
-    ) {
+    if (raw.length < 4) {
+
         throw new Error(
-            `بيانات 0x54 قصيرة: ${raw.length}`
+            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ©: ${raw.length}`
         );
     }
 
-    if (
-        raw[0] !== 0x54
-    ) {
+    if (raw[0] !== 0x54) {
+
         throw new Error(
-            `بيانات 0x54 غير صحيحة. Magic=${bufferMagic(raw)}`
+            `ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ 0x54 ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­ط·آ©. Magic=${bufferMagic(raw)}`
         );
     }
 
@@ -436,9 +344,7 @@ function decode54Layer(raw) {
             raw.subarray(3)
         );
 
-    if (
-        out.length === 0
-    ) {
+    if (out.length === 0) {
         return out;
     }
 
@@ -459,9 +365,9 @@ function decode54Layer(raw) {
         i < count;
         i++
     ) {
-        if (
-            i > 0
-        ) {
+
+        if (i > 0) {
+
             out[i] =
                 (
                     out[i] -
@@ -487,14 +393,12 @@ function decode54Layer(raw) {
 // ============================================================
 
 function decodeTransport(raw) {
+
     if (!Buffer.isBuffer(raw)) {
-        raw =
-            Buffer.from(raw);
+        raw = Buffer.from(raw);
     }
 
-    if (
-        raw.length === 0
-    ) {
+    if (raw.length === 0) {
         return raw;
     }
 
@@ -508,6 +412,7 @@ function decodeTransport(raw) {
     );
 
     switch (type) {
+
         case 0x79:
             return xorDecode79(raw);
 
@@ -518,8 +423,9 @@ function decodeTransport(raw) {
             return raw;
 
         default:
+
             throw new Error(
-                `نوع FetchCity غير معروف: 0x${type
+                `ط¸â€ ط¸ث†ط·آ¹ FetchCity ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦ ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹: 0x${type
                     .toString(16)
                     .padStart(2, "0")}`
             );
@@ -534,6 +440,7 @@ function lz4DecompressBlock(
     src,
     expectedSize
 ) {
+
     let srcPos = 0;
     let dstPos = 0;
 
@@ -546,6 +453,7 @@ function lz4DecompressBlock(
         srcPos < src.length &&
         dstPos < expectedSize
     ) {
+
         const token =
             src[srcPos++];
 
@@ -555,15 +463,18 @@ function lz4DecompressBlock(
         if (
             literalLength === 15
         ) {
+
             let value;
 
             do {
+
                 if (
                     srcPos >=
                     src.length
                 ) {
+
                     throw new Error(
-                        "LZ4: literal length غير مكتمل"
+                        "LZ4: literal length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
                     );
                 }
 
@@ -583,8 +494,9 @@ function lz4DecompressBlock(
             literalLength >
             src.length
         ) {
+
             throw new Error(
-                "LZ4: literals غير مكتملة"
+                "LZ4: literals ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
             );
         }
 
@@ -593,8 +505,9 @@ function lz4DecompressBlock(
             literalLength >
             expectedSize
         ) {
+
             throw new Error(
-                "LZ4: output overflow في literals"
+                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ literals"
             );
         }
 
@@ -623,8 +536,9 @@ function lz4DecompressBlock(
             srcPos + 2 >
             src.length
         ) {
+
             throw new Error(
-                "LZ4: offset ناقص"
+                "LZ4: offset ط¸â€ ط·آ§ط¸â€ڑط·آµ"
             );
         }
 
@@ -639,16 +553,19 @@ function lz4DecompressBlock(
         if (
             offset === 0
         ) {
+
             throw new Error(
                 "LZ4: offset = 0"
             );
         }
 
         if (
-            offset > dstPos
+            offset >
+            dstPos
         ) {
+
             throw new Error(
-                `LZ4: offset أكبر من output: ${offset} > ${dstPos}`
+                `LZ4: offset ط·آ£ط¸ئ’ط·آ¨ط·آ± ط¸â€¦ط¸â€  output: ${offset} > ${dstPos}`
             );
         }
 
@@ -658,15 +575,18 @@ function lz4DecompressBlock(
         if (
             matchLength === 15
         ) {
+
             let value;
 
             do {
+
                 if (
                     srcPos >=
                     src.length
                 ) {
+
                     throw new Error(
-                        "LZ4: match length غير مكتمل"
+                        "LZ4: match length ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾"
                     );
                 }
 
@@ -688,8 +608,9 @@ function lz4DecompressBlock(
             matchLength >
             expectedSize
         ) {
+
             throw new Error(
-                "LZ4: output overflow في match"
+                "LZ4: output overflow ط·آ£ط·آ«ط¸â€ ط·آ§ط·طŒ match"
             );
         }
 
@@ -698,6 +619,7 @@ function lz4DecompressBlock(
             i < matchLength;
             i++
         ) {
+
             output[
                 dstPos + i
             ] =
@@ -713,10 +635,12 @@ function lz4DecompressBlock(
     }
 
     if (
-        dstPos !== expectedSize
+        dstPos !==
+        expectedSize
     ) {
+
         throw new Error(
-            `LZ4: الحجم غير مطابق. expected=${expectedSize}, actual=${dstPos}`
+            `LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑ. expected=${expectedSize}, actual=${dstPos}`
         );
     }
 
@@ -724,27 +648,35 @@ function lz4DecompressBlock(
 }
 
 function decodeLz4Container(raw) {
+
     if (
         !isLz4Magic(raw)
     ) {
+
         throw new Error(
-            `LZ4 magic غير صحيح: ${bufferMagic(raw)}`
+            `LZ4 magic ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­: ${bufferMagic(raw)}`
         );
     }
 
     if (
         raw.length < 8
     ) {
+
         throw new Error(
-            "LZ4 container قصير"
+            "LZ4 container ط¸â€ڑط·آµط¸ظ¹ط·آ±"
         );
     }
 
     const expectedSize =
-        u32le(raw, 4);
+        u32le(
+            raw,
+            4
+        );
 
     const compressed =
-        raw.subarray(8);
+        raw.subarray(
+            8
+        );
 
     console.log(
         `[FetchCity] LZ4 expectedSize=${expectedSize}, compressed=${compressed.length}`
@@ -761,13 +693,15 @@ function decodeLz4Container(raw) {
 // ============================================================
 
 function trimXml(buf) {
+
     if (!Buffer.isBuffer(buf)) {
-        buf =
-            Buffer.from(buf);
+        buf = Buffer.from(buf);
     }
 
     const text =
-        buf.toString("utf8");
+        buf.toString(
+            "utf8"
+        );
 
     const rootEnd =
         text.lastIndexOf(
@@ -777,6 +711,7 @@ function trimXml(buf) {
     if (
         rootEnd !== -1
     ) {
+
         return Buffer.from(
             text.slice(
                 0,
@@ -793,6 +728,7 @@ function trimXml(buf) {
     while (
         end > 0
     ) {
+
         const c =
             buf[end - 1];
 
@@ -803,8 +739,11 @@ function trimXml(buf) {
             c === 0x0D ||
             c === 0x20
         ) {
+
             end--;
+
         } else {
+
             break;
         }
     }
@@ -815,18 +754,16 @@ function trimXml(buf) {
     );
 }
 
-// ============================================================
-// OLD CITY XML EDIT
-// ============================================================
-
 function editCityXml(xml) {
+
     if (!Buffer.isBuffer(xml)) {
-        xml =
-            Buffer.from(xml);
+        xml = Buffer.from(xml);
     }
 
     let text =
-        xml.toString("utf8");
+        xml.toString(
+            "utf8"
+        );
 
     text =
         text.replace(
@@ -837,12 +774,14 @@ function editCityXml(xml) {
                     /\bname\s*=\s*["']cityId["']/i
                         .test(tag)
                 ) {
+
                     const valueRegex =
                         /(\bv\s*=\s*["'])[^"']*(["'])/i;
 
                     if (
                         valueRegex.test(tag)
                     ) {
+
                         return tag.replace(
                             valueRegex,
                             "$1$2"
@@ -859,12 +798,14 @@ function editCityXml(xml) {
                     /\bname\s*=\s*["']Device["']/i
                         .test(tag)
                 ) {
+
                     const valueRegex =
                         /(\bv\s*=\s*["'])[^"']*(["'])/i;
 
                     if (
                         valueRegex.test(tag)
                     ) {
+
                         return tag.replace(
                             valueRegex,
                             "$1ASUS_Z01QD$2"
@@ -881,6 +822,18 @@ function editCityXml(xml) {
             }
         );
 
+    console.log(
+        "[FetchCity] XML modifications applied"
+    );
+
+    console.log(
+        "[FetchCity] cityId = empty"
+    );
+
+    console.log(
+        "[FetchCity] Device = ASUS_Z01QD"
+    );
+
     return Buffer.from(
         text,
         "utf8"
@@ -892,8 +845,11 @@ function editCityXml(xml) {
 // ============================================================
 
 function decodeSaveCity(cityBytes) {
+
     let data =
-        Buffer.from(cityBytes);
+        Buffer.from(
+            cityBytes
+        );
 
     console.log(
         `[FetchCity] cityBytes=${data.length} magic=${bufferMagic(data)}`
@@ -905,21 +861,26 @@ function decodeSaveCity(cityBytes) {
         data.length > 0 &&
         rounds < 8
     ) {
+
         rounds++;
 
         if (
             looksLikeXml(data)
         ) {
+
             console.log(
                 `[FetchCity] XML detected after ${rounds - 1} layer(s)`
             );
 
-            return trimXml(data);
+            return trimXml(
+                data
+            );
         }
 
         if (
             isLz4Magic(data)
         ) {
+
             console.log(
                 "[FetchCity] LZ4 container detected"
             );
@@ -935,6 +896,7 @@ function decodeSaveCity(cityBytes) {
         if (
             isGzip(data)
         ) {
+
             console.log(
                 "[FetchCity] GZIP detected"
             );
@@ -955,6 +917,7 @@ function decodeSaveCity(cityBytes) {
             type === 0x54 ||
             type === 0x1F
         ) {
+
             const before =
                 data;
 
@@ -971,18 +934,21 @@ function decodeSaveCity(cityBytes) {
         }
 
         throw new Error(
-            `تعذر فك FetchCity. Magic=${bufferMagic(data)}`
+            `ط·ع¾ط¸â€¦ ط¸ظ¾ط¸ئ’ ط·آ·ط·آ¨ط¸â€ڑط·آ§ط·ع¾ FetchCity ط¸â€‍ط¸ئ’ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط·آ­ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ط·آ© ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¹ط·آ±ط¸ث†ط¸ظ¾ط·آ©. Magic=${bufferMagic(data)}`
         );
     }
 
     if (
         looksLikeXml(data)
     ) {
-        return trimXml(data);
+
+        return trimXml(
+            data
+        );
     }
 
     throw new Error(
-        `تعذر الوصول إلى XML. Magic=${bufferMagic(data)}`
+        `ط·ع¾ط·آ¹ط·آ°ط·آ± ط·آ§ط¸â€‍ط¸ث†ط·آµط¸ث†ط¸â€‍ ط·آ¥ط¸â€‍ط¸â€° XML. Magic=${bufferMagic(data)}`
     );
 }
 
@@ -993,8 +959,11 @@ function decodeSaveCity(cityBytes) {
 function encryptRequest(
     requestJson
 ) {
+
     const iv =
-        crypto.randomBytes(12);
+        crypto.randomBytes(
+            12
+        );
 
     const cipher =
         crypto.createCipheriv(
@@ -1026,11 +995,8 @@ function encryptRequest(
         tag.toString("hex");
 
     return {
-        body:
-            ciphertext,
-
-        tsId:
-            tsId
+        body: ciphertext,
+        tsId
     };
 }
 
@@ -1042,19 +1008,21 @@ function decryptResponse(
     body,
     tsId
 ) {
+
     if (!tsId) {
+
         throw new Error(
-            "استجابة FetchCity لا تحتوي ts-id"
+            "ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity ط¸â€‍ط·آ§ ط·ع¾ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ ts-id"
         );
     }
 
     if (
-        typeof tsId !==
-        "string" ||
+        typeof tsId !== "string" ||
         !tsId.startsWith("002")
     ) {
+
         throw new Error(
-            `ts-id غير صالح: ${tsId}`
+            `ts-id ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­: ${tsId}`
         );
     }
 
@@ -1065,8 +1033,9 @@ function decryptResponse(
         hex.length <
         24 + 32
     ) {
+
         throw new Error(
-            `ts-id قصير: ${tsId}`
+            `ts-id ط¸â€ڑط·آµط¸ظ¹ط·آ±: ${tsId}`
         );
     }
 
@@ -1106,7 +1075,9 @@ function decryptResponse(
     );
 
     return Buffer.concat([
-        decipher.update(body),
+        decipher.update(
+            body
+        ),
         decipher.final()
     ]);
 }
@@ -1118,6 +1089,7 @@ function decryptResponse(
 function decompressResponse(
     decrypted
 ) {
+
     console.log(
         `[FetchCity] decrypted size=${decrypted.length}`
     );
@@ -1127,6 +1099,7 @@ function decompressResponse(
     );
 
     try {
+
         const result =
             zlib.gunzipSync(
                 decrypted
@@ -1138,9 +1111,15 @@ function decompressResponse(
 
         return result;
 
-    } catch (_) {}
+    } catch (gzipError) {
+
+        console.log(
+            "[FetchCity] GZIP failed"
+        );
+    }
 
     try {
+
         const result =
             zlib.inflateSync(
                 decrypted
@@ -1152,9 +1131,15 @@ function decompressResponse(
 
         return result;
 
-    } catch (_) {}
+    } catch (zlibError) {
+
+        console.log(
+            "[FetchCity] ZLIB failed"
+        );
+    }
 
     try {
+
         const result =
             zlib.inflateRawSync(
                 decrypted
@@ -1166,7 +1151,12 @@ function decompressResponse(
 
         return result;
 
-    } catch (_) {}
+    } catch (rawError) {
+
+        console.log(
+            "[FetchCity] RAW DEFLATE failed"
+        );
+    }
 
     const text =
         decrypted
@@ -1177,11 +1167,16 @@ function decompressResponse(
         text.startsWith("{") ||
         text.startsWith("[")
     ) {
+
+        console.log(
+            "[FetchCity] response = plain JSON"
+        );
+
         return decrypted;
     }
 
     throw new Error(
-        "تعذر فك استجابة FetchCity. " +
+        "ط·ع¾ط·آ¹ط·آ°ط·آ± ط¸ظ¾ط¸ئ’ ط·آ¶ط·ط›ط·آ· ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© FetchCity. " +
         `magic=${bufferMagic(decrypted)} ` +
         `size=${decrypted.length}`
     );
@@ -1195,6 +1190,7 @@ async function requestFetchCity(
     cityId,
     cityVer
 ) {
+
     const requestJson =
         `{"cityId":"","cityVer":${cityVer},"fetchCityId":"${cityId}","important":true}`;
 
@@ -1212,12 +1208,12 @@ async function requestFetchCity(
 
     const timer =
         setTimeout(
-            () =>
-                controller.abort(),
+            () => controller.abort(),
             TIMEOUT_MS
         );
 
     try {
+
         const response =
             await fetch(
                 ENDPOINT +
@@ -1225,10 +1221,10 @@ async function requestFetchCity(
                     cityId
                 ),
                 {
-                    method:
-                        "POST",
+                    method: "POST",
 
                     headers: {
+
                         "Accept-Encoding":
                             "identity",
 
@@ -1267,13 +1263,15 @@ async function requestFetchCity(
                 await response.arrayBuffer()
             );
 
-        console.log(
-            `[FetchCity] upstream HTTP ${response.status}`
-        );
-
         if (!response.ok) {
+
+            const text =
+                responseBody.toString(
+                    "utf8"
+                );
+
             throw new Error(
-                `Upstream HTTP ${response.status}: ${responseBody.toString("utf8")}`
+                `Upstream HTTP ${response.status}: ${text}`
             );
         }
 
@@ -1283,10 +1281,15 @@ async function requestFetchCity(
             );
 
         if (!responseTsId) {
+
             throw new Error(
                 "Upstream response missing ts-id"
             );
         }
+
+        console.log(
+            `[FetchCity] upstream status=${response.status}`
+        );
 
         const decrypted =
             decryptResponse(
@@ -1300,30 +1303,171 @@ async function requestFetchCity(
             );
 
         const text =
-            uncompressed
-                .toString("utf8")
-                .trim();
+            uncompressed.toString(
+                "utf8"
+            );
 
         console.log(
-            `[FetchCity] upstream JSON size=${text.length}`
+            `[FetchCity] JSON size=${text.length}`
         );
 
-        let json;
-
-        try {
-            json =
-                JSON.parse(text);
-        } catch (err) {
-            throw new Error(
-                "استجابة FetchCity بعد فك التشفير ليست JSON: " +
-                text.slice(0, 500)
+        const json =
+            JSON.parse(
+                text
             );
-        }
 
         return json;
 
     } finally {
-        clearTimeout(timer);
+
+        clearTimeout(
+            timer
+        );
+    }
+}
+
+// ============================================================
+// FETCHCITY API
+// ============================================================
+
+async function handleFetchCity(
+    req,
+    res
+) {
+
+    try {
+
+        const body =
+            req.body || {};
+
+        const cityId =
+            String(
+                body.cityId ||
+                body.fetchCityId ||
+                ""
+            ).trim();
+
+        const cityVer =
+            Number(
+                body.cityVer || 0
+            );
+
+        if (!cityId) {
+
+            return res
+                .status(400)
+                .send(
+                    "cityId ط¸â€¦ط·آ·ط¸â€‍ط¸ث†ط·آ¨"
+                );
+        }
+
+        if (
+            !Number.isFinite(
+                cityVer
+            ) ||
+            cityVer < 0
+        ) {
+
+            return res
+                .status(400)
+                .send(
+                    "cityVer ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
+                );
+        }
+
+        console.log(
+            `[FetchCity] incoming cityId=${cityId} cityVer=${cityVer}`
+        );
+
+        const json =
+            await requestFetchCity(
+                cityId,
+                cityVer
+            );
+
+        if (
+            !json ||
+            !json.result ||
+            typeof json.result.data !==
+                "string"
+        ) {
+
+            throw new Error(
+                "Upstream JSON ط¸â€‍ط·آ§ ط¸ظ¹ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ result.data"
+            );
+        }
+
+        const base64 =
+            json.result.data;
+
+        console.log(
+            `[FetchCity] Base64 length=${base64.length}`
+        );
+
+        const cityBytes =
+            Buffer.from(
+                base64,
+                "base64"
+            );
+
+        console.log(
+            `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
+        );
+
+        const xml =
+            decodeSaveCity(
+                cityBytes
+            );
+
+        console.log(
+            `[FetchCity] XML size=${xml.length}`
+        );
+
+        const modifiedXml =
+            editCityXml(
+                xml
+            );
+
+        console.log(
+            `[FetchCity] Modified XML size=${modifiedXml.length}`
+        );
+
+        res.status(200);
+
+        res.set(
+            "Content-Type",
+            "application/xml; charset=utf-8"
+        );
+
+        res.set(
+            "Cache-Control",
+            "no-store"
+        );
+
+        return res.send(
+            modifiedXml
+        );
+
+    } catch (err) {
+
+        console.error(
+            "[FetchCity] ERROR:",
+            err &&
+            err.stack
+                ? err.stack
+                : err
+        );
+
+        return res
+            .status(500)
+            .send(
+                String(
+                    err &&
+                    err.message
+                        ? err.message
+                        : err
+                )
+            );
     }
 }
 
@@ -1334,6 +1478,7 @@ async function requestFetchCity(
 const FRIEND_TABLE_SIZE = 0x2D7;
 
 function friendU32(v) {
+
     return v >>> 0;
 }
 
@@ -1341,12 +1486,14 @@ function friendReadU32(
     data,
     pos
 ) {
+
     if (
         pos + 4 >
         data.length
     ) {
+
         throw new Error(
-            "بيانات غير كافية لقراءة UInt32"
+            "ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸ئ’ط·آ§ط¸ظ¾ط¸ظ¹ط·آ© ط¸â€‍ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© UInt32"
         );
     }
 
@@ -1359,6 +1506,7 @@ function friendReadU32(
 }
 
 function friendU32Bytes(v) {
+
     v =
         friendU32(v);
 
@@ -1374,22 +1522,24 @@ function friendMmh2(
     data,
     seed
 ) {
+
     const m =
         0x5bd1e995;
 
     let h =
         friendU32(
-            seed ^
-            data.length
+            seed ^ data.length
         );
 
     let i = 0;
+
     let length =
         data.length;
 
     while (
         length >= 4
     ) {
+
         let k =
             friendReadU32(
                 data,
@@ -1433,6 +1583,7 @@ function friendMmh2(
     if (
         length === 3
     ) {
+
         h =
             (
                 h ^
@@ -1443,6 +1594,7 @@ function friendMmh2(
     if (
         length >= 2
     ) {
+
         h =
             (
                 h ^
@@ -1453,6 +1605,7 @@ function friendMmh2(
     if (
         length >= 1
     ) {
+
         h =
             (
                 h ^
@@ -1491,6 +1644,7 @@ function friendGetHashTable(
     length,
     seed
 ) {
+
     const table =
         Buffer.alloc(
             FRIEND_TABLE_SIZE
@@ -1505,8 +1659,11 @@ function friendGetHashTable(
         i <
         FRIEND_TABLE_SIZE
     ) {
+
         const v =
-            friendU32Bytes(h);
+            friendU32Bytes(
+                h
+            );
 
         h =
             friendMmh2(
@@ -1515,7 +1672,9 @@ function friendGetHashTable(
             );
 
         const hb =
-            friendU32Bytes(h);
+            friendU32Bytes(
+                h
+            );
 
         for (
             let j = 0;
@@ -1524,7 +1683,10 @@ function friendGetHashTable(
             FRIEND_TABLE_SIZE;
             j++
         ) {
-            table[i + j] =
+
+            table[
+                i + j
+            ] =
                 hb[j];
         }
 
@@ -1537,11 +1699,13 @@ function friendGetHashTable(
 function friendXorDecode(
     data
 ) {
+
     if (
         data.length < 8
     ) {
+
         throw new Error(
-            "الملف قصير"
+            "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط·آµط·ط›ط¸ظ¹ط·آ± ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
         );
     }
 
@@ -1595,6 +1759,7 @@ function friendXorDecode(
         i < actual;
         i++
     ) {
+
         out[i] =
             data[8 + i];
     }
@@ -1606,9 +1771,11 @@ function friendXorDecode(
         i < out.length;
         i++
     ) {
+
         if (
             i > 0
         ) {
+
             out[i] =
                 (
                     out[i] -
@@ -1628,6 +1795,7 @@ function friendXorDecode(
             j >=
             FRIEND_TABLE_SIZE
         ) {
+
             j = 0;
         }
     }
@@ -1638,6 +1806,7 @@ function friendXorDecode(
 function friendIsLz4(
     data
 ) {
+
     return (
         data.length >= 4 &&
         data[0] === 0x04 &&
@@ -1650,11 +1819,13 @@ function friendIsLz4(
 function friendLz4Decompress(
     data
 ) {
+
     if (
         data.length < 9
     ) {
+
         throw new Error(
-            "LZ4: البيانات قصيرة"
+            "LZ4: ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·آµط·ط›ط¸ظ¹ط·آ±ط·آ© ط·آ¬ط·آ¯ط·آ§ط¸â€¹"
         );
     }
 
@@ -1666,7 +1837,7 @@ function friendLz4Decompress(
 
     let src = 8;
 
-    const output =
+    let output =
         Buffer.alloc(
             size
         );
@@ -1674,22 +1845,29 @@ function friendLz4Decompress(
     let outLen = 0;
 
     function readByte() {
+
         if (
             src >=
             data.length
         ) {
+
             throw new Error(
-                "LZ4: البيانات غير مكتملة"
+                "LZ4: ط¸â€ ط¸â€،ط·آ§ط¸ظ¹ط·آ© ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹ط·آ©"
             );
         }
 
-        return data[src++];
+        return data[
+            src++
+        ];
     }
 
     while (
-        src < data.length &&
-        outLen < size
+        src <
+            data.length &&
+        outLen <
+            size
     ) {
+
         const token =
             readByte();
 
@@ -1699,9 +1877,11 @@ function friendLz4Decompress(
         if (
             literalLen === 15
         ) {
+
             let b;
 
             do {
+
                 b =
                     readByte();
 
@@ -1718,8 +1898,9 @@ function friendLz4Decompress(
             literalLen >
             data.length
         ) {
+
             throw new Error(
-                "LZ4: Literal غير مكتمل"
+                "LZ4: Literal ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
             );
         }
 
@@ -1728,8 +1909,9 @@ function friendLz4Decompress(
             literalLen >
             size
         ) {
+
             throw new Error(
-                "LZ4: Literal أكبر من الحجم"
+                "LZ4: ط·آ­ط·آ¬ط¸â€¦ Literal ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­"
             );
         }
 
@@ -1738,12 +1920,18 @@ function friendLz4Decompress(
             i < literalLen;
             i++
         ) {
-            output[outLen++] =
-                data[src++];
+
+            output[
+                outLen++
+            ] =
+                data[
+                    src++
+                ];
         }
 
         if (
-            outLen >= size
+            outLen >=
+            size
         ) {
             break;
         }
@@ -1752,20 +1940,24 @@ function friendLz4Decompress(
             src + 2 >
             data.length
         ) {
+
             throw new Error(
-                "LZ4: لا يوجد Offset"
+                "LZ4: ط¸â€‍ط·آ§ ط¸ظ¹ط¸ث†ط·آ¬ط·آ¯ Offset"
             );
         }
 
         const offset =
             readByte() |
-            (readByte() << 8);
+            (
+                readByte() << 8
+            );
 
         if (
             offset === 0
         ) {
+
             throw new Error(
-                "LZ4: Offset غير صالح"
+                "LZ4: Offset ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­"
             );
         }
 
@@ -1775,9 +1967,11 @@ function friendLz4Decompress(
         if (
             matchLen === 15
         ) {
+
             let b;
 
             do {
+
                 b =
                     readByte();
 
@@ -1798,8 +1992,9 @@ function friendLz4Decompress(
         if (
             start < 0
         ) {
+
             throw new Error(
-                "LZ4: Offset خارج النطاق"
+                "LZ4: Offset ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط¸â€ ط·آ·ط·آ§ط¸â€ڑ"
             );
         }
 
@@ -1808,15 +2003,20 @@ function friendLz4Decompress(
             i < matchLen;
             i++
         ) {
+
             if (
-                outLen >= size
+                outLen >=
+                size
             ) {
+
                 throw new Error(
-                    "LZ4: تجاوز حجم الإخراج"
+                    "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ع¾ط·آ¬ط·آ§ط¸ث†ط·آ² ط·آ§ط¸â€‍ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط·آ¹"
                 );
             }
 
-            output[outLen++] =
+            output[
+                outLen++
+            ] =
                 output[
                     start +
                     (i % offset)
@@ -1825,10 +2025,12 @@ function friendLz4Decompress(
     }
 
     if (
-        outLen !== size
+        outLen !==
+        size
     ) {
+
         throw new Error(
-            "LZ4: الحجم غير مطابق\n" +
+            "LZ4: ط·آ§ط¸â€‍ط·آ­ط·آ¬ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ ط·آ§ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­\n" +
             "Expected: " +
             size +
             "\nActual: " +
@@ -1842,6 +2044,7 @@ function friendLz4Decompress(
 function friendTrimXml(
     data
 ) {
+
     const marker =
         Buffer.from(
             "</root>"
@@ -1855,6 +2058,7 @@ function friendTrimXml(
     if (
         pos !== -1
     ) {
+
         return data.subarray(
             0,
             pos +
@@ -1869,6 +2073,7 @@ function friendTrimXml(
         end > 0 &&
         data[end - 1] === 0
     ) {
+
         end--;
     }
 
@@ -1879,41 +2084,53 @@ function friendTrimXml(
 }
 
 // ============================================================
-// DECODE FRIEND FILE
+// EXACT decodeFile()
 // ============================================================
 
 function decodeFriendFile(
     data
 ) {
-    if (!Buffer.isBuffer(data)) {
+
+    if (
+        !Buffer.isBuffer(data)
+    ) {
+
         data =
-            Buffer.from(data);
+            Buffer.from(
+                data
+            );
     }
 
     if (
         data.length === 0
     ) {
+
         throw new Error(
-            "الملف فارغ"
+            "ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
         );
     }
 
-    // XML غير مشفر
+    // XML ط·آ£ط·آµط¸â€‍ط·آ§ط¸â€¹
     if (
         data[0] === 0x3C
     ) {
+
         return data;
     }
 
-    // الملف المشفر يجب أن يبدأ بـ 0x79
+    // ط¸ظ¹ط·آ¬ط·آ¨ ط·آ£ط¸â€  ط¸ظ¹ط·آ¨ط·آ¯ط·آ£ ط·آ¨ط¸â‚¬ 0x79
     if (
         data[0] !== 0x79
     ) {
+
         throw new Error(
-            "نوع ملف غير معروف\nMagic: 0x" +
+            "ط¸â€ ط¸ث†ط·آ¹ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ¯ط·آ¹ط¸ث†ط¸â€¦\nMagic: 0x" +
             data[0]
                 .toString(16)
-                .padStart(2, "0")
+                .padStart(
+                    2,
+                    "0"
+                )
         );
     }
 
@@ -1923,8 +2140,11 @@ function decodeFriendFile(
         );
 
     if (
-        friendIsLz4(payload)
+        friendIsLz4(
+            payload
+        )
     ) {
+
         payload =
             friendLz4Decompress(
                 payload
@@ -1944,6 +2164,7 @@ function attrFromXmlTag(
     tag,
     name
 ) {
+
     const doubleQuote =
         tag.match(
             new RegExp(
@@ -1956,6 +2177,7 @@ function attrFromXmlTag(
     if (
         doubleQuote
     ) {
+
         return doubleQuote[1];
     }
 
@@ -1971,10 +2193,30 @@ function attrFromXmlTag(
     if (
         singleQuote
     ) {
+
         return singleQuote[1];
     }
 
     return "";
+}
+
+// ============================================================
+// NORMALIZE CITY NAME
+// ============================================================
+
+function normalizeCityName(
+    value
+) {
+
+    return String(
+        value || ""
+    )
+        .trim()
+        .replace(
+            /\s+/g,
+            " "
+        )
+        .toLowerCase();
 }
 
 // ============================================================
@@ -1984,12 +2226,16 @@ function attrFromXmlTag(
 function parseFriendVersion(
     xml
 ) {
+
     const versionTag =
         xml.match(
             /<Version\b[^>]*>/i
         );
 
-    if (!versionTag) {
+    if (
+        !versionTag
+    ) {
+
         return {
             bver: "",
             fver: ""
@@ -1997,6 +2243,7 @@ function parseFriendVersion(
     }
 
     return {
+
         bver:
             attrFromXmlTag(
                 versionTag[0],
@@ -2018,6 +2265,7 @@ function parseFriendVersion(
 function parseFriends(
     xml
 ) {
+
     const friends = [];
 
     const regex =
@@ -2026,11 +2274,10 @@ function parseFriends(
     let match;
 
     while (
-        (
-            match =
-            regex.exec(xml)
-        ) !== null
+        (match =
+            regex.exec(xml)) !== null
     ) {
+
         const tag =
             match[0];
 
@@ -2040,11 +2287,15 @@ function parseFriends(
                 "city_id"
             );
 
-        if (!cityId) {
+        if (
+            !cityId
+        ) {
+
             continue;
         }
 
         friends.push({
+
             city_id:
                 cityId,
 
@@ -2108,8 +2359,8 @@ function parseFriends(
                     "bc"
                 ),
 
-            saveId:
-                ""
+            // ط·آ³ط¸ظ¹ط·آ¶ط·آ§ط¸ظ¾ saveId ط·آ¨ط·آ¹ط·آ¯ ط¸â€ڑط·آ±ط·آ§ط·طŒط·آ© ProfilesCache
+            saveId: ""
         });
     }
 
@@ -2117,1750 +2368,273 @@ function parseFriends(
 }
 
 // ============================================================
-// SAVE PROFILES
+// SAVE PROFILES / saveId
 // ============================================================
 
 function parseSaveProfiles(
     xml
 ) {
+
     const profiles = [];
 
     const regex =
         /<OtherPlayerProfilesLogicFeatureComponent\b[^>]*>/i;
 
     const match =
-        xml.match(regex);
+        xml.match(
+            regex
+        );
 
     if (!match) {
+
+        console.log(
+            "[Friends] OtherPlayerProfilesLogicFeatureComponent not found"
+        );
+
         return profiles;
     }
 
+    const tag =
+        match[0];
+
     const profilesCache =
         attrFromXmlTag(
-            match[0],
+            tag,
             "ProfilesCache"
         );
 
     if (!profilesCache) {
+
+        console.log(
+            "[Friends] ProfilesCache not found"
+        );
+
         return profiles;
     }
 
     let parsed;
 
     try {
+
         parsed =
             JSON.parse(
                 profilesCache
             );
-    } catch (_) {
+
+    } catch (err) {
+
+        console.error(
+            "[Friends] ProfilesCache JSON parse failed:",
+            err.message
+        );
+
         return profiles;
     }
 
     if (
-        !Array.isArray(parsed)
+        !Array.isArray(
+            parsed
+        )
     ) {
+
+        console.log(
+            "[Friends] ProfilesCache is not an array"
+        );
+
         return profiles;
     }
 
     for (
         const profile of parsed
     ) {
+
         if (
             !profile ||
-            typeof profile !==
-                "object"
+            typeof profile !== "object"
         ) {
+
             continue;
         }
 
         const saveId =
             String(
-                profile.saveId ||
-                ""
+                profile.saveId || ""
             ).trim();
 
-        if (!saveId) {
+        if (
+            !saveId
+        ) {
+
             continue;
         }
 
+        const cityname =
+            String(
+                profile.cityname || ""
+            ).trim();
+
+        const level =
+            String(
+                profile.level || ""
+            ).trim();
+
         profiles.push({
+
             cityname:
-                String(
-                    profile.cityname ||
-                    ""
-                ).trim(),
+                cityname,
 
             saveId:
                 saveId,
 
             level:
-                String(
-                    profile.level ||
-                    ""
-                ).trim()
+                level
         });
     }
+
+    console.log(
+        `[Friends] saveProfiles=${profiles.length}`
+    );
 
     return profiles;
 }
 
 // ============================================================
-// NORMALIZE
-// ============================================================
-
-function normalizeCityName(
-    value
-) {
-    return String(
-        value || ""
-    )
-        .trim()
-        .replace(
-            /\s+/g,
-            " "
-        )
-        .toLowerCase();
-}
-
-// ============================================================
-// ATTACH saveId
+// ATTACH saveId TO FRIENDS
 // ============================================================
 
 function attachSaveIdsToFriends(
     friends,
     saveProfiles
 ) {
+
     if (
-        !Array.isArray(friends) ||
-        !Array.isArray(saveProfiles)
+        !Array.isArray(friends)
     ) {
+
+        return [];
+    }
+
+    if (
+        !Array.isArray(saveProfiles) ||
+        saveProfiles.length === 0
+    ) {
+
+        console.log(
+            "[Friends] ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ saveProfiles ط¸â€‍ط·آ±ط·آ¨ط·آ·ط¸â€،ط·آ§"
+        );
+
         return friends;
     }
 
-    const map =
+    const profileMap =
         new Map();
 
     for (
         const profile of saveProfiles
     ) {
+
         const key =
             normalizeCityName(
                 profile.cityname
             );
 
         if (
-            key &&
-            profile.saveId &&
-            !map.has(key)
+            !key ||
+            !profile.saveId
         ) {
-            map.set(
+
+            continue;
+        }
+
+        // ط·آ£ط¸ث†ط¸â€‍ saveId ط¸â€‍ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط¸ظ¹ط·آ¨ط¸â€ڑط¸â€° ط¸â€،ط¸ث† ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦
+        if (
+            !profileMap.has(key)
+        ) {
+
+            profileMap.set(
                 key,
                 profile.saveId
             );
         }
     }
 
+    let matched = 0;
+
     for (
         const friend of friends
     ) {
-        const cityName =
+
+        const cityNameKey =
             normalizeCityName(
                 friend.city_name
             );
 
-        const friendName =
+        const friendNameKey =
             normalizeCityName(
                 friend.name
             );
 
         let saveId = "";
 
+        // ط·آ§ط¸â€‍ط¸â€¦ط·آ·ط·آ§ط·آ¨ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹ط·آ©: city_name
         if (
-            cityName &&
-            map.has(cityName)
+            cityNameKey &&
+            profileMap.has(
+                cityNameKey
+            )
         ) {
+
             saveId =
-                map.get(cityName);
+                profileMap.get(
+                    cityNameKey
+                );
         }
 
+        // ط·آ§ط·آ­ط·ع¾ط¸ظ¹ط·آ§ط·آ·ط¸ظ¹ط·آ§ط¸â€¹: name
         if (
             !saveId &&
-            friendName &&
-            map.has(friendName)
+            friendNameKey &&
+            profileMap.has(
+                friendNameKey
+            )
         ) {
+
             saveId =
-                map.get(friendName);
+                profileMap.get(
+                    friendNameKey
+                );
         }
 
-        if (saveId) {
+        if (
+            saveId
+        ) {
+
             friend.saveId =
                 saveId;
+
+            matched++;
         }
     }
+
+    console.log(
+        `[Friends] saveId matched=${matched}/${friends.length}`
+    );
 
     return friends;
 }
 
 // ============================================================
-// MERGE SYSTEM
-// ============================================================
-
-const COPY_VAR_NAMES = [
-    "chatEmojis",
-    "unlockAllAvatars",
-    "unlockAllCards",
-    "unlockAllCards",
-    "unlockedExpRanks",
-    "unlockedStyles",
-    "unlockedFrames",
-    "regataTasksCompleted",
-    "m3CompLvls",
-    "livesSent",
-    "fullCardCollections",
-    "firstAttemptM3Levels",
-    "townName",
-    "achievementTeamwork"
-];
-
-// ============================================================
-// ESCAPE REGEX
-// ============================================================
-
-function escapeRegex(
-    value
-) {
-    return String(value).replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&"
-    );
-}
-
-// ============================================================
-// FIND COMPLETE VAR
-// ============================================================
-
-function findVarSection(
-    xml,
-    name
-) {
-    const safeName =
-        escapeRegex(name);
-
-    const regex =
-        new RegExp(
-            `<Var\\b[^>]*\\bname\\s*=\\s*["']${safeName}["'][^>]*>`,
-            "i"
-        );
-
-    const match =
-        regex.exec(xml);
-
-    if (!match) {
-        return null;
-    }
-
-    const start =
-        match.index;
-
-    const openingTag =
-        match[0];
-
-    const openingEnd =
-        start +
-        openingTag.length;
-
-    if (
-        /\/>\s*$/.test(
-            openingTag
-        )
-    ) {
-        return {
-            start,
-            end: openingEnd,
-            text:
-                xml.slice(
-                    start,
-                    openingEnd
-                )
-        };
-    }
-
-    let depth = 1;
-
-    const tagRegex =
-        /<\/?Var\b[^>]*>/gi;
-
-    tagRegex.lastIndex =
-        openingEnd;
-
-    let tagMatch;
-
-    while (
-        (
-            tagMatch =
-            tagRegex.exec(xml)
-        ) !== null
-    ) {
-        const tag =
-            tagMatch[0];
-
-        if (
-            /^<Var\b/i.test(tag) &&
-            !/\/>\s*$/.test(tag)
-        ) {
-            depth++;
-            continue;
-        }
-
-        if (
-            /^<\/Var\b/i.test(tag)
-        ) {
-            depth--;
-
-            if (
-                depth === 0
-            ) {
-                const end =
-                    tagMatch.index +
-                    tag.length;
-
-                return {
-                    start,
-                    end,
-                    text:
-                        xml.slice(
-                            start,
-                            end
-                        )
-                };
-            }
-        }
-    }
-
-    throw new Error(
-        `Var section غير مكتمل: ${name}`
-    );
-}
-
-// ============================================================
-// COPY NAMED SECTIONS
-// ============================================================
-
-function copyNamedSections(mainXml, friendXml) {
-    let result = mainXml;
-    const names = [...new Set(COPY_VAR_NAMES)];
-
-    for (const name of names) {
-        const friendSection = findVarSection(friendXml, name);
-
-        // غير موجود في Friend → تجاهل بدون خطأ
-        if (!friendSection) {
-            console.log(`[Merge] skipped "${name}" - not found in Friend`);
-            continue;
-        }
-
-        const mainSection = findVarSection(result, name);
-
-        // غير موجود في Main → تجاهل بدون خطأ
-        if (!mainSection) {
-            console.log(`[Merge] skipped "${name}" - not found in Main`);
-            continue;
-        }
-
-        result =
-            result.slice(0, mainSection.start) +
-            friendSection.text +
-            result.slice(mainSection.end);
-
-        console.log(`[Merge] copied "${name}"`);
-    }
-
-    return result;
-}
-
-// ============================================================
-// FIND BUILDINGS
-// ============================================================
-
-function findBuildingsSections(
-    xml
-) {
-    const START =
-        "</TownGround><Buildings><Object";
-
-    const sections = [];
-
-    let searchFrom = 0;
-
-    while (true) {
-        const start =
-            xml.indexOf(
-                START,
-                searchFrom
-            );
-
-        if (
-            start === -1
-        ) {
-            break;
-        }
-
-        const buildingsOpen =
-            xml.indexOf(
-                "<Buildings",
-                start
-            );
-
-        if (
-            buildingsOpen === -1
-        ) {
-            throw new Error(
-                "Buildings opening tag غير موجود"
-            );
-        }
-
-        const tagRegex =
-            /<\/?Buildings\b[^>]*>/gi;
-
-        tagRegex.lastIndex =
-            buildingsOpen;
-
-        let depth = 0;
-        let end = -1;
-
-        let match;
-
-        while (
-            (
-                match =
-                tagRegex.exec(xml)
-            ) !== null
-        ) {
-            const tag =
-                match[0];
-
-            if (
-                /^<Buildings\b/i.test(tag) &&
-                !/\/>\s*$/.test(tag)
-            ) {
-                depth++;
-                continue;
-            }
-
-            if (
-                /^<\/Buildings\b/i.test(tag)
-            ) {
-                depth--;
-
-                if (
-                    depth === 0
-                ) {
-                    end =
-                        match.index +
-                        match[0].length;
-
-                    break;
-                }
-            }
-        }
-
-        if (
-            end === -1
-        ) {
-            throw new Error(
-                "Buildings section غير مكتمل"
-            );
-        }
-
-        sections.push({
-            start,
-            end,
-            text:
-                xml.slice(
-                    start,
-                    end
-                )
-        });
-
-        searchFrom =
-            end;
-    }
-
-    return sections;
-}
-
-// ============================================================
-// COPY BOTH BUILDINGS
-// ============================================================
-
-function copyBothBuildingsSections(
-    mainXml,
-    friendXml
-) {
-    const mainSections =
-        findBuildingsSections(
-            mainXml
-        );
-
-    const friendSections =
-        findBuildingsSections(
-            friendXml
-        );
-
-    if (
-        mainSections.length !== 2
-    ) {
-        throw new Error(
-            `Main XML يجب أن يحتوي قسمي Buildings بالضبط. الموجود=${mainSections.length}`
-        );
-    }
-
-    if (
-        friendSections.length !== 2
-    ) {
-        throw new Error(
-            `Friend XML يجب أن يحتوي قسمي Buildings بالضبط. الموجود=${friendSections.length}`
-        );
-    }
-
-    let result =
-        mainXml;
-
-    // نعكس من الثاني إلى الأول
-    // حتى لا تتغير مواقع الأقسام السابقة.
-
-    for (
-        let i = 1;
-        i >= 0;
-        i--
-    ) {
-        const mainSection =
-            mainSections[i];
-
-        const friendSection =
-            friendSections[i];
-
-        result =
-            result.slice(
-                0,
-                mainSection.start
-            ) +
-            friendSection.text +
-            result.slice(
-                mainSection.end
-            );
-
-        console.log(
-            `[Merge] copied Buildings section ${i + 1}/2`
-        );
-    }
-
-    return result;
-}
-
-// ============================================================
-// COPY LEVELUP -> END
-// ============================================================
-
-function copyLevelupToEnd(
-    mainXml,
-    friendXml
-) {
-    const LEVELUP_REGEX =
-        /<Var\b[^>]*\bname\s*=\s*["']levelup["'][^>]*\/?>/i;
-
-    const mainMatch =
-        LEVELUP_REGEX.exec(
-            mainXml
-        );
-
-    const friendMatch =
-        LEVELUP_REGEX.exec(
-            friendXml
-        );
-
-    if (!mainMatch) {
-        throw new Error(
-            'Main XML لا يحتوي <Var name="levelup"...>'
-        );
-    }
-
-    if (!friendMatch) {
-        throw new Error(
-            'Friend XML لا يحتوي <Var name="levelup"...>'
-        );
-    }
-
-    return (
-        mainXml.slice(
-            0,
-            mainMatch.index
-        ) +
-        friendXml.slice(
-            friendMatch.index
-        )
-    );
-}
-
-
-// ============================================================
-// DESBAN ENGINE - XML BLOCK HELPERS
-// ============================================================
-//
-// The original server merge remains intact.
-// These helpers add the verified desban-style staged copy:
-//   Stage 1 = Initial/progress/global data
-//   Stage 2 = City + Zoo
-//   Stage 3 = Advanced blocks
-//
-// Missing optional blocks are always skipped without throwing.
-// ============================================================
-
-function desbanFindXmlBlock(xml, tagName) {
-    const safeTag = escapeRegex(tagName);
-
-    const openingRegex = new RegExp(
-        `<${safeTag}\\b[^>]*>`,
-        "gi"
-    );
-
-    let openingMatch;
-
-    while ((openingMatch = openingRegex.exec(xml)) !== null) {
-        const start = openingMatch.index;
-        const openingTag = openingMatch[0];
-
-        // Self-closing block.
-        if (/\/>\s*$/.test(openingTag)) {
-            return {
-                start,
-                end: start + openingTag.length,
-                text: xml.slice(start, start + openingTag.length)
-            };
-        }
-
-        const tagRegex = new RegExp(
-            `<\\/?${safeTag}\\b[^>]*>`,
-            "gi"
-        );
-
-        tagRegex.lastIndex =
-            start + openingTag.length;
-
-        let depth = 1;
-        let match;
-
-        while ((match = tagRegex.exec(xml)) !== null) {
-            const tag = match[0];
-
-            if (
-                new RegExp(
-                    `^<${safeTag}\\b`,
-                    "i"
-                ).test(tag) &&
-                !/\/>\s*$/.test(tag)
-            ) {
-                depth++;
-                continue;
-            }
-
-            if (
-                new RegExp(
-                    `^<\\/${safeTag}\\b`,
-                    "i"
-                ).test(tag)
-            ) {
-                depth--;
-
-                if (depth === 0) {
-                    const end =
-                        match.index +
-                        tag.length;
-
-                    return {
-                        start,
-                        end,
-                        text:
-                            xml.slice(
-                                start,
-                                end
-                            )
-                    };
-                }
-            }
-        }
-
-        // Do not turn an optional malformed block into a fatal
-        // desban error. The existing merge behavior stays unchanged.
-        return null;
-    }
-
-    return null;
-}
-
-function desbanReplaceXmlBlock(
-    mainXml,
-    donorXml,
-    tagName
-) {
-    const donorBlock =
-        desbanFindXmlBlock(
-            donorXml,
-            tagName
-        );
-
-    if (!donorBlock) {
-        console.log(
-            `[Desban] skipped <${tagName}> - not found in donor`
-        );
-        return mainXml;
-    }
-
-    const mainBlock =
-        desbanFindXmlBlock(
-            mainXml,
-            tagName
-        );
-
-    if (!mainBlock) {
-        console.log(
-            `[Desban] skipped <${tagName}> - not found in main`
-        );
-        return mainXml;
-    }
-
-    const result =
-        mainXml.slice(
-            0,
-            mainBlock.start
-        ) +
-        donorBlock.text +
-        mainXml.slice(
-            mainBlock.end
-        );
-
-    console.log(
-        `[Desban] copied <${tagName}>`
-    );
-
-    return result;
-}
-
-function desbanAppendXmlBlock(
-    mainXml,
-    donorXml,
-    tagName,
-    beforeTagName
-) {
-    const donorBlock =
-        desbanFindXmlBlock(
-            donorXml,
-            tagName
-        );
-
-    if (!donorBlock) {
-        console.log(
-            `[Desban] skipped <${tagName}> - not found in donor`
-        );
-        return mainXml;
-    }
-
-    const mainBlock =
-        desbanFindXmlBlock(
-            mainXml,
-            tagName
-        );
-
-    if (mainBlock) {
-        return desbanReplaceXmlBlock(
-            mainXml,
-            donorXml,
-            tagName
-        );
-    }
-
-    if (beforeTagName) {
-        const beforeBlock =
-            desbanFindXmlBlock(
-                mainXml,
-                beforeTagName
-            );
-
-        if (beforeBlock) {
-            console.log(
-                `[Desban] inserted <${tagName}> before <${beforeTagName}>`
-            );
-
-            return (
-                mainXml.slice(
-                    0,
-                    beforeBlock.start
-                ) +
-                donorBlock.text +
-                mainXml.slice(
-                    beforeBlock.start
-                )
-            );
-        }
-    }
-
-    const rootEnd =
-        mainXml.lastIndexOf(
-            "</root>"
-        );
-
-    if (rootEnd !== -1) {
-        console.log(
-            `[Desban] appended <${tagName}>`
-        );
-
-        return (
-            mainXml.slice(
-                0,
-                rootEnd
-            ) +
-            donorBlock.text +
-            mainXml.slice(
-                rootEnd
-            )
-        );
-    }
-
-    console.log(
-        `[Desban] skipped <${tagName}> - main root not found`
-    );
-
-    return mainXml;
-}
-
-// ============================================================
-// DESBAN STAGE 1 - INITIAL
-// ============================================================
-
-const DESBAN_STAGE_1_BLOCKS = [
-    "DataElem",
-    "Global",
-    "Globals",
-    "coupons",
-    "ArtInfo",
-    "Skins",
-    "SeenTips",
-    "LevelInfo"
-];
-
-function desbanStage1(
-    mainXml,
-    donorXml
-) {
-    console.log(
-        "[Desban] STAGE 1 INITIAL"
-    );
-
-    let result = mainXml;
-
-    for (
-        const tagName of
-        DESBAN_STAGE_1_BLOCKS
-    ) {
-        if (
-            tagName === "ArtInfo"
-        ) {
-            result =
-                desbanAppendXmlBlock(
-                    result,
-                    donorXml,
-                    tagName,
-                    "BuildingsStash"
-                );
-        } else {
-            result =
-                desbanReplaceXmlBlock(
-                    result,
-                    donorXml,
-                    tagName
-                );
-        }
-    }
-
-    return result;
-}
-
-// ============================================================
-// DESBAN STAGE 2 - CITY + ZOO
-// ============================================================
-
-const DESBAN_STAGE_2_BLOCKS = [
-    "TownGround",
-    "BuildingsStash",
-    "Zoo",
-    "ZooInfo",
-    "ZooQuests",
-    "Upgrade",
-    "Trains",
-    "IslandsInfo"
-];
-
-function desbanStage2(
-    mainXml,
-    donorXml
-) {
-    console.log(
-        "[Desban] STAGE 2 CITY + ZOO"
-    );
-
-    let result = mainXml;
-
-    for (
-        const tagName of
-        DESBAN_STAGE_2_BLOCKS
-    ) {
-        // Buildings are intentionally NOT copied here.
-        // The original server's two-Buildings merge remains
-        // authoritative and unchanged.
-        if (
-            tagName === "TownGround"
-        ) {
-            result =
-                desbanReplaceXmlBlock(
-                    result,
-                    donorXml,
-                    tagName
-                );
-            continue;
-        }
-
-        result =
-            desbanReplaceXmlBlock(
-                result,
-                donorXml,
-                tagName
-            );
-    }
-
-    return result;
-}
-
-// ============================================================
-// DESBAN STAGE 3 - ADVANCED BLOCKS
-// ============================================================
-
-const DESBAN_STAGE_3_BLOCKS = [
-    "Minigames",
-    "QuestsBook",
-    "DataStoreCollapseQuests",
-    "DataStoreCollection",
-    "AirInfo",
-    "AirOrders",
-    "MapOrders",
-    "Helic",
-    "SeasonTicket",
-    "PremiumRoad",
-    "TimedEntityManager",
-    "Laboratory",
-    "Achievements",
-    "BarnItems",
-    "Appearance",
-    "Match3Advantages",
-    "Match3Boosters"
-];
-
-function desbanStage3(
-    mainXml,
-    donorXml
-) {
-    console.log(
-        "[Desban] STAGE 3 ADVANCED"
-    );
-
-    let result = mainXml;
-
-    for (
-        const tagName of
-        DESBAN_STAGE_3_BLOCKS
-    ) {
-        result =
-            desbanReplaceXmlBlock(
-                result,
-                donorXml,
-                tagName
-            );
-    }
-
-    return result;
-}
-
-// ============================================================
-// DESBAN 3-STAGE PIPELINE
-// ============================================================
-
-function applyDesbanStages(
-    mainXml,
-    donorXml
-) {
-    console.log(
-        "========================================"
-    );
-
-    console.log(
-        "[Desban] APPLY DESBAN - 3 STAGES"
-    );
-
-    let result = mainXml;
-
-    // The APK flow is sequential:
-    // Step 1 -> Step 2 -> Step 3.
-    result =
-        desbanStage1(
-            result,
-            donorXml
-        );
-
-    result =
-        desbanStage2(
-            result,
-            donorXml
-        );
-
-    result =
-        desbanStage3(
-            result,
-            donorXml
-        );
-
-    console.log(
-        `[Desban] FINAL staged size=${result.length}`
-    );
-
-    console.log(
-        "[Desban] DONE"
-    );
-
-    console.log(
-        "========================================"
-    );
-
-    return result;
-}
-
-// ============================================================
-// MERGE
-// ============================================================
-
-function mergeFriendIntoMain(
-    mainXml,
-    friendXml
-) {
-    if (
-        Buffer.isBuffer(mainXml)
-    ) {
-        mainXml =
-            mainXml.toString(
-                "utf8"
-            );
-    }
-
-    if (
-        Buffer.isBuffer(friendXml)
-    ) {
-        friendXml =
-            friendXml.toString(
-                "utf8"
-            );
-    }
-
-    mainXml =
-        String(mainXml)
-            .replace(
-                /^\uFEFF/,
-                ""
-            )
-            .trim();
-
-    friendXml =
-        String(friendXml)
-            .replace(
-                /^\uFEFF/,
-                ""
-            )
-            .trim();
-
-    console.log(
-        `[Merge] main size=${mainXml.length}`
-    );
-
-    console.log(
-        `[Merge] friend size=${friendXml.length}`
-    );
-
-    // --------------------------------------------------------
-    // Buildings
-    // --------------------------------------------------------
-
-    let result =
-        copyBothBuildingsSections(
-            mainXml,
-            friendXml
-        );
-
-    // --------------------------------------------------------
-    // Vars
-    // --------------------------------------------------------
-
-    result =
-        copyNamedSections(
-            result,
-            friendXml
-        );
-
-    // --------------------------------------------------------
-    // levelup -> END
-    // --------------------------------------------------------
-
-    result =
-        copyLevelupToEnd(
-            result,
-            friendXml
-        );
-
-    // --------------------------------------------------------
-    // Desban stages
-    // --------------------------------------------------------
-    //
-    // Existing Buildings / Vars / levelup merge above is kept
-    // exactly as before. The staged engine runs afterwards and
-    // only replaces optional blocks that exist in both XMLs.
-    //
-    result =
-        applyDesbanStages(
-            result,
-            friendXml
-        );
-
-    console.log(
-        `[Merge] final main size=${result.length}`
-    );
-
-    return Buffer.from(
-        result,
-        "utf8"
-    );
-}
-
-// ============================================================
-// COMBINED RAW MERGE
-// ============================================================
-//
-// الطلب:
-//
-// TWM2
-// + LocalInfo
-// + mGameInfo
-//
-// cityId و cityVer لا يؤخذان من mGameInfo.
-//
-// يتم فك LocalInfo أولًا.
-// يتم اختيار الصديق من LocalInfo.
-// cityId و cityVer من LocalInfo.
-// بعدها يتم فك mGameInfo فقط.
-// بعدها FetchCity.
-// بعدها فك Friend City.
-// بعدها Merge.
-// ثم يرجع mGameInfo النهائي فقط.
-//
-// ============================================================
-
-async function handleRawMerge(
-    req,
-    res
-) {
-    try {
-        console.log(
-            "========================================"
-        );
-
-        console.log(
-            "[Merge] START COMBINED REQUEST"
-        );
-
-        const packet =
-            req.body;
-
-        if (
-            !Buffer.isBuffer(packet)
-        ) {
-            throw new Error(
-                "Body يجب أن يكون application/octet-stream"
-            );
-        }
-
-        console.log(
-            `[Merge] TWM2 packet size=${packet.length}`
-        );
-
-        console.log(
-            `[Merge] TWM2 magic=${bufferMagic(packet)}`
-        );
-
-        // ----------------------------------------------------
-        // 1. فك TWM2
-        // ----------------------------------------------------
-
-        const {
-            localInfo,
-            mainInfo
-        } =
-            parseTwoFilesPacket(
-                packet
-            );
-
-        console.log(
-            `[Merge] LocalInfo encrypted size=${localInfo.length}`
-        );
-
-        console.log(
-            `[Merge] mGameInfo encrypted size=${mainInfo.length}`
-        );
-
-        console.log(
-            `[Merge] LocalInfo magic=${bufferMagic(localInfo)}`
-        );
-
-        console.log(
-            `[Merge] mGameInfo magic=${bufferMagic(mainInfo)}`
-        );
-
-        // ----------------------------------------------------
-        // 2. فك LocalInfo
-        // ----------------------------------------------------
-
-        console.log(
-            "[Merge] Decoding LocalInfo..."
-        );
-
-        const localXmlBuffer =
-            decodeFriendFile(
-                localInfo
-            );
-
-        const localXml =
-            localXmlBuffer
-                .toString("utf8")
-                .replace(
-                    /^\uFEFF/,
-                    ""
-                )
-                .trim();
-
-        if (
-            !localXml.startsWith("<")
-        ) {
-            throw new Error(
-                "LocalInfo بعد فك التشفير ليس XML"
-            );
-        }
-
-        console.log(
-            `[Merge] LocalInfo decoded size=${localXml.length}`
-        );
-
-        // ----------------------------------------------------
-        // 3. قراءة الأصدقاء من LocalInfo
-        // ----------------------------------------------------
-
-        const friends =
-            parseFriends(
-                localXml
-            );
-
-        console.log(
-            `[Merge] LocalInfo friends=${friends.length}`
-        );
-
-        if (
-            friends.length === 0
-        ) {
-            throw new Error(
-                "LocalInfo لا يحتوي على أي Friend"
-            );
-        }
-
-        // ----------------------------------------------------
-        // 4. تحديد الصديق
-        // ----------------------------------------------------
-        //
-        // X-Selected-City-Id هو مجرد مفتاح اختيار.
-        //
-        // وندعم أيضًا X-City-Id للتوافق
-        // مع Lua القديم.
-        //
-        // لكن لا نأخذ cityVer من Header.
-        //
-        // ----------------------------------------------------
-
-        const selectedCityId =
-            String(
-                req.headers[
-                    "x-selected-city-id"
-                ] ||
-                req.headers[
-                    "x-city-id"
-                ] ||
-                ""
-            ).trim();
-
-        if (
-            !selectedCityId
-        ) {
-            throw new Error(
-                "لم يتم إرسال X-Selected-City-Id"
-            );
-        }
-
-        console.log(
-            `[Merge] selected city=${selectedCityId}`
-        );
-
-        const selectedFriend =
-            friends.find(
-                friend =>
-                    String(
-                        friend.city_id ||
-                        ""
-                    ).trim() ===
-                    selectedCityId
-            );
-
-        if (
-            !selectedFriend
-        ) {
-            throw new Error(
-                `المدينة ${selectedCityId} غير موجودة داخل LocalInfo`
-            );
-        }
-
-        // ----------------------------------------------------
-        // cityId من LocalInfo
-        // ----------------------------------------------------
-
-        const cityId =
-            String(
-                selectedFriend.city_id ||
-                ""
-            ).trim();
-
-        if (!cityId) {
-            throw new Error(
-                "الصديق المحدد لا يحتوي city_id"
-            );
-        }
-
-        // ----------------------------------------------------
-        // cityVer من LocalInfo
-        // ----------------------------------------------------
-
-        const cityVerText =
-            selectedFriend.fetched_city_ver;
-
-        if (
-            cityVerText === undefined ||
-            cityVerText === null ||
-            String(
-                cityVerText
-            ).trim() === ""
-        ) {
-            throw new Error(
-                `LocalInfo لا يحتوي fetched_city_ver للمدينة ${cityId}`
-            );
-        }
-
-        const cityVer =
-            Number(
-                cityVerText
-            );
-
-        if (
-            !Number.isFinite(cityVer) ||
-            cityVer < 0
-        ) {
-            throw new Error(
-                `cityVer غير صالح داخل LocalInfo: ${cityVerText}`
-            );
-        }
-
-        console.log(
-            `[Merge] cityId from LocalInfo=${cityId}`
-        );
-
-        console.log(
-            `[Merge] cityVer from LocalInfo=${cityVer}`
-        );
-
-        // ----------------------------------------------------
-        // 5. فك mGameInfo
-        // ----------------------------------------------------
-        //
-        // مهم:
-        //
-        // لا parseFriends هنا.
-        // لا cityId.
-        // لا cityVer.
-        // لا saveId.
-        //
-        // فك فقط.
-        //
-        // ----------------------------------------------------
-
-        console.log(
-            "[Merge] Decoding mGameInfo only..."
-        );
-
-        const mainXmlBuffer =
-            decodeFriendFile(
-                mainInfo
-            );
-
-        const mainXml =
-            mainXmlBuffer
-                .toString("utf8")
-                .replace(
-                    /^\uFEFF/,
-                    ""
-                )
-                .trim();
-
-        if (
-            !mainXml.startsWith("<")
-        ) {
-            throw new Error(
-                "mGameInfo بعد فك التشفير ليس XML"
-            );
-        }
-
-        console.log(
-            `[Merge] mGameInfo decoded size=${mainXml.length}`
-        );
-
-        // ----------------------------------------------------
-        // 6. Fetch Friend City
-        // ----------------------------------------------------
-
-        console.log(
-            "[Merge] Fetching Friend City..."
-        );
-
-        const upstream =
-            await requestFetchCity(
-                cityId,
-                cityVer
-            );
-
-        if (
-            !upstream
-        ) {
-            throw new Error(
-                "FetchCity أعاد استجابة فارغة"
-            );
-        }
-
-        if (
-            !upstream.result
-        ) {
-            throw new Error(
-                "FetchCity لا يحتوي result"
-            );
-        }
-
-        if (
-            typeof upstream.result.data !==
-            "string"
-        ) {
-            throw new Error(
-                "FetchCity لا يحتوي result.data"
-            );
-        }
-
-        const friendBytes =
-            Buffer.from(
-                upstream.result.data,
-                "base64"
-            );
-
-        if (
-            friendBytes.length === 0
-        ) {
-            throw new Error(
-                "Friend City bytes فارغة"
-            );
-        }
-
-        console.log(
-            `[Merge] Friend encrypted size=${friendBytes.length}`
-        );
-
-        console.log(
-            `[Merge] Friend magic=${bufferMagic(friendBytes)}`
-        );
-
-        // ----------------------------------------------------
-        // 7. فك Friend City
-        // ----------------------------------------------------
-
-        console.log(
-            "[Merge] Decoding Friend City..."
-        );
-
-        const friendXmlBuffer =
-            decodeSaveCity(
-                friendBytes
-            );
-
-        const friendXml =
-            friendXmlBuffer
-                .toString("utf8")
-                .replace(
-                    /^\uFEFF/,
-                    ""
-                )
-                .trim();
-
-        if (
-            !friendXml.startsWith("<")
-        ) {
-            throw new Error(
-                "Friend City بعد فك التشفير ليس XML"
-            );
-        }
-
-        console.log(
-            `[Merge] Friend XML decoded size=${friendXml.length}`
-        );
-
-        // ----------------------------------------------------
-        // 8. Merge
-        // ----------------------------------------------------
-
-        console.log(
-            "[Merge] Starting Friend -> Main merge..."
-        );
-
-        const modifiedMain =
-            mergeFriendIntoMain(
-                mainXml,
-                friendXml
-            );
-
-        if (
-            !modifiedMain ||
-            modifiedMain.length === 0
-        ) {
-            throw new Error(
-                "نتيجة الدمج فارغة"
-            );
-        }
-
-        console.log(
-            `[Merge] FINAL mGameInfo size=${modifiedMain.length}`
-        );
-
-        // ----------------------------------------------------
-        // 9. Return ONLY modified mGameInfo
-        // ----------------------------------------------------
-
-        res.status(200);
-
-        res.set(
-            "Content-Type",
-            "application/octet-stream"
-        );
-
-        res.set(
-            "Content-Length",
-            String(
-                modifiedMain.length
-            )
-        );
-
-        res.set(
-            "Cache-Control",
-            "no-store"
-        );
-
-        res.set(
-            "Content-Disposition",
-            'attachment; filename="mGameInfo.xml"'
-        );
-
-        console.log(
-            "[Merge] DONE"
-        );
-
-        console.log(
-            "========================================"
-        );
-
-        return res.send(
-            modifiedMain
-        );
-
-    } catch (err) {
-        console.error(
-            "========================================"
-        );
-
-        console.error(
-            "[Merge] ERROR:"
-        );
-
-        console.error(
-            err &&
-            err.stack
-                ? err.stack
-                : err
-        );
-
-        console.error(
-            "========================================"
-        );
-
-        return res
-            .status(500)
-            .send(
-                String(
-                    err &&
-                    err.message
-                        ? err.message
-                        : err
-                )
-            );
-    }
-}
-
-// ============================================================
-// OLD JSON MODE
-// ============================================================
-
-async function handleFetchCity(
-    req,
-    res
-) {
-    try {
-        let body =
-            req.body || {};
-
-        if (
-            Buffer.isBuffer(body)
-        ) {
-            try {
-                body =
-                    JSON.parse(
-                        body.toString(
-                            "utf8"
-                        )
-                    );
-            } catch (_) {
-                return res
-                    .status(400)
-                    .send(
-                        "JSON غير صالح"
-                    );
-            }
-        }
-
-        const cityId =
-            String(
-                body.cityId ||
-                body.fetchCityId ||
-                ""
-            ).trim();
-
-        const cityVer =
-            Number(
-                body.cityVer || 0
-            );
-
-        if (!cityId) {
-            return res
-                .status(400)
-                .send(
-                    "cityId مفقود"
-                );
-        }
-
-        const json =
-            await requestFetchCity(
-                cityId,
-                cityVer
-            );
-
-        if (
-            !json ||
-            !json.result ||
-            typeof json.result.data !==
-                "string"
-        ) {
-            throw new Error(
-                "Upstream JSON لا يحتوي result.data"
-            );
-        }
-
-        const cityBytes =
-            Buffer.from(
-                json.result.data,
-                "base64"
-            );
-
-        const xml =
-            decodeSaveCity(
-                cityBytes
-            );
-
-        const modifiedXml =
-            editCityXml(
-                xml
-            );
-
-        res.status(200);
-
-        res.set(
-            "Content-Type",
-            "application/xml; charset=utf-8"
-        );
-
-        return res.send(
-            modifiedXml
-        );
-
-    } catch (err) {
-        console.error(
-            "[FetchCity] ERROR:",
-            err
-        );
-
-        return res
-            .status(500)
-            .send(
-                String(
-                    err.message ||
-                    err
-                )
-            );
-    }
-}
-
-// ============================================================
-// DECODE FRIENDS
-// ============================================================
-//
-// LocalInfo فقط.
-//
+// DECODE FRIEND FILE API
 // ============================================================
 
 async function handleDecodeFriends(
     req,
     res
 ) {
+
     try {
-        const encryptedFile =
+
+        let encryptedFile =
             req.body;
 
         if (
@@ -3868,40 +2642,44 @@ async function handleDecodeFriends(
                 encryptedFile
             )
         ) {
+
             return res
                 .status(400)
                 .json({
+
                     ok: false,
 
                     error:
-                        "يجب إرسال الملف كـ application/octet-stream"
+                        "ط¸ظ¹ط·آ¬ط·آ¨ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ .123.xml ط·آ¨ط·آµط¸ظ¹ط·ط›ط·آ© application/octet-stream"
                 });
         }
 
         if (
             encryptedFile.length === 0
         ) {
+
             return res
                 .status(400)
                 .json({
+
                     ok: false,
 
                     error:
-                        "الملف فارغ"
+                        "ط·آ§ط¸â€‍ط¸â€¦ط¸â€‍ط¸ظ¾ ط¸ظ¾ط·آ§ط·آ±ط·ط›"
                 });
         }
 
         console.log(
-            `[Friends] LocalInfo encrypted size=${encryptedFile.length}`
+            `[Friends] encrypted file size=${encryptedFile.length}`
         );
 
         console.log(
-            `[Friends] LocalInfo magic=${bufferMagic(encryptedFile)}`
+            `[Friends] encrypted magic=${bufferMagic(encryptedFile)}`
         );
 
-        // ----------------------------------------------------
-        // فك LocalInfo
-        // ----------------------------------------------------
+        // ====================================================
+        // decodeFile ط·آ§ط¸â€‍ط·آ­ط¸â€ڑط¸ظ¹ط¸â€ڑط¸ظ¹
+        // ====================================================
 
         const xmlBuffer =
             decodeFriendFile(
@@ -3917,44 +2695,63 @@ async function handleDecodeFriends(
                 )
                 .trim();
 
+        console.log(
+            `[Friends] decoded XML size=${xml.length}`
+        );
+
         if (
             !xml.startsWith("<")
         ) {
+
             throw new Error(
-                "LocalInfo بعد فك التشفير ليس XML"
+                "ط·آ¨ط·آ¹ط·آ¯ ط¸ظ¾ط¸ئ’ .123.xml ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آµط¸ث†ط¸â€‍ ط·آ¹ط¸â€‍ط¸â€° XML"
             );
         }
-
-        // ----------------------------------------------------
-        // Version
-        // ----------------------------------------------------
 
         const version =
             parseFriendVersion(
                 xml
             );
 
-        // ----------------------------------------------------
-        // Friends
-        // ----------------------------------------------------
+        if (
+            !version.bver
+        ) {
+
+            throw new Error(
+                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.version"
+            );
+        }
+
+        if (
+            !version.fver
+        ) {
+
+            throw new Error(
+                "ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¹ط·آ«ط¸ث†ط·آ± ط·آ¹ط¸â€‍ط¸â€° Version.FVer"
+            );
+        }
+
+        // ====================================================
+        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ friends
+        // ====================================================
 
         const friends =
             parseFriends(
                 xml
             );
 
-        // ----------------------------------------------------
-        // saveProfiles
-        // ----------------------------------------------------
+        // ====================================================
+        // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ saveId ط¸â€¦ط¸â€  ProfilesCache
+        // ====================================================
 
         const saveProfiles =
             parseSaveProfiles(
                 xml
             );
 
-        // ----------------------------------------------------
-        // saveId
-        // ----------------------------------------------------
+        // ====================================================
+        // ط·آ±ط·آ¨ط·آ· saveId ط¸â€¦ط·آ¹ friends
+        // ====================================================
 
         attachSaveIdsToFriends(
             friends,
@@ -3977,9 +2774,32 @@ async function handleDecodeFriends(
             `[Friends] saveProfiles=${saveProfiles.length}`
         );
 
+        // ====================================================
+        // ط·آ·ط·آ¨ط·آ§ط·آ¹ط·آ© ط¸â€ ط·ع¾ط¸ظ¹ط·آ¬ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ·
+        // ====================================================
+
+        for (
+            const friend of friends
+        ) {
+
+            if (
+                friend.saveId
+            ) {
+
+                console.log(
+                    `[Friends] MATCH city_name="${friend.city_name}" city_id="${friend.city_id}" saveId="${friend.saveId}"`
+                );
+            }
+        }
+
+        // ====================================================
+        // RESPONSE
+        // ====================================================
+
         return res
             .status(200)
             .json({
+
                 ok: true,
 
                 bver:
@@ -3996,22 +2816,812 @@ async function handleDecodeFriends(
             });
 
     } catch (err) {
+
         console.error(
             "[Friends] DECODE ERROR:",
-            err
+            err &&
+            err.stack
+                ? err.stack
+                : err
         );
 
         return res
             .status(500)
             .json({
+
                 ok: false,
 
                 error:
                     String(
-                        err.message ||
-                        err
+                        err &&
+                        err.message
+                            ? err.message
+                            : err
                     )
             });
+    }
+}
+
+// ============================================================
+// APP ACCOUNT RESTORE MERGE (isolated endpoint; leaves existing routes intact)
+// The Android app applies donor progress first, then selected city/zoo sections.
+// ============================================================
+function restoreEscapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function restoreFindTag(xml, name, fromIndex = 0) {
+    const nameRe = restoreEscapeRegExp(name);
+    const tokenRe = new RegExp(`<\\/?${nameRe}\\b[^>]*>`, "gi");
+    tokenRe.lastIndex = Math.max(0, fromIndex);
+    const first = tokenRe.exec(xml);
+    if (!first) return null;
+    const firstToken = first[0];
+    if (/^<\/?/.test(firstToken) && /^<\w+[^>]*\/>$/.test(firstToken)) {
+        return { text: firstToken, start: first.index, end: first.index + firstToken.length };
+    }
+    let depth = 0;
+    tokenRe.lastIndex = first.index;
+    let token;
+    while ((token = tokenRe.exec(xml)) !== null) {
+        const raw = token[0];
+        if (/^<\//.test(raw)) depth--;
+        else if (!/\/\s*>$/.test(raw)) depth++;
+        if (depth === 0) {
+            return { text: xml.slice(first.index, token.index + raw.length), start: first.index, end: token.index + raw.length };
+        }
+    }
+    return null;
+}
+function restoreReplaceTag(xml, name, replacement) {
+    const block = restoreFindTag(xml, name);
+    if (!block) return xml;
+    return xml.slice(0, block.start) + replacement + xml.slice(block.end);
+}
+function restoreAttr(tag, attr) {
+    const re = new RegExp(`\\b${restoreEscapeRegExp(attr)}\\s*=\\s*(["'])(.*?)\\1`, "i");
+    const match = tag.match(re);
+    return match ? match[2] : null;
+}
+function restoreCopySection(donorXml, baseXml, name) {
+    const donor = restoreFindTag(donorXml, name);
+    if (!donor) return baseXml;
+    const base = restoreFindTag(baseXml, name);
+    if (base) return baseXml.slice(0, base.start) + donor.text + baseXml.slice(base.end);
+    const rootClose = /<\/root\s*>/i.exec(baseXml);
+    if (!rootClose) return baseXml;
+    return baseXml.slice(0, rootClose.index) + donor.text + "\n" + baseXml.slice(rootClose.index);
+}
+function restoreVarTag(xml, name) {
+    const escaped = restoreEscapeRegExp(name);
+    const re = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*(?:\\/>|>[\\s\\S]*?<\\/Var\\s*>)`, "i");
+    const m = re.exec(xml);
+    return m ? m[0] : null;
+}
+function restoreCopyVar(donorXml, baseXml, name) {
+    const donor = restoreVarTag(donorXml, name);
+    if (!donor) return baseXml;
+    const escaped = restoreEscapeRegExp(name);
+    const re = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*(?:\\/>|>[\\s\\S]*?<\\/Var\\s*>)`, "i");
+    if (re.test(baseXml)) return baseXml.replace(re, () => donor);
+    const vars = restoreFindTag(baseXml, "Vars");
+    if (!vars) return baseXml;
+    const insertAt = baseXml.lastIndexOf("</Vars>", vars.end);
+    if (insertAt < 0) return baseXml;
+    return baseXml.slice(0, insertAt) + donor + "\n    " + baseXml.slice(insertAt);
+}
+function restoreCopyVarsByName(donorXml, baseXml, names, insertInto = "Vars") {
+    const wanted = new Set(names);
+    if (!wanted.size) return baseXml;
+    const donorTags = new Map();
+    for (const tag of donorXml.match(/<Var\b[^>]*\/>/gi) || []) {
+        const name = restoreAttr(tag, "name");
+        if (name && wanted.has(name)) donorTags.set(name, tag);
+    }
+    if (!donorTags.size) return baseXml;
+    const present = new Set();
+    baseXml = baseXml.replace(/<Var\b[^>]*\/>/gi, tag => {
+        const name = restoreAttr(tag, "name");
+        if (!name || !donorTags.has(name)) return tag;
+        present.add(name);
+        return donorTags.get(name);
+    });
+    const missing = [];
+    for (const [name, tag] of donorTags) if (!present.has(name)) missing.push(tag);
+    if (missing.length) {
+        const vars = restoreFindTag(baseXml, insertInto);
+        if (vars) {
+            const closeAt = baseXml.lastIndexOf(`</${insertInto}>`, vars.end);
+            if (closeAt >= 0) baseXml = baseXml.slice(0, closeAt) + missing.join("\n    ") + "\n    " + baseXml.slice(closeAt);
+        }
+    }
+    return baseXml;
+}
+function restoreVarValue(xml, name) {
+    const tag = restoreVarTag(xml, name);
+    return tag ? restoreAttr(tag, "v") : null;
+}
+function restoreSetVar(xml, name, value) {
+    const escaped = restoreEscapeRegExp(name);
+    const tagRe = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*/?>`, "i");
+    if (tagRe.test(xml)) {
+        return xml.replace(tagRe, tag => {
+            const valueRe = /(\bv=["'])[^"']*(["'])/i;
+            if (valueRe.test(tag)) return tag.replace(valueRe, (_, a, b) => a + String(value) + b);
+            const ending = /\s*\/>$/.exec(tag);
+            if (ending) return tag.slice(0, ending.index) + ` v="${String(value)}"` + tag.slice(ending.index);
+            return tag.replace(/>$/, ` v="${String(value)}">`);
+        });
+    }
+    const insertion = `<Var name="${name}" v="${String(value)}"/>`;
+    const global = restoreFindTag(xml, "Global");
+    if (global) return xml.slice(0, global.end - "</Global>".length) + insertion + "\n  " + xml.slice(global.end - "</Global>".length);
+    const vars = restoreFindTag(xml, "Vars");
+    if (vars) return xml.slice(0, vars.end - "</Vars>".length) + insertion + "\n    " + xml.slice(vars.end - "</Vars>".length);
+    return xml;
+}
+function restoreSetIntVar(xml, name, value) {
+    const escaped = restoreEscapeRegExp(name);
+    const replacement = `<Var name="${name}" v="${String(value)}" t="i"/>`;
+    const re = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*/>`, "i");
+    if (re.test(xml)) return xml.replace(re, () => replacement);
+    const global = restoreFindTag(xml, "Global");
+    if (!global) return restoreSetVar(xml, name, value);
+    const closeAt = global.end - "</Global>".length;
+    return xml.slice(0, closeAt) + replacement + "\n  " + xml.slice(closeAt);
+}
+function restoreCopyWholeVarGroups(donorXml, baseXml) {
+    const groups = [
+        ["moneyCash"], ["money"], ["levelup"],
+        ["m3_comp_lvls", "M3Ch_mainM3", "STLM3"],
+        ["FirstAttemptM3Levels"], ["LivesSent"],
+        ["Achievement_Teamwork"], ["FullCardCollections"],
+        ["RegataTasksCompleted"], ["gameStartDate"],
+        ["expeditionEnergy"], ["depth"], ["likes"]
+    ];
+    for (const names of groups) {
+        let value = null;
+        for (const name of names) {
+            value = restoreVarValue(donorXml, name);
+            if (value !== null) break;
+        }
+        if (value !== null) {
+            for (const name of names) baseXml = restoreSetVar(baseXml, name, value);
+        }
+    }
+    return baseXml;
+}
+function restoreCopyNamedDataElems(donorXml, baseXml, names, insertMissing = false) {
+    for (const name of names) {
+        const escaped = restoreEscapeRegExp(name);
+        const re = new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*/?>`, "i");
+        const donor = re.exec(donorXml);
+        if (!donor) continue;
+        if (re.test(baseXml)) baseXml = baseXml.replace(re, () => donor[0]);
+        else if (insertMissing) {
+            const rootClose = /<\/root\s*>/i.exec(baseXml);
+            if (rootClose) baseXml = baseXml.slice(0, rootClose.index) + donor[0] + "\n" + baseXml.slice(rootClose.index);
+        }
+    }
+    return baseXml;
+}
+function restorePhaseOne(baseXml, donorXml) {
+    // Scalar progression/resources transferred by Android C.k.
+    const direct = ["money", "moneyCash", "EarnedCoins", "residents", "wheatCounter",
+        "plowFieldsAchiev", "defaultOrdersCount", "match3Life", "Match3Lives_infTime",
+        "Achievement_IncreasedPopulation", "Achievement_PlowedFields", "Achievement_BuiltFactories",
+        "Achievement_SpentCoins", "Achievement_EarneCoins", "spentCash", "earnedCash", "timeInGame"];
+    for (const name of direct) baseXml = restoreCopyVar(donorXml, baseXml, name);
+    baseXml = restoreCopyWholeVarGroups(donorXml, baseXml);
+
+    const level = restoreVarValue(donorXml, "levelup");
+    const xp = restoreVarValue(donorXml, "experience");
+    if (level !== null && xp !== null) {
+        baseXml = restoreSetVar(baseXml, "levelup", level);
+        baseXml = restoreSetVar(baseXml, "experience", xp);
+        const parsedXp = Number.parseInt(xp, 10);
+        const n = Number.isFinite(parsedXp) ? parsedXp : 0;
+        baseXml = restoreSetVar(baseXml, "sexpx", String((509438470 ^ n) | 0));
+    }
+    baseXml = restoreCopyNamedDataElems(donorXml, baseXml, ["Common_prevQuestId", "lastContiniouslyCompletedQuest"]);
+    // The native app marks donor completed QB tasks as value=4.
+    const qb = /<DataElem\s+name="(QB_\d+_\d+)"\s+type="int"\s+value="4"\s*\/?\s*>/gi;
+    let match;
+    while ((match = qb.exec(donorXml)) !== null) {
+        const name = match[1];
+        const re = new RegExp(`<DataElem\\s+name=["']${restoreEscapeRegExp(name)}["'][^>]*/?>`, "i");
+        const tag = `<DataElem name="${name}" type="int" value="4"/>`;
+        if (re.test(baseXml)) baseXml = baseXml.replace(re, tag);
+        else baseXml = baseXml.replace(/(<DataElem\s+name="Common_prevQuestId"[^>]*\/>)/i, `${tag}\n    $1`);
+    }
+    for (const name of ["HarvestForTime", "SeasonTicketCenter"]) baseXml = restoreCopySection(donorXml, baseXml, name);
+    const donorTips = new Set(Array.from(donorXml.matchAll(/<v\s+n="(CHT_[^"]+)"/g), m => m[1]));
+    for (const id of donorTips) {
+        if (!new RegExp(`<v\\s+n="${restoreEscapeRegExp(id)}"`).test(baseXml)) {
+            const seen = restoreFindTag(baseXml, "SeenTips");
+            if (seen) baseXml = baseXml.slice(0, seen.end - "</SeenTips>".length) + `<v n="${id}"/>\n` + baseXml.slice(seen.end - "</SeenTips>".length);
+        }
+    }
+    const stateNames = Array.from(donorXml.matchAll(/<Var\s+name="([^"]+_state)"[^/]*\/>/gi), m => m[1]);
+    baseXml = restoreCopyVarsByName(donorXml, baseXml, stateNames);
+    baseXml = restoreCopyNamedDataElems(donorXml, baseXml, ["UnlockedBadges", "UnlockedExpRanks", "UnlockedFrames", "UnlockedStyles"], true);
+    for (const name of ["Skins", "BuildingsStash", "FragmentedBeautyManager"]) baseXml = restoreCopySection(donorXml, baseXml, name);
+    const unlocked = new Map(Array.from(donorXml.matchAll(/<Var\s+name="(Unlocked_ava\d+)"\s+v="([^"]*)"[^/]*\/>/g), m => [m[1], m[2]]));
+    baseXml = restoreCopyVarsByName(donorXml, baseXml, Array.from(unlocked.keys()), "Global");
+    return baseXml;
+}
+function restoreReplaceUser(xml, baseUser) {
+    if (!baseUser) return xml;
+    return xml.replace(/\buser=(['"])[^'"]*\1/g, `user="${baseUser}"`);
+}
+function restoreCopyFilteredGlobal(donorXml, baseXml) {
+    const global = restoreFindTag(donorXml, "Global");
+    if (!global) return baseXml;
+    const blocked = new Set(["deviceId", "advId", "cityId", "gameId", "facebookId", "Device", "DeviceLang",
+        "PrevFBID", "PrevGCID", "FBIsAuthorized", "MyClanId", "prevMyClanId", "MyClanJoinRegataId",
+        "MyClanNotExistLeaderId", "TrackNewDevice_TrackedDevices", "CCSecretApps", "CCSecretB", "CCSecretInstall",
+        "CCSecretM", "NotificationAuthStatus", "newNotificationAuthStatus", "ProgressComplainer_SessionId",
+        "Action_sessionsForSubsCounter", "EnteredGameAfterInstallDay", "gardenscapesInstallTime",
+        "Secret", "DeviceId", "SessionId", "InstallId", "Udid", "UDID"]);
+    const socialWords = ["friend", "clan", "regata", "social", "facebook", "fb", "gift", "help", "like", "chat", "mail", "invite", "leaderboard", "rating"];
+    const vars = global.text.match(/<Var\b[^>]*\/>/gi) || [];
+    const toCopy = [];
+    for (const tag of vars) {
+        const name = restoreAttr(tag, "name");
+        if (!name || blocked.has(name) || restoreAttr(tag, "v") === null) continue;
+        const lower = name.toLowerCase();
+        const allowed = lower.includes("m3") || name.includes("Boost") || name.startsWith("Achievement_") ||
+            name.startsWith("AchReward_") || name.startsWith("BLvl_") || name.startsWith("QB_") ||
+            name.includes("Quest") || name.includes("Event") || name.includes("Season") || name.startsWith("CHT_") ||
+            name.endsWith("_state") || name.includes("Tutorial") || name.includes("Hint") || name.includes("Seen") ||
+            name.includes("Shown") || socialWords.some(word => lower.includes(word));
+        if (allowed) toCopy.push(name);
+    }
+    baseXml = restoreCopyVarsByName(donorXml, baseXml, toCopy, "Global");
+
+    const donorCoupons = restoreFindTag(donorXml, "coupons");
+    if (donorCoupons) {
+        const couponIds = new Set(["HireDealer", "LoadTrainAirport", "UpgradeFactory", "UpgradeTrain", "UpgradeIsland"]);
+        const coupons = donorCoupons.text.match(/<coupon\b[^>]*\/>/gi) || [];
+        for (const tag of coupons) {
+            const id = restoreAttr(tag, "id");
+            if (!couponIds.has(id)) continue;
+            const count = Math.max(0, Math.min(10, Number.parseInt(restoreAttr(tag, "count") || "0", 10) || 0));
+            const replacement = `<coupon id="${id}" count="${count}"/>`;
+            const baseBlock = restoreFindTag(baseXml, "coupons");
+            if (!baseBlock) continue;
+            const re = new RegExp(`<coupon\\b(?=[^>]*\\bid=["']${restoreEscapeRegExp(id)}["'])[^>]*/>`, "i");
+            if (re.test(baseBlock.text)) {
+                const updated = baseBlock.text.replace(re, replacement);
+                baseXml = baseXml.slice(0, baseBlock.start) + updated + baseXml.slice(baseBlock.end);
+            } else {
+                const insertion = baseBlock.end - baseBlock.start - "</coupons>".length;
+                baseXml = baseXml.slice(0, baseBlock.start + insertion) + replacement + "\n  " + baseXml.slice(baseBlock.start + insertion);
+            }
+        }
+    }
+    const whu = restoreVarValue(donorXml, "WareHouseCashUpgrade");
+    if (whu !== null) {
+        const n = Number.parseInt(whu, 10);
+        if (Number.isFinite(n)) {
+            baseXml = restoreSetVar(baseXml, "WareHouseCashUpgrade", n);
+            baseXml = restoreSetIntVar(baseXml, "WHUdup", (514698188 ^ n) | 0);
+        }
+    }
+    return baseXml;
+}
+function restoreTransferGlobalInventory(donorXml, baseXml) {
+    const donorGlobal = restoreFindTag(donorXml, "Global");
+    const baseGlobal = restoreFindTag(baseXml, "Global");
+    if (!donorGlobal || !baseGlobal) return baseXml;
+    const resources = new Set([
+        "wheat",
+        "corn",
+        "carrot",
+        "sugarcane",
+        "cotton",
+        "strawberry",
+        "tomat",
+        "pine",
+        "potato",
+        "cacao",
+        "rubberTree",
+        "rubber",
+        "silk",
+        "shelk",
+        "pepper",
+        "rice",
+        "roseSeed",
+        "jasmine",
+        "coffee",
+        "soybean",
+        "teabush",
+        "mint",
+        "peanut",
+        "lavender",
+        "cork",
+        "milk",
+        "egg",
+        "wool",
+        "bacon",
+        "honeycomb",
+        "mushroom",
+        "downFeather",
+        "bigFeather",
+        "clay",
+        "apple",
+        "peach",
+        "watermelon",
+        "plum",
+        "grapes",
+        "fish",
+        "shrimp",
+        "lobster",
+        "scallop",
+        "pearl",
+        "seaweed",
+        "banana",
+        "coconut",
+        "pineapple",
+        "olive",
+        "lemon",
+        "aloe",
+        "mango1",
+        "cowfeed",
+        "chickenfeed",
+        "sheepfeed",
+        "pigfeed",
+        "beefeed",
+        "mushroomfeed",
+        "flour",
+        "bread",
+        "cookie",
+        "bagel",
+        "pizza",
+        "potatobread",
+        "bananabread",
+        "mushroomPie",
+        "strudel",
+        "marinepizza",
+        "dough",
+        "cream",
+        "cheese",
+        "butter",
+        "yogurt",
+        "peachyogurt",
+        "sugar",
+        "syrup",
+        "caramel",
+        "candy",
+        "caramelapple",
+        "jellybeans",
+        "toffee",
+        "candystick",
+        "lollipop",
+        "honeycandy",
+        "fruitjelly",
+        "chocobar",
+        "teacandies",
+        "mintlollipops",
+        "cottonCandy",
+        "chocolate",
+        "icecream",
+        "frozenyogurt",
+        "fruitice",
+        "eskimo",
+        "pineapplesorbet",
+        "roseSorbet",
+        "parfait",
+        "mintchocolateicecream",
+        "muffin",
+        "brownie",
+        "cupcake",
+        "doughnut",
+        "cheesecake",
+        "limepie",
+        "coconutmacaroon",
+        "honeycake",
+        "strawberrycake",
+        "weddingcake",
+        "coffeecake",
+        "chocolatecake",
+        "carrotcake",
+        "mintcake",
+        "tiramisu",
+        "chips",
+        "popcorn",
+        "cornchips",
+        "granola",
+        "canape",
+        "glazedbacon",
+        "puffedrice",
+        "saltedpeanut",
+        "frenchfries",
+        "sandwich",
+        "cheeseburger",
+        "bakedpotatoes",
+        "fishburger",
+        "fish_chips",
+        "peanot_crepes",
+        "hot_dog",
+        "corndog",
+        "cheese_coney",
+        "carrot_hotdog",
+        "taco",
+        "nachos",
+        "burrito",
+        "jalapeno",
+        "falafel",
+        "hummus",
+        "guacamole",
+        "bacon_eggs",
+        "pancake",
+        "milkshake",
+        "grap_fizz",
+        "chocolate_smoothie",
+        "watermelon_fresh",
+        "tropical_mix",
+        "cold_tea",
+        "minticetea",
+        "applefresh",
+        "espresso",
+        "cappuccino",
+        "mokachino",
+        "hot_chocolate",
+        "blacktea",
+        "whitetea",
+        "rosetea",
+        "tibettea",
+        "oolong",
+        "appletea",
+        "coconut_raf",
+        "woolfabric",
+        "cottonfabric",
+        "silkfabric",
+        "nylonthread",
+        "shirt",
+        "sweater",
+        "coat",
+        "hat",
+        "suit",
+        "tiroleanHat",
+        "eveningdress",
+        "dress",
+        "flipflops",
+        "sandals",
+        "sneakers",
+        "boots",
+        "heels",
+        "downBoots",
+        "downJacket",
+        "bathrobeslippers",
+        "paper",
+        "papertowel",
+        "wallpapers",
+        "book",
+        "stickers",
+        "marker",
+        "eraser",
+        "corkboard",
+        "table",
+        "chair",
+        "couch",
+        "bed",
+        "floor_lamp",
+        "pillow",
+        "duvet",
+        "tissue",
+        "dispenser",
+        "lounge",
+        "sushi",
+        "lobster_nigiri",
+        "scallopsushi",
+        "soup",
+        "misosoup",
+        "corn_soup",
+        "mushroomSoup",
+        "gazpacho",
+        "bouillabaisse",
+        "seaweadsalad",
+        "seaweedsalad",
+        "mushroomSalad",
+        "seafood_salad",
+        "nicoise",
+        "rice_noodle",
+        "thai_sauce",
+        "sauce",
+        "quiche",
+        "fried_fish",
+        "rice_casserole",
+        "baked_lobster",
+        "lobster_newburg",
+        "scallopskew",
+        "grilledMeat",
+        "ratatouille",
+        "profiteroles",
+        "gyoza",
+        "readylunch",
+        "frozenvegetables",
+        "seafoodcocktail",
+        "oliveoil",
+        "bruschetta",
+        "arrabbiata",
+        "ravioli",
+        "lasagna",
+        "mole",
+        "vegancheesecake",
+        "jam",
+        "strawberry_jam",
+        "peach_jam",
+        "watermelon_jam",
+        "plum_jam"
+    ]);
+    const rawItems = new Set([
+        "TNT",
+        "pick",
+        "axe",
+        "drill",
+        "jackhammer",
+        "powersaw",
+        "gem1",
+        "gem2",
+        "gem3",
+        "sgc1x",
+        "sgc2x",
+        "sgc3x",
+        "o1",
+        "o2",
+        "o3",
+        "o4",
+        "o5",
+        "m1",
+        "m2",
+        "m3",
+        "sm1x",
+        "sm2x",
+        "sm3x",
+        "BronzeBullionCounter",
+        "SilverBullionCounter",
+        "GoldBullionCounter",
+        "PlatinumBullionCounter",
+        "sbbcx",
+        "ssbcx",
+        "sgbcx",
+        "spbcx"
+    ]);
+    const directCounters = new Set([
+        "paintRedMat",
+        "pick",
+        "Plita",
+        "hammerMat",
+        "nailMat",
+        "Glass",
+        "jackhammer",
+        "Brick",
+        "powersaw",
+        "drill",
+        "TNT",
+        "axe"
+    ]);
+    const bullion = new Set(["BronzeBullion", "SilverBullion", "GoldBullion", "PlatinumBullion"]);
+    const wanted = new Set(rawItems);
+    for (const id of resources) {
+        if (bullion.has(id)) continue;
+        wanted.add(directCounters.has(id) ? id : id + "Counter");
+    }
+    const donorVars = new Map();
+    for (const tag of donorGlobal.text.match(/<Var\b[^>]*\/>/gi) || []) {
+        const name = restoreAttr(tag, "name");
+        if (name && !donorVars.has(name)) donorVars.set(name, tag);
+    }
+    const transfer = new Map();
+    for (const id of resources) {
+        if (bullion.has(id)) continue;
+        const name = directCounters.has(id) ? id : id + "Counter";
+        const tag = donorVars.get(name);
+        if (!tag) continue;
+        const n = Number.parseInt(restoreAttr(tag, "v"), 10);
+        if (Number.isFinite(n) && n >= 1) transfer.set(name, `<Var name="${name}" v="${n}" t="i"/>`);
+    }
+    for (const name of rawItems) {
+        const tag = donorVars.get(name);
+        if (!tag || !/^-?\d+$/.test(restoreAttr(tag, "v") || "")) continue;
+        transfer.set(name, tag);
+    }
+    if (!transfer.size) return baseXml;
+    const present = new Set();
+    let globalText = baseGlobal.text.replace(/<Var\b[^>]*\/>/gi, tag => {
+        const name = restoreAttr(tag, "name");
+        if (!name || !transfer.has(name)) return tag;
+        present.add(name);
+        return transfer.get(name);
+    });
+    const missing = [];
+    for (const [name, tag] of transfer) if (!present.has(name)) missing.push(tag);
+    if (missing.length) {
+        const closeAt = globalText.lastIndexOf("</Global>");
+        if (closeAt >= 0) globalText = globalText.slice(0, closeAt) + missing.join("\n  ") + "\n  " + globalText.slice(closeAt);
+    }
+    return baseXml.slice(0, baseGlobal.start) + globalText + baseXml.slice(baseGlobal.end);
+}
+function restoreCopyArtInfo(donorXml, baseXml) {
+    const donor = restoreFindTag(donorXml, "ArtInfo");
+    if (!donor) return baseXml;
+    const base = restoreFindTag(baseXml, "ArtInfo");
+    if (base) return baseXml.slice(0, base.start) + donor.text + baseXml.slice(base.end);
+    const laboratoryEnd = /<Laboratory\b[^>]*\/>|<\/Laboratory\s*>/i.exec(baseXml);
+    if (laboratoryEnd) {
+        const end = laboratoryEnd.index + laboratoryEnd[0].length;
+        return baseXml.slice(0, end) + "\n  " + donor.text + baseXml.slice(end);
+    }
+    const stash = /<BuildingsStash\b/i.exec(baseXml);
+    if (stash) return baseXml.slice(0, stash.index) + donor.text + "\n  " + baseXml.slice(stash.index);
+    const rootClose = /<\/root\s*>/i.exec(baseXml);
+    return rootClose ? baseXml.slice(0, rootClose.index) + donor.text + "\n" + baseXml.slice(rootClose.index) : baseXml;
+}
+function restoreActiveSeasonTicket(xml) {
+    const starts = /<SeasonTicket\b[^>]*>/gi;
+    let match;
+    while ((match = starts.exec(xml)) !== null) {
+        if (xml.slice(Math.max(0, match.index - 4), match.index).endsWith("Prev")) continue;
+        const block = restoreFindTag(xml, "SeasonTicket", match.index);
+        if (block) return block;
+    }
+    return null;
+}
+function restoreCopySeasonTicketBoosts(donorXml, baseXml) {
+    const donor = restoreActiveSeasonTicket(donorXml);
+    const base = restoreActiveSeasonTicket(baseXml);
+    if (!donor || !base) return baseXml;
+    const names = ["SP_BoostSpeedUpBuildings", "SP_BoostSpeedUpHarvest", "SP_BoostSpeedUpFarms",
+        "SP_BoostStorageCapacity", "SP_BoostSpeedUpAir", "SP_BoostSpeedUpTrains", "SP_BoostTrainMats"];
+    let ticket = base.text;
+    for (const name of names) {
+        const donorTag = restoreVarTag(donor.text, name);
+        if (!donorTag) continue;
+        const escaped = restoreEscapeRegExp(name);
+        const varRe = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*(?:\\/>|>[\\s\\S]*?<\\/Var\\s*>)`, "i");
+        if (varRe.test(ticket)) ticket = ticket.replace(varRe, () => donorTag);
+        else if (/<Vars\s*\/>/i.test(ticket)) ticket = ticket.replace(/<Vars\s*\/>/i, `<Vars>\n        ${donorTag}\n      </Vars>`);
+        else if (/<\/Vars\s*>/i.test(ticket)) ticket = ticket.replace(/<\/Vars\s*>/i, `        ${donorTag}\n      </Vars>`);
+        else ticket = ticket.replace(/<\/SeasonTicket\s*>/i, `  <Vars>\n        ${donorTag}\n      </Vars>\n    </SeasonTicket>`);
+    }
+    return baseXml.slice(0, base.start) + ticket + baseXml.slice(base.end);
+}
+const RESTORE_ACHIEVEMENT_DEFAULTS = ["marketBoom", "miner", "earthCenter", "strategyReserv", "factoryUpgrader", "collector", "teamwork", "casinoGame", "sendShips", "islandGoods", "collectBacon", "collectHoney", "collectorIslands", "progressWave", "downFeather", "metropolis", "community_developer", "entrepreneur", "lead_Architect", "population_boom", "construction_manager", "endless_fields", "magnate", "wacky_farmer", "urbanist_club", "honorary_freeman", "senior_train_driver", "road_champ", "production_genius", "customer_service_pro", "model_chicken_coop", "milky_way", "mushroom", "wool_art", "seaweed", "donate", "regataChampion", "match3_achievement"];
+const RESTORE_ACHIEVEMENT_THRESHOLDS = {"marketBoom": {"Achievement_MarketBoom": 16000}, "miner": {"Achievement_Miner": 14000}, "earthCenter": {"Achievement_EarthCenter": 17000}, "strategyReserv": {"Achievement_StrategyReserv": 3500}, "factoryUpgrader": {"Achievement_FactoryUpgrader": 42}, "collector": {"Achievement_Collector": 25}, "teamwork": {"Achievement_Teamwork": 20000}, "casinoGame": {"Achievement_CasinoGame": 4000}, "sendShips": {"Achievement_sendShips": 18000}, "islandGoods": {"Achievement_islandGoods": 110000}, "collectBacon": {"Achievement_CollectBacon": 15500}, "collectHoney": {"Achievement_CollectHoney": 14500}, "collectorIslands": {"Achievement_CollectorIslands": 30}, "progressWave": {"Achievement_progressWave": 165}, "downFeather": {"Achievement_DownFeather": 14000}, "metropolis": {"Achievement_IncreasedPopulation": 29000, "Achievement_IncreasedPopulation_Current": 12000}, "community_developer": {"Achievement_CommunityDeveloper": 70, "Achievement_CommunityDeveloper_Current": 70}, "entrepreneur": {"Achievement_FillOrders": 7100}, "lead_Architect": {"Achievement_BuiltHouses": 130, "Achievement_BuiltHouses_Current": 26}, "population_boom": {"Achievement_IncreasedPopulation": 29000, "Achievement_IncreasedPopulation_Current": 12000}, "construction_manager": {"Achievement_BuiltFactories": 45, "Achievement_BuiltFactories_Current": 45}, "endless_fields": {"Achievement_PlowedFields": 740000}, "magnate": {"Achievement_EarneCoins": 700000000}, "wacky_farmer": {"Achievement_GetFields": 132}, "urbanist_club": {"Achievement_ExpandField": 390}, "honorary_freeman": {"Achievement_EnteredGame": 235, "Achievement_EnteredGame_Current": 15}, "senior_train_driver": {"Achievement_SentTrain": 2300}, "road_champ": {"Achievement_BuiltRoad": 440, "Achievement_BuiltRoad_Current": 440}, "production_genius": {"Achievement_ProducedProducts": 400000}, "customer_service_pro": {"Achievement_FillOrders": 7100}, "model_chicken_coop": {"Achievement_CollectEggs": 60000}, "milky_way": {"Achievement_CollectMilk": 108000}, "mushroom": {"Achievement_CollectMushroom": 14600}, "wool_art": {"Achievement_CollectWool": 21200}, "seaweed": {"Achievement_seaweed": 20000}, "donate": {"Achievement_donate": 12500}, "regataChampion": {"Achievement_regataChampion": 1}, "match3_achievement": {"Achievement_CompleteMatch3Levels": 56000}};
+function restoreApplyAchievementRules(xml) {
+    const rewards = new Set(RESTORE_ACHIEVEMENT_DEFAULTS);
+    for (const match of xml.matchAll(/AchReward_([A-Za-z0-9_]+)/g)) rewards.add(match[1]);
+    const updates = new Map();
+    for (const key of rewards) {
+        updates.set("AchReward_" + key, 4);
+        const thresholds = RESTORE_ACHIEVEMENT_THRESHOLDS[key] || {};
+        for (const [name, limit] of Object.entries(thresholds)) {
+            const current = Number.parseInt(restoreVarValue(xml, name) || "0", 10) || 0;
+            updates.set(name, Math.max(current, limit));
+        }
+    }
+    const global = restoreFindTag(xml, "Global");
+    if (!global) return xml;
+    const present = new Set();
+    let text = global.text.replace(/<Var\b[^>]*\/>/gi, tag => {
+        const name = restoreAttr(tag, "name");
+        if (!name || !updates.has(name)) return tag;
+        present.add(name);
+        return `<Var name="${name}" v="${updates.get(name)}" t="i"/>`;
+    });
+    const missing = [];
+    for (const [name, value] of updates) if (!present.has(name)) missing.push(`<Var name="${name}" v="${value}" t="i"/>`);
+    if (missing.length) {
+        const closeAt = text.lastIndexOf("</Global>");
+        if (closeAt >= 0) text = text.slice(0, closeAt) + missing.join("\n  ") + "\n  " + text.slice(closeAt);
+    }
+    return xml.slice(0, global.start) + text + xml.slice(global.end);
+}
+function restoreMergeDeferredCoupons(donorXml, baseXml) {
+    const donorGlobal = restoreFindTag(donorXml, "Global");
+    const accepted = ["HireDealer", "LoadTrainAirport", "UpgradeFactory", "UpgradeTrain", "UpgradeIsland"];
+    const mapped = new Map();
+    const coupons = donorGlobal && restoreFindTag(donorGlobal.text, "coupons");
+    if (coupons) {
+        for (const tag of coupons.text.match(/<coupon\b[^>]*\/>/gi) || []) {
+            const id = restoreAttr(tag, "id");
+            if (!accepted.includes(id)) continue;
+            const n = Number.parseInt(restoreAttr(tag, "count"), 10);
+            if (Number.isFinite(n) && n > 0) mapped.set("Coupon" + id, Math.min(n, 10));
+        }
+    }
+    if (!mapped.size) for (const id of accepted) mapped.set("Coupon" + id, 3);
+    const current = restoreVarValue(baseXml, "GivingOffersDeferred") || "";
+    const combined = new Map();
+    for (const item of current.split(",")) {
+        const match = /^\s*([^:]+)\s*:\s*(-?\d+)\s*$/.exec(item);
+        if (match) combined.set(match[1], Number.parseInt(match[2], 10));
+    }
+    for (const [name, count] of mapped) combined.set(name, count);
+    const value = Array.from(combined, ([name, count]) => `${name}:${count}`).join(",");
+    return restoreSetVar(baseXml, "GivingOffersDeferred", value);
+}
+function restorePhaseTwo(baseXml, donorXml) {
+    const baseUser = (baseXml.match(/<Object\b[^>]*\buser="([^"]+)"/i) || [])[1];
+    const donorUser = (donorXml.match(/<Object\b[^>]*\buser="([^"]+)"/i) || [])[1];
+    // App transfers donor TownGround/Buildings to the target save, rewriting user IDs.
+    let groundDonor = restoreFindTag(donorXml, "TownGround", (donorXml.indexOf("</Zoo>") + 6) || 0);
+    let buildingsDonor = groundDonor ? restoreFindTag(donorXml, "Buildings", groundDonor.start) : null;
+    if (groundDonor) {
+        let ground = restoreReplaceUser(groundDonor.text, baseUser);
+        const startFrom = (baseXml.indexOf("</Zoo>") + 6) || 0;
+        const groundBase = restoreFindTag(baseXml, "TownGround", startFrom);
+        if (groundBase) baseXml = baseXml.slice(0, groundBase.start) + ground + baseXml.slice(groundBase.end);
+        if (buildingsDonor) {
+            const building = restoreReplaceUser(buildingsDonor.text, baseUser);
+            const currentGround = restoreFindTag(baseXml, "TownGround", startFrom);
+            const bBase = restoreFindTag(baseXml, "Buildings", currentGround ? currentGround.start : startFrom);
+            if (bBase) baseXml = baseXml.slice(0, bBase.start) + building + baseXml.slice(bBase.end);
+        }
+    }
+    if (donorUser && baseUser && donorUser !== baseUser) {
+        // Ensure copied top-level user-bound objects point to target account.
+        for (const tag of ["TownGround", "Buildings"]) {
+            const block = restoreFindTag(baseXml, tag, (baseXml.indexOf("</Zoo>") + 6) || 0);
+            if (block) baseXml = baseXml.slice(0, block.start) + restoreReplaceUser(block.text, baseUser) + baseXml.slice(block.end);
+        }
+    }
+    baseXml = restoreApplyAchievementRules(baseXml);
+    baseXml = restoreCopyFilteredGlobal(donorXml, baseXml);
+    baseXml = restoreTransferGlobalInventory(donorXml, baseXml);
+    for (const tag of ["Zoo", "ZooInfo", "ZooQuests"]) baseXml = restoreCopySection(donorXml, baseXml, tag);
+    baseXml = restoreCopyArtInfo(donorXml, baseXml);
+    for (const tag of ["Trains", "IslandsInfo", "Minigames", "DataStoreCollapseQuests", "QuestsBook", "DataStoreCollection",
+        "AirInfo", "AirOrders", "MapOrders", "Helic", "LevelInfo", "DailyBonusRewardDay6", "VipDailyBonusRewardDay6", "Upgrade",
+        "TimedEntityManager"]) baseXml = restoreCopySection(donorXml, baseXml, tag);
+    if (restoreFindTag(donorXml, "Minigames") && restoreFindTag(baseXml, "Minigames")) {
+        for (const tag of ["Mail", "ClanMail", "ReceivedGivings", "Balloons", "Ernie", "MagicBeansCenter"]) {
+            baseXml = restoreCopySection(donorXml, baseXml, tag);
+        }
+    }
+    baseXml = restoreCopySeasonTicketBoosts(donorXml, baseXml);
+    for (const name of ["MyBadge", "MyPicture", "MyTheme", "MyFrame", "MyStyle", "townName",
+        "m3Line", "m3Bomb", "m3RainbowBall", "m3Mallet", "m3HorizontalLine", "m3VerticalLine", "m3Reshuffle"]) {
+        const value = restoreVarValue(donorXml, name);
+        if (value !== null) baseXml = restoreSetVar(baseXml, name, value);
+    }
+    if (restoreFindTag(donorXml, "Minigames") && restoreFindTag(baseXml, "Minigames")) {
+        baseXml = restoreMergeDeferredCoupons(donorXml, baseXml);
+    }
+    return baseXml;
+}
+function mergeRestoreXml(baseXml, donorXml) {
+    if (typeof baseXml !== "string" || typeof donorXml !== "string" || !baseXml.trim().startsWith("<") || !donorXml.trim().startsWith("<")) {
+        throw new Error("يجب إرسال ملفي XML صالحين: serverXml وملف الصديق المفكوك");
+    }
+    let result = restorePhaseOne(baseXml.trim(), donorXml.trim());
+    result = restorePhaseTwo(result, donorXml.trim());
+    if (!result.includes("</root>")) throw new Error("XML الناتج غير مكتمل");
+    return result;
+}
+async function handleRestoreAccount(req, res) {
+    try {
+        const body = req.body || {};
+        const cityId = String(body.cityId || body.fetchCityId || "").trim();
+        const cityVer = Number(body.cityVer || body.cver || 0);
+        let serverXml = body.serverXml || body.baseXml || "";
+        if (!serverXml && body.serverXmlBase64) {
+            serverXml = Buffer.from(String(body.serverXmlBase64), "base64").toString("utf8");
+        }
+        if (!cityId) return res.status(400).json({ ok: false, error: "cityId مطلوب" });
+        if (!serverXml) return res.status(400).json({ ok: false, error: "serverXml مطلوب: XML الحساب الحالي" });
+        if (!Number.isFinite(cityVer) || cityVer < 0) return res.status(400).json({ ok: false, error: "cityVer غير صالح" });
+        const upstream = await requestFetchCity(cityId, cityVer);
+        if (!upstream || !upstream.result || typeof upstream.result.data !== "string") throw new Error("Upstream JSON لا يحتوي result.data");
+        const donorXml = decodeSaveCity(Buffer.from(upstream.result.data, "base64"));
+        const merged = mergeRestoreXml(String(serverXml), donorXml);
+        console.log(`[Restore] merged cityId=${cityId} base=${String(serverXml).length} donor=${donorXml.length} result=${merged.length}`);
+        res.status(200).set("Content-Type", "application/xml; charset=utf-8").set("Cache-Control", "no-store");
+        return res.send(merged);
+    } catch (err) {
+        console.error("[Restore] ERROR:", err && err.stack ? err.stack : err);
+        return res.status(500).json({ ok: false, error: String(err && err.message ? err.message : err) });
     }
 }
 
@@ -4019,65 +3629,29 @@ async function handleDecodeFriends(
 // ROUTES
 // ============================================================
 
-// ------------------------------------------------------------
-// OLD JSON
-// ------------------------------------------------------------
-
 router.post(
     "/",
     handleFetchCity
 );
 
-// ------------------------------------------------------------
-// NEW COMBINED REQUEST
-// ------------------------------------------------------------
-//
-// Body:
-//
-// TWM2
-// + LocalInfo
-// + mGameInfo
-//
-// Header:
-//
-// X-Selected-City-Id
-//
-// أو X-City-Id للتوافق مع Lua القديم.
-//
-// cityVer لا نأخذه من Header.
-// ------------------------------------------------------------
-
 router.post(
     "/fetch-city",
-    express.raw({
-        type:
-            "application/octet-stream",
-
-        limit:
-            "50mb"
-    }),
-    handleRawMerge
+    handleFetchCity
 );
-
-// ------------------------------------------------------------
-// LOCALINFO FRIEND LIST
-// ------------------------------------------------------------
 
 router.post(
     "/decode-friends",
     express.raw({
-        type:
-            "application/octet-stream",
-
-        limit:
-            "50mb"
+        type: "application/octet-stream",
+        limit: "50mb"
     }),
     handleDecodeFriends
 );
 
-// ============================================================
-// LOADED
-// ============================================================
+router.post(
+    "/restore-account",
+    handleRestoreAccount
+);
 
 console.log(
     "[FetchCity] module loaded"
