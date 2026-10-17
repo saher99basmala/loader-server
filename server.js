@@ -1,6 +1,6 @@
 const express = require("express");
 const fetch = require("node-fetch");
-const session = require("exp -session");
+const session = require("express-session");
 
 const app = express();
 
