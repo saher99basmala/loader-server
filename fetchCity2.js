@@ -3628,6 +3628,72 @@ function decodeRestoreLocalFile(input) {
     }
     throw new Error(`تعذر فك ملف الحساب المحلي بصيغة LocalInfo/FetchCity: ${failures.join(" | ")}`);
 }
+function restoreCopyVarFromSection(donorXml, baseXml, sectionName, varName) {
+    const donorSection = restoreFindTag(donorXml, sectionName);
+    const baseSection = restoreFindTag(baseXml, sectionName);
+    if (!donorSection || !baseSection) return baseXml;
+    const donorVar = restoreVarTag(donorSection.text, varName);
+    if (!donorVar) return baseXml;
+    const escaped = restoreEscapeRegExp(varName);
+    const varRe = new RegExp(`<Var\b(?=[^>]*\bname=["']${escaped}["'])[^>]*/>`, "i");
+    let text = baseSection.text;
+    if (varRe.test(text)) text = text.replace(varRe, () => donorVar);
+    else if (/<Vars\s*\/>/i.test(text)) text = text.replace(/<Vars\s*\/>/i, `<Vars>\n        ${donorVar}\n      </Vars>`);
+    else if (/<\/Vars\s*>/i.test(text)) text = text.replace(/<\/Vars\s*>/i, `        ${donorVar}\n      </Vars>`);
+    else text = text.replace(new RegExp(`</${restoreEscapeRegExp(sectionName)}\s*>`, "i"), `  <Vars>\n    ${donorVar}\n  </Vars>\n</${sectionName}>`);
+    return baseXml.slice(0, baseSection.start) + text + baseXml.slice(baseSection.end);
+}
+
+// Port of p012g0.C.l: preserve the same section order used by the APK.
+function restorePhaseTwoExact(baseXml, donorXml) {
+    const baseUser = (baseXml.match(/<Object\\b[^>]*\\buser="([^"]+)"/i) || [])[1];
+    const donorUser = (donorXml.match(/<Object\\b[^>]*\\buser="([^"]+)"/i) || [])[1];
+    let result = baseXml;
+    const donorGround = restoreFindTag(donorXml, "TownGround", Math.max(0, donorXml.indexOf("</Zoo>") + 6));
+    if (donorGround) {
+        const ground = restoreReplaceUser(donorGround.text, baseUser);
+        const baseGround = restoreFindTag(result, "TownGround", Math.max(0, result.indexOf("</Zoo>") + 6));
+        if (baseGround) result = result.slice(0, baseGround.start) + ground + result.slice(baseGround.end);
+        else result = restoreCopySection(donorXml, result, "TownGround");
+        const donorBuildings = restoreFindTag(donorXml, "Buildings", donorGround.start);
+        if (donorBuildings) {
+            const building = restoreReplaceUser(donorBuildings.text, baseUser);
+            const currentGround = restoreFindTag(result, "TownGround", Math.max(0, result.indexOf("</Zoo>") + 6));
+            const baseBuildings = restoreFindTag(result, "Buildings", currentGround ? currentGround.start : 0);
+            if (baseBuildings) result = result.slice(0, baseBuildings.start) + building + result.slice(baseBuildings.end);
+        }
+    }
+    if (donorUser && baseUser && donorUser !== baseUser) {
+        for (const tag of ["TownGround", "Buildings"]) {
+            const block = restoreFindTag(result, tag, Math.max(0, result.indexOf("</Zoo>") + 6));
+            if (block) result = result.slice(0, block.start) + restoreReplaceUser(block.text, baseUser) + result.slice(block.end);
+        }
+    }
+    for (const tag of ["Zoo", "ZooInfo", "ZooQuests"]) result = restoreCopySection(donorXml, result, tag);
+    result = restoreCopyArtInfo(donorXml, result);
+    for (const tag of ["Trains", "IslandsInfo", "Minigames", "DataStoreCollapseQuests", "QuestsBook", "DataStoreCollection",
+        "AirInfo", "AirOrders", "MapOrders", "Helic", "LevelInfo", "DailyBonusRewardDay6", "VipDailyBonusRewardDay6", "Upgrade"]) {
+        result = restoreCopySection(donorXml, result, tag);
+    }
+    result = restoreCopySeasonTicketBoosts(donorXml, result);
+    result = restoreCopyVarFromSection(donorXml, result, "Minigames", "Lives_infTime_Match3");
+    result = restoreCopySection(donorXml, result, "TimedEntityManager");
+    result = restoreApplyAchievementRules(result);
+    result = restoreTransferGlobalInventory(donorXml, result);
+    for (const name of ["MyBadge", "MyPicture", "MyTheme", "MyFrame", "MyStyle", "townName"]) {
+        const value = restoreVarValue(donorXml, name);
+        if (value !== null) result = restoreSetVar(result, name, value);
+    }
+    result = restoreCopyFilteredGlobal(donorXml, result);
+    if (restoreFindTag(donorXml, "Minigames") && restoreFindTag(result, "Minigames")) {
+        for (const tag of ["Mail", "ClanMail", "ReceivedGivings", "Balloons", "Ernie", "MagicBeansCenter"]) {
+            result = restoreCopySection(donorXml, result, tag);
+        }
+        result = restoreMergeDeferredCoupons(donorXml, result);
+    }
+    return result;
+}
+
 function mergeRestorePhase(baseXml, donorXml, phase) {
     if (typeof baseXml !== "string" || typeof donorXml !== "string" ||
         !baseXml.trim().startsWith("<") || !donorXml.trim().startsWith("<")) {
@@ -3636,7 +3702,7 @@ function mergeRestorePhase(baseXml, donorXml, phase) {
     const normalizedPhase = Number(phase || 1);
     let result = baseXml.trim();
     if (normalizedPhase === 1) result = restorePhaseOne(result, donorXml.trim());
-    else if (normalizedPhase === 2) result = restorePhaseTwo(result, donorXml.trim());
+    else if (normalizedPhase === 2) result = restorePhaseTwoExact(result, donorXml.trim());
     else throw new Error("phase يجب أن يكون 1 أو 2");
     if (!result.includes("</root>")) throw new Error("XML الناتج غير مكتمل");
     return result;
