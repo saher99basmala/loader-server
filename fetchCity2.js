@@ -2160,6 +2160,17 @@ function decodeFriendFile(
 // FRIEND XML ATTRIBUTE
 // ============================================================
 
+function decodeXmlEntities(value) {
+    return String(value || "")
+        .replace(/&quot;/gi, "\"")
+        .replace(/&apos;/gi, "'")
+        .replace(/&#39;/gi, "'")
+        .replace(/&#x27;/gi, "'")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&amp;/gi, "&");
+}
+
 function attrFromXmlTag(
     tag,
     name
@@ -2178,7 +2189,7 @@ function attrFromXmlTag(
         doubleQuote
     ) {
 
-        return doubleQuote[1];
+        return decodeXmlEntities(doubleQuote[1]);
     }
 
     const singleQuote =
@@ -2194,7 +2205,7 @@ function attrFromXmlTag(
         singleQuote
     ) {
 
-        return singleQuote[1];
+        return decodeXmlEntities(singleQuote[1]);
     }
 
     return "";
@@ -3617,12 +3628,27 @@ function decodeRestoreLocalFile(input) {
     }
     throw new Error(`تعذر فك ملف الحساب المحلي بصيغة LocalInfo/FetchCity: ${failures.join(" | ")}`);
 }
+function mergeRestorePhase(baseXml, donorXml, phase) {
+    if (typeof baseXml !== "string" || typeof donorXml !== "string" ||
+        !baseXml.trim().startsWith("<") || !donorXml.trim().startsWith("<")) {
+        throw new Error("يجب إرسال ملفي XML صالحين");
+    }
+    const normalizedPhase = Number(phase || 1);
+    let result = baseXml.trim();
+    if (normalizedPhase === 1) result = restorePhaseOne(result, donorXml.trim());
+    else if (normalizedPhase === 2) result = restorePhaseTwo(result, donorXml.trim());
+    else throw new Error("phase يجب أن يكون 1 أو 2");
+    if (!result.includes("</root>")) throw new Error("XML الناتج غير مكتمل");
+    return result;
+}
+
 async function handleRestoreAccount(req, res) {
     try {
         const rawBody = Buffer.isBuffer(req.body) ? req.body : null;
         const body = rawBody ? {} : (req.body || {});
         const cityId = String(body.cityId || body.fetchCityId || (req.query && req.query.cityId) || "").trim();
         const cityVer = Number(body.cityVer || body.cver || (req.query && req.query.cityVer) || 0);
+        const phase = Number(body.phase || (req.query && req.query.phase) || 1);
         let serverXml = body.serverXml || body.baseXml || "";
         if (rawBody) serverXml = decodeRestoreLocalFile(rawBody);
         else if (body.serverXmlBase64) serverXml = decodeRestoreLocalFile(Buffer.from(String(body.serverXmlBase64), "base64"));
@@ -3633,8 +3659,8 @@ async function handleRestoreAccount(req, res) {
         if (!upstream || !upstream.result || typeof upstream.result.data !== "string") throw new Error("Upstream JSON لا يحتوي result.data");
         const decodedDonor = decodeSaveCity(Buffer.from(upstream.result.data, "base64"));
         const donorXml = (Buffer.isBuffer(decodedDonor) ? decodedDonor.toString("utf8") : String(decodedDonor)).replace(/^\uFEFF/, "").trim();
-        const merged = mergeRestoreXml(String(serverXml), donorXml);
-        console.log(`[Restore] merged cityId=${cityId} base=${String(serverXml).length} donor=${donorXml.length} result=${merged.length}`);
+        const merged = mergeRestorePhase(String(serverXml), donorXml, phase);
+        console.log(`[Restore] phase=${phase} cityId=${cityId} base=${String(serverXml).length} donor=${donorXml.length} result=${merged.length}`);
         res.status(200).set("Content-Type", "application/xml; charset=utf-8").set("Cache-Control", "no-store");
         return res.send(merged);
     } catch (err) {
