@@ -1506,7 +1506,131 @@ EDITORS
 ========================================
 */
 
+
+/*
+========================================
+SMALI ADDITIONS (merged without changing existing editors)
+========================================
+*/
+
+function changeVarIfPresent(xml, varName, newValue) {
+    try {
+        return changeVar(xml, varName, newValue);
+    } catch (error) {
+        return Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
+    }
+}
+
+function changeManyVars(xml, values) {
+    let result = Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
+    if (!values || typeof values !== "object" || Array.isArray(values)) {
+        throw new Error("صيغة المتغيرات العامة غير صحيحة");
+    }
+    for (const [name, value] of Object.entries(values)) {
+        result = changeVarIfPresent(result, name, value);
+    }
+    return result;
+}
+
+function setExpeditionEnergy(xml, value) {
+    const amount = Number(value);
+    if (!Number.isInteger(amount) || amount < 0) {
+        throw new Error("طاقة Expedition يجب أن تكون رقمًا صحيحًا موجبًا أو صفرًا");
+    }
+    return changeManyVars(xml, { expeditionEnergy: amount });
+}
+
+function setTimedMultipliers(xml, value = 2) {
+    const multiplier = Number(value);
+    if (!Number.isFinite(multiplier) || multiplier <= 0) {
+        throw new Error("قيمة المضاعف يجب أن تكون أكبر من صفر");
+    }
+    const safe = String(multiplier);
+    const block = `<TimedEntityManager configVersion="1">` +
+        `\n\t<item entityType="MayorsQuestsMultiplier" multiplier="${safe}"/>` +
+        `\n\t<item entityType="Competition1vs1Multiplier" multiplier="${safe}"/>` +
+        `\n\t<item entityType="Merge2EnergyMultiplier" multiplier="${safe}"/>` +
+        `\n\t<item entityType="ShortContestNote" multiplier="${safe}"/>` +
+        `\n\t<item entityType="BigContestCup" multiplier="${safe}"/>` +
+        `\n\t<item entityType="ExpeditionEnergyMultiplier" multiplier="${safe}"/>` +
+        `\n\t<item entityType="ArcheryMultiplier" multiplier="${safe}"/>` +
+        `\n\t<item entityType="EventScoreMultiplier" multiplier="${safe}"/>` +
+        `\n\t<item entityType="RoomScoreMultiplier" multiplier="${safe}"/>` +
+        `\n\t<item entityType="CascadeMultiplier" multiplier="${safe}"/>` +
+        `\n\t<item entityType="SeasonMiniGameProgressMultiplier" multiplier="${safe}"/>` +
+        `\n\t<item entityType="RegataMiniGameProgressMultiplier" multiplier="${safe}"/>` +
+        `\n</TimedEntityManager>`;
+    const text = (Buffer.isBuffer(xml) ? xml : Buffer.from(xml)).toString("utf8");
+    const pattern = /<TimedEntityManager\b[^>]*>[\s\S]*?<\/TimedEntityManager>|<TimedEntityManager\b[^>]*\/>/i;
+    const updated = pattern.test(text) ? text.replace(pattern, block) : `${text}\n${block}\n`;
+    return Buffer.from(updated, "utf8");
+}
+
+
+// وظائف ItemActivity المستخرجة من ItemActivity.smali، مع إبقاء المحررات السابقة كما هي.
+function iaVars(xml, values, overwrite = false) {
+    let out = Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
+    if (!values || typeof values !== "object" || Array.isArray(values)) return out;
+    for (const [name, raw] of Object.entries(values)) {
+        const n = Number(raw);
+        if (!Number.isFinite(n)) continue;
+        // changeManyVars يستخدم نفس صيغة Global/Var الحالية ولا ينشئ نسخًا مكررة.
+        const current = Number(getVarValue(out.toString("utf8"), name));
+        const value = overwrite || !Number.isFinite(current) ? n : current + n;
+        out = changeManyVars(out, { [name]: value });
+    }
+    return out;
+}
+function iaList(value) {
+    return Array.isArray(value) ? [...new Set(value.map(String).map(x => x.trim()).filter(Boolean))] : [];
+}
+function iaMergeSkins(xml, value) {
+    const ids = iaList(value);
+    if (!ids.length) return Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
+    let s = (Buffer.isBuffer(xml) ? xml : Buffer.from(xml)).toString("utf8");
+    s = s.replace(/(<type\b[^>]*\bavailable=["'])([^"']*)(["'][^>]*>)/gi, (m, a, old, z) => `${a}${[...new Set(old.split(/[|,]/).concat(ids).map(x => x.trim()).filter(Boolean))].join("|")}${z}`);
+    return Buffer.from(s);
+}
+function iaApply(xml, o = {}) {
+    let out = Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
+    const vars = { ...(o.globalVars || {}), ...(o.itemValues || {}), ...(o.barnItems || {}) };
+    for (const k of ["money", "moneyCash", "expeditionEnergy", "AirScore"]) if (o[k] !== undefined) vars[k] = o[k];
+    out = iaVars(out, vars);
+    out = iaVars(out, o.stats);
+    if (o.eventToken !== undefined) out = iaVars(out, { "TrainJourney.CurrencyProvider.Amount": o.eventToken, "TrainJourney.CurrencyProvider.TokensEarned": o.eventToken }, true);
+    if (o.tradeLogicTokens !== undefined) out = iaVars(out, { additionalTokens: o.tradeLogicTokens }, true);
+    if (o.yearAccount !== undefined) out = iaVars(out, { gameStartDate: o.yearAccount }, true);
+    if (o.level && typeof o.level === "object") out = iaVars(out, o.level, true);
+    const u = o.specialUnlocks || {};
+    if (u.badges) out = EDITORS.unlockedBadges(out);
+    if (u.expRanks) out = EDITORS.unlockedExpRanks(out);
+    if (u.frames) out = EDITORS.unlockedFrames(out);
+    if (u.styles) out = EDITORS.unlockedStyles(out);
+    if (o.stickers) { out = EDITORS.newChatEmoji(out); out = EDITORS.unlockedChatEmoji(out); }
+    if (o.avatarProfile) out = EDITORS.unlockAllAvatars(out);
+    if (o.expandLand) out = EDITORS.unlockLandExpansions(out);
+    if (o.unlockAchievementProfile) out = iaVars(out, { GivingOffersDeferred: 1 }, true);
+    if (o.maxFactoryTrainIsland) out = iaVars(out, { factoryMaxLevel: o.maxFactoryTrainIsland, trainMaxLevel: o.maxFactoryTrainIsland, islandMaxLevel: o.maxFactoryTrainIsland }, true);
+    if (o.museumArtifact) out = iaVars(out, { RequestedDiggingMuseumResources: 1, RequestedMuseumResources: 1 }, true);
+    const st = o.seasonTicket || {};
+    if (st.goldenTicket) out = iaVars(out, { premium: 1, score: 2000 }, true);
+    if (st.extraBarn) out = iaVars(out, { freeAmbarInc: 1 }, false);
+    if (st.speedUpAir) out = iaVars(out, { SP_BoostSpeedUpAir: 1 }, true);
+    if (st.speedUpFarms) out = iaVars(out, { SP_BoostSpeedUpFarms: 1 }, true);
+    if (st.speedUpHarvest) out = iaVars(out, { SP_BoostSpeedUpHarvest: 1 }, true);
+    if (st.speedUpBuildings) out = iaVars(out, { SP_BoostSpeedUpBuildings: 1 }, true);
+    if (o.x2Days) out = setTimedMultipliers(out, Number(o.x2Days) || 2);
+    if (o.skins) out = iaMergeSkins(out, o.skins);
+    // All Decor في التطبيق يمرر المعرفات المختارة والعدد؛ نخزنها عبر محرر الديكور الموجود إن توفر.
+    if (o.decorations && EDITORS.allDecorations) out = EDITORS.allDecorations(out, { ids: iaList(o.decorations), count: Number(o.decorationCount) || 1 });
+    if (o.marketSlots) out = iaVars(out, { slotsCount: o.marketSlots }, true);
+    if (o.mineDepth) out = iaVars(out, { mineDepth: o.mineDepth }, false);
+    return out;
+}
+
 const EDITORS = {
+
+    itemActivity: (xml, value) => iaApply(xml, value || {}),
 
 
     /*
@@ -1873,7 +1997,24 @@ const EDITORS = {
                 135
             );
 
-        }
+        },
+
+
+    /* Smali exposes the lowercase form; retain the old uppercase key too. */
+    unlockedBadges:
+        function(xml) {
+            return changeDataElem(xml, "UnlockedBadges", UNLOCKED_BADGES_VALUE);
+        },
+
+    expeditionEnergy:
+        function(xml, value) {
+            return setExpeditionEnergy(xml, value);
+        },
+
+    timedMultipliers:
+        function(xml, value) {
+            return setTimedMultipliers(xml, value === undefined ? 2 : value);
+        },
 
 };
 
@@ -2107,6 +2248,12 @@ module.exports = {
     REGATA_REAL_END_TIME_STEP,
 
     EDITORS,
+
+    changeManyVars,
+
+    setExpeditionEnergy,
+
+    setTimedMultipliers,
 
     ALL_CHAT_EMOJI_IDS,
 
