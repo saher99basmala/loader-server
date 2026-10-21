@@ -3,21 +3,21 @@
 mGameInfoEditor.js
 ========================================
 
-- تعديل Vars
-- تعديل DataElem
-- تعديل Level
-- فتح جميع البطاقات
-- فتح توسعات الأراضي
-- فتح جميع الـ Avatars
-- فتح جميع الـ Stickers / Chat Emojis
-- تعديل Regata Tasks
+- طھط¹ط¯ظٹظ„ Vars
+- طھط¹ط¯ظٹظ„ DataElem
+- طھط¹ط¯ظٹظ„ Level
+- ظپطھط­ ط¬ظ…ظٹط¹ ط§ظ„ط¨ط·ط§ظ‚ط§طھ
+- ظپطھط­ طھظˆط³ط¹ط§طھ ط§ظ„ط£ط±ط§ط¶ظٹ
+- ظپطھط­ ط¬ظ…ظٹط¹ ط§ظ„ظ€ Avatars
+- ظپطھط­ ط¬ظ…ظٹط¹ ط§ظ„ظ€ Stickers / Chat Emojis
+- طھط¹ط¯ظٹظ„ Regata Tasks
 ========================================
 */
 
 
 /*
 ========================================
-تعديل Var عام
+طھط¹ط¯ظٹظ„ Var ط¹ط§ظ…
 ========================================
 */
 
@@ -51,7 +51,7 @@ function changeVar(
     if (!match) {
 
         throw new Error(
-            `لم يتم العثور على Var: ${varName}`
+            `ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ Var: ${varName}`
         );
 
     }
@@ -95,7 +95,7 @@ function changeVar(
 
 /*
 ========================================
-تعديل DataElem عام
+طھط¹ط¯ظٹظ„ DataElem ط¹ط§ظ…
 ========================================
 */
 
@@ -129,7 +129,7 @@ function changeDataElem(
     if (!match) {
 
         throw new Error(
-            `لم يتم العثور على DataElem: ${elemName}`
+            `ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ DataElem: ${elemName}`
         );
 
     }
@@ -146,7 +146,7 @@ function changeDataElem(
     if (!valueMatch) {
 
         throw new Error(
-            `لم يتم العثور على الخاصية value داخل ${elemName}`
+            `ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط§ظ„ط®ط§طµظٹط© value ط¯ط§ط®ظ„ ${elemName}`
         );
 
     }
@@ -187,10 +187,10 @@ function changeDataElem(
 
 /*
 ========================================
-تعديل المستوى
+طھط¹ط¯ظٹظ„ ط§ظ„ظ…ط³طھظˆظ‰
 ========================================
 
-المستوى الحقيقي في الحفظ:
+ط§ظ„ظ…ط³طھظˆظ‰ ط§ظ„ط­ظ‚ظٹظ‚ظٹ ظپظٹ ط§ظ„ط­ظپط¸:
 
 <Var name="levelup" v="1089" t="i"/>
 
@@ -211,7 +211,7 @@ function changeLevel(
     ) {
 
         throw new Error(
-            "المستوى يجب أن يكون رقمًا صحيحًا"
+            "ط§ظ„ظ…ط³طھظˆظ‰ ظٹط¬ط¨ ط£ظ† ظٹظƒظˆظ† ط±ظ‚ظ…ظ‹ط§ طµط­ظٹط­ظ‹ط§"
         );
 
     }
@@ -224,12 +224,12 @@ function changeLevel(
         xml.toString("utf8");
 
     /*
-    البحث عن:
+    ط§ظ„ط¨ط­ط« ط¹ظ†:
 
     name="levelup"
 
-    سواء كانت علامات الاقتباس
-    " أو '
+    ط³ظˆط§ط، ظƒط§ظ†طھ ط¹ظ„ط§ظ…ط§طھ ط§ظ„ط§ظ‚طھط¨ط§ط³
+    " ط£ظˆ '
     */
 
     const pattern =
@@ -241,7 +241,7 @@ function changeLevel(
     if (!match) {
 
         throw new Error(
-            'لم يتم العثور على عنصر name="levelup"'
+            'ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط¹ظ†طµط± name="levelup"'
         );
 
     }
@@ -250,7 +250,7 @@ function changeLevel(
         match[0];
 
     /*
-    تغيير قيمة v فقط
+    طھط؛ظٹظٹط± ظ‚ظٹظ…ط© v ظپظ‚ط·
     */
 
     const newElement =
@@ -277,7 +277,7 @@ function changeLevel(
         );
 
     /*
-    تأكيد أن القيمة تغيرت فعليًا
+    طھط£ظƒظٹط¯ ط£ظ† ط§ظ„ظ‚ظٹظ…ط© طھط؛ظٹط±طھ ظپط¹ظ„ظٹظ‹ط§
     */
 
     const verify =
@@ -288,7 +288,7 @@ function changeLevel(
     if (!verify) {
 
         throw new Error(
-            'فشل التحقق من تعديل levelup'
+            'ظپط´ظ„ ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† طھط¹ط¯ظٹظ„ levelup'
         );
 
     }
@@ -302,7 +302,7 @@ function changeLevel(
 
 /*
 ========================================
-القيم الثابتة
+ط§ظ„ظ‚ظٹظ… ط§ظ„ط«ط§ط¨طھط©
 ========================================
 */
 
@@ -368,7 +368,7 @@ function unlockAllCards(
     if (!openMatch) {
 
         throw new Error(
-            "لم يتم العثور على OwnedCards"
+            "ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ OwnedCards"
         );
 
     }
@@ -445,7 +445,7 @@ function unlockAllCards(
     ) {
 
         throw new Error(
-            "لم يتم العثور على نهاية OwnedCards"
+            "ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ظ†ظ‡ط§ظٹط© OwnedCards"
         );
 
     }
@@ -511,7 +511,7 @@ function unlockLandExpansions(
         0;
 
     /*
-    الشكل الأساسي
+    ط§ظ„ط´ظƒظ„ ط§ظ„ط£ط³ط§ط³ظٹ
     */
 
     const patternSingle =
@@ -530,7 +530,7 @@ function unlockLandExpansions(
         );
 
     /*
-    دعم الشكل باستخدام "
+    ط¯ط¹ظ… ط§ظ„ط´ظƒظ„ ط¨ط§ط³طھط®ط¯ط§ظ… "
     */
 
     const patternDouble =
@@ -1255,7 +1255,7 @@ function changeRegataTasks(
 
 
     /*
-    البحث عن Regata
+    ط§ظ„ط¨ط­ط« ط¹ظ† Regata
     */
 
     const regataRegex =
@@ -1269,7 +1269,7 @@ function changeRegataTasks(
     if (!regataMatch) {
 
         throw new Error(
-            "لم يتم العثور على عنصر Regata"
+            "ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط¹ظ†طµط± Regata"
         );
 
     }
@@ -1282,7 +1282,7 @@ function changeRegataTasks(
 
 
     /*
-    حذف MyOldTask القديمة
+    ط­ط°ظپ MyOldTask ط§ظ„ظ‚ط¯ظٹظ…ط©
     */
 
     regata =
@@ -1293,7 +1293,7 @@ function changeRegataTasks(
 
 
     /*
-    استخراج user
+    ط§ط³طھط®ط±ط§ط¬ user
     */
 
     const userMatch =
@@ -1308,7 +1308,7 @@ function changeRegataTasks(
 
 
     /*
-    البحث عن FreeTask
+    ط§ظ„ط¨ط­ط« ط¹ظ† FreeTask
     */
 
     const freeTaskRegex =
@@ -1347,14 +1347,14 @@ function changeRegataTasks(
     if (!freeTaskId) {
 
         throw new Error(
-            "لم يتم العثور على FreeTask يبدأ بـ match3_"
+            "ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ FreeTask ظٹط¨ط¯ط£ ط¨ظ€ match3_"
         );
 
     }
 
 
     /*
-    البحث عن Vars
+    ط§ظ„ط¨ط­ط« ط¹ظ† Vars
     */
 
     const varsMatch =
@@ -1365,7 +1365,7 @@ function changeRegataTasks(
     if (!varsMatch) {
 
         throw new Error(
-            "لم يتم العثور على Vars داخل Regata"
+            "ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ Vars ط¯ط§ط®ظ„ Regata"
         );
 
     }
@@ -1375,7 +1375,7 @@ function changeRegataTasks(
 
 
     /*
-    استخراج target
+    ط§ط³طھط®ط±ط§ط¬ target
     */
 
     let target =
@@ -1398,7 +1398,7 @@ function changeRegataTasks(
 
 
     /*
-    تجهيز المهام
+    طھط¬ظ‡ظٹط² ط§ظ„ظ…ظ‡ط§ظ…
     */
 
     let tasks =
@@ -1449,7 +1449,7 @@ function changeRegataTasks(
 
 
     /*
-    إدخال المهام قبل Vars
+    ط¥ط¯ط®ط§ظ„ ط§ظ„ظ…ظ‡ط§ظ… ظ‚ط¨ظ„ Vars
     */
 
     regata =
@@ -1464,7 +1464,7 @@ function changeRegataTasks(
 
 
     /*
-    استبدال Regata
+    ط§ط³طھط¨ط¯ط§ظ„ Regata
     */
 
     text =
@@ -1474,7 +1474,7 @@ function changeRegataTasks(
 
 
     /*
-    تنظيف
+    طھظ†ط¸ظٹظپ
     */
 
     text =
@@ -1506,131 +1506,7 @@ EDITORS
 ========================================
 */
 
-
-/*
-========================================
-SMALI ADDITIONS (merged without changing existing editors)
-========================================
-*/
-
-function changeVarIfPresent(xml, varName, newValue) {
-    try {
-        return changeVar(xml, varName, newValue);
-    } catch (error) {
-        return Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
-    }
-}
-
-function changeManyVars(xml, values) {
-    let result = Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
-    if (!values || typeof values !== "object" || Array.isArray(values)) {
-        throw new Error("صيغة المتغيرات العامة غير صحيحة");
-    }
-    for (const [name, value] of Object.entries(values)) {
-        result = changeVarIfPresent(result, name, value);
-    }
-    return result;
-}
-
-function setExpeditionEnergy(xml, value) {
-    const amount = Number(value);
-    if (!Number.isInteger(amount) || amount < 0) {
-        throw new Error("طاقة Expedition يجب أن تكون رقمًا صحيحًا موجبًا أو صفرًا");
-    }
-    return changeManyVars(xml, { expeditionEnergy: amount });
-}
-
-function setTimedMultipliers(xml, value = 2) {
-    const multiplier = Number(value);
-    if (!Number.isFinite(multiplier) || multiplier <= 0) {
-        throw new Error("قيمة المضاعف يجب أن تكون أكبر من صفر");
-    }
-    const safe = String(multiplier);
-    const block = `<TimedEntityManager configVersion="1">` +
-        `\n\t<item entityType="MayorsQuestsMultiplier" multiplier="${safe}"/>` +
-        `\n\t<item entityType="Competition1vs1Multiplier" multiplier="${safe}"/>` +
-        `\n\t<item entityType="Merge2EnergyMultiplier" multiplier="${safe}"/>` +
-        `\n\t<item entityType="ShortContestNote" multiplier="${safe}"/>` +
-        `\n\t<item entityType="BigContestCup" multiplier="${safe}"/>` +
-        `\n\t<item entityType="ExpeditionEnergyMultiplier" multiplier="${safe}"/>` +
-        `\n\t<item entityType="ArcheryMultiplier" multiplier="${safe}"/>` +
-        `\n\t<item entityType="EventScoreMultiplier" multiplier="${safe}"/>` +
-        `\n\t<item entityType="RoomScoreMultiplier" multiplier="${safe}"/>` +
-        `\n\t<item entityType="CascadeMultiplier" multiplier="${safe}"/>` +
-        `\n\t<item entityType="SeasonMiniGameProgressMultiplier" multiplier="${safe}"/>` +
-        `\n\t<item entityType="RegataMiniGameProgressMultiplier" multiplier="${safe}"/>` +
-        `\n</TimedEntityManager>`;
-    const text = (Buffer.isBuffer(xml) ? xml : Buffer.from(xml)).toString("utf8");
-    const pattern = /<TimedEntityManager\b[^>]*>[\s\S]*?<\/TimedEntityManager>|<TimedEntityManager\b[^>]*\/>/i;
-    const updated = pattern.test(text) ? text.replace(pattern, block) : `${text}\n${block}\n`;
-    return Buffer.from(updated, "utf8");
-}
-
-
-// وظائف ItemActivity المستخرجة من ItemActivity.smali، مع إبقاء المحررات السابقة كما هي.
-function iaVars(xml, values, overwrite = false) {
-    let out = Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
-    if (!values || typeof values !== "object" || Array.isArray(values)) return out;
-    for (const [name, raw] of Object.entries(values)) {
-        const n = Number(raw);
-        if (!Number.isFinite(n)) continue;
-        // changeManyVars يستخدم نفس صيغة Global/Var الحالية ولا ينشئ نسخًا مكررة.
-        const current = Number(getVarValue(out.toString("utf8"), name));
-        const value = overwrite || !Number.isFinite(current) ? n : current + n;
-        out = changeManyVars(out, { [name]: value });
-    }
-    return out;
-}
-function iaList(value) {
-    return Array.isArray(value) ? [...new Set(value.map(String).map(x => x.trim()).filter(Boolean))] : [];
-}
-function iaMergeSkins(xml, value) {
-    const ids = iaList(value);
-    if (!ids.length) return Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
-    let s = (Buffer.isBuffer(xml) ? xml : Buffer.from(xml)).toString("utf8");
-    s = s.replace(/(<type\b[^>]*\bavailable=["'])([^"']*)(["'][^>]*>)/gi, (m, a, old, z) => `${a}${[...new Set(old.split(/[|,]/).concat(ids).map(x => x.trim()).filter(Boolean))].join("|")}${z}`);
-    return Buffer.from(s);
-}
-function iaApply(xml, o = {}) {
-    let out = Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
-    const vars = { ...(o.globalVars || {}), ...(o.itemValues || {}), ...(o.barnItems || {}) };
-    for (const k of ["money", "moneyCash", "expeditionEnergy", "AirScore"]) if (o[k] !== undefined) vars[k] = o[k];
-    out = iaVars(out, vars);
-    out = iaVars(out, o.stats);
-    if (o.eventToken !== undefined) out = iaVars(out, { "TrainJourney.CurrencyProvider.Amount": o.eventToken, "TrainJourney.CurrencyProvider.TokensEarned": o.eventToken }, true);
-    if (o.tradeLogicTokens !== undefined) out = iaVars(out, { additionalTokens: o.tradeLogicTokens }, true);
-    if (o.yearAccount !== undefined) out = iaVars(out, { gameStartDate: o.yearAccount }, true);
-    if (o.level && typeof o.level === "object") out = iaVars(out, o.level, true);
-    const u = o.specialUnlocks || {};
-    if (u.badges) out = EDITORS.unlockedBadges(out);
-    if (u.expRanks) out = EDITORS.unlockedExpRanks(out);
-    if (u.frames) out = EDITORS.unlockedFrames(out);
-    if (u.styles) out = EDITORS.unlockedStyles(out);
-    if (o.stickers) { out = EDITORS.newChatEmoji(out); out = EDITORS.unlockedChatEmoji(out); }
-    if (o.avatarProfile) out = EDITORS.unlockAllAvatars(out);
-    if (o.expandLand) out = EDITORS.unlockLandExpansions(out);
-    if (o.unlockAchievementProfile) out = iaVars(out, { GivingOffersDeferred: 1 }, true);
-    if (o.maxFactoryTrainIsland) out = iaVars(out, { factoryMaxLevel: o.maxFactoryTrainIsland, trainMaxLevel: o.maxFactoryTrainIsland, islandMaxLevel: o.maxFactoryTrainIsland }, true);
-    if (o.museumArtifact) out = iaVars(out, { RequestedDiggingMuseumResources: 1, RequestedMuseumResources: 1 }, true);
-    const st = o.seasonTicket || {};
-    if (st.goldenTicket) out = iaVars(out, { premium: 1, score: 2000 }, true);
-    if (st.extraBarn) out = iaVars(out, { freeAmbarInc: 1 }, false);
-    if (st.speedUpAir) out = iaVars(out, { SP_BoostSpeedUpAir: 1 }, true);
-    if (st.speedUpFarms) out = iaVars(out, { SP_BoostSpeedUpFarms: 1 }, true);
-    if (st.speedUpHarvest) out = iaVars(out, { SP_BoostSpeedUpHarvest: 1 }, true);
-    if (st.speedUpBuildings) out = iaVars(out, { SP_BoostSpeedUpBuildings: 1 }, true);
-    if (o.x2Days) out = setTimedMultipliers(out, Number(o.x2Days) || 2);
-    if (o.skins) out = iaMergeSkins(out, o.skins);
-    // All Decor في التطبيق يمرر المعرفات المختارة والعدد؛ نخزنها عبر محرر الديكور الموجود إن توفر.
-    if (o.decorations && EDITORS.allDecorations) out = EDITORS.allDecorations(out, { ids: iaList(o.decorations), count: Number(o.decorationCount) || 1 });
-    if (o.marketSlots) out = iaVars(out, { slotsCount: o.marketSlots }, true);
-    if (o.mineDepth) out = iaVars(out, { mineDepth: o.mineDepth }, false);
-    return out;
-}
-
 const EDITORS = {
-
-    itemActivity: (xml, value) => iaApply(xml, value || {}),
 
 
     /*
@@ -1965,7 +1841,7 @@ const EDITORS = {
         ) {
 
             /*
-            دعم الشكل الجديد:
+            ط¯ط¹ظ… ط§ظ„ط´ظƒظ„ ط§ظ„ط¬ط¯ظٹط¯:
 
             {
                 taskCount: 105,
@@ -1988,7 +1864,7 @@ const EDITORS = {
             }
 
             /*
-            إذا تم إرسال قيمة واحدة
+            ط¥ط°ط§ طھظ… ط¥ط±ط³ط§ظ„ ظ‚ظٹظ…ط© ظˆط§ط­ط¯ط©
             */
 
             return changeRegataTasks(
@@ -1997,24 +1873,7 @@ const EDITORS = {
                 135
             );
 
-        },
-
-
-    /* Smali exposes the lowercase form; retain the old uppercase key too. */
-    unlockedBadges:
-        function(xml) {
-            return changeDataElem(xml, "UnlockedBadges", UNLOCKED_BADGES_VALUE);
-        },
-
-    expeditionEnergy:
-        function(xml, value) {
-            return setExpeditionEnergy(xml, value);
-        },
-
-    timedMultipliers:
-        function(xml, value) {
-            return setTimedMultipliers(xml, value === undefined ? 2 : value);
-        },
+        }
 
 };
 
@@ -2048,7 +1907,7 @@ function applyEdits(
     Array
     ========================================
 
-    مثال:
+    ظ…ط«ط§ظ„:
 
     [
         "unlockAllCards",
@@ -2071,7 +1930,7 @@ function applyEdits(
             ) {
 
                 throw new Error(
-                    `تعديل غير معروف: ${key}`
+                    `طھط¹ط¯ظٹظ„ ط؛ظٹط± ظ…ط¹ط±ظˆظپ: ${key}`
                 );
 
             }
@@ -2098,7 +1957,7 @@ function applyEdits(
     ) {
 
         throw new Error(
-            "صيغة التعديلات غير صحيحة"
+            "طµظٹط؛ط© ط§ظ„طھط¹ط¯ظٹظ„ط§طھ ط؛ظٹط± طµط­ظٹط­ط©"
         );
 
     }
@@ -2118,7 +1977,7 @@ function applyEdits(
         if (!editor) {
 
             throw new Error(
-                `تعديل غير معروف: ${key}`
+                `طھط¹ط¯ظٹظ„ ط؛ظٹط± ظ…ط¹ط±ظˆظپ: ${key}`
             );
 
         }
@@ -2170,7 +2029,7 @@ function applyEdits(
 
         /*
         ====================================
-        قيمة عادية
+        ظ‚ظٹظ…ط© ط¹ط§ط¯ظٹط©
         ====================================
         */
 
@@ -2248,12 +2107,6 @@ module.exports = {
     REGATA_REAL_END_TIME_STEP,
 
     EDITORS,
-
-    changeManyVars,
-
-    setExpeditionEnergy,
-
-    setTimedMultipliers,
 
     ALL_CHAT_EMOJI_IDS,
 
