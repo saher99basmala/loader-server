@@ -6,6 +6,8 @@ const express = require("express");
 const crypto = require("crypto");
 const zlib = require("zlib");
 const fetch = require("node-fetch");
+const fs = require("fs");
+const path = require("path");
 
 const router = express.Router();
 
@@ -1414,22 +1416,37 @@ async function handleFetchCity(
             `[FetchCity] decoded Base64 bytes=${cityBytes.length} magic=${bufferMagic(cityBytes)}`
         );
 
-        const xml =
+        const donorXml =
             decodeSaveCity(
                 cityBytes
+            )
+                .toString("utf8")
+                .replace(/^\uFEFF/, "")
+                .trim();
+
+        const basePath =
+            path.join(
+                __dirname,
+                "BS2973.xml"
+            );
+
+        // BS2973.xml is read-only: it is never overwritten or modified.
+        const baseXml =
+            fs.readFileSync(
+                basePath,
+                "utf8"
+            )
+                .replace(/^\uFEFF/, "")
+                .trim();
+
+        const mergedXml =
+            mergeSelectedXml(
+                baseXml,
+                donorXml
             );
 
         console.log(
-            `[FetchCity] XML size=${xml.length}`
-        );
-
-        const modifiedXml =
-            editCityXml(
-                xml
-            );
-
-        console.log(
-            `[FetchCity] Modified XML size=${modifiedXml.length}`
+            `[FetchCity] merge base=${baseXml.length} donor=${donorXml.length} result=${mergedXml.length}`
         );
 
         res.status(200);
@@ -1445,7 +1462,7 @@ async function handleFetchCity(
         );
 
         return res.send(
-            modifiedXml
+            mergedXml
         );
 
     } catch (err) {
@@ -2854,763 +2871,85 @@ async function handleDecodeFriends(
 }
 
 // ============================================================
-// APP ACCOUNT RESTORE MERGE (isolated endpoint; leaves existing routes intact)
-// The Android app applies donor progress first, then selected city/zoo sections.
 // ============================================================
-function restoreEscapeRegExp(value) {
+// ACCOUNT RESTORE MERGE
+// Direct port of the current merge_selected_township.py script.
+// The previous server merge implementation has been replaced.
+// ============================================================
+const CURRENT_SCRIPT_VARS = [
+    "townName", "AirScore2", "AirScore1", "m3_comp_lvls", "M3Ch_mainM3",
+    "FirstAttemptM3Levels", "RegataTasksCompleted", "LivesSent",
+    "FullCardCollections", "Achievement_Teamwork", "UnlockedChatEmoji"
+];
+const CURRENT_SCRIPT_DATAELEMS = [
+    "UnlockedStyles", "UnlockedFrames", "UnlockedExpRanks", "UnlockedBadges"
+];
+function mergeEscapeRegExp(value) {
     return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-function restoreFindTag(xml, name, fromIndex = 0) {
-    const nameRe = restoreEscapeRegExp(name);
-    const tokenRe = new RegExp(`<\\/?${nameRe}\\b[^>]*>`, "gi");
-    tokenRe.lastIndex = Math.max(0, fromIndex);
-    const first = tokenRe.exec(xml);
-    if (!first) return null;
-    const firstToken = first[0];
-    if (/^<\/?/.test(firstToken) && /^<\w+[^>]*\/>$/.test(firstToken)) {
-        return { text: firstToken, start: first.index, end: first.index + firstToken.length };
-    }
-    let depth = 0;
-    tokenRe.lastIndex = first.index;
-    let token;
-    while ((token = tokenRe.exec(xml)) !== null) {
-        const raw = token[0];
-        if (/^<\//.test(raw)) depth--;
-        else if (!/\/\s*>$/.test(raw)) depth++;
-        if (depth === 0) {
-            return { text: xml.slice(first.index, token.index + raw.length), start: first.index, end: token.index + raw.length };
-        }
-    }
-    return null;
-}
-function restoreReplaceTag(xml, name, replacement) {
-    const block = restoreFindTag(xml, name);
-    if (!block) return xml;
-    return xml.slice(0, block.start) + replacement + xml.slice(block.end);
-}
-function restoreAttr(tag, attr) {
-    const re = new RegExp(`\\b${restoreEscapeRegExp(attr)}\\s*=\\s*(["'])(.*?)\\1`, "i");
-    const match = tag.match(re);
+function mergeAttr(tag, attr) {
+    const re = new RegExp(`\\b${mergeEscapeRegExp(attr)}\\s*=\\s*(["'])(.*?)\\1`, "i");
+    const match = re.exec(tag);
     return match ? match[2] : null;
 }
-function restoreCopySection(donorXml, baseXml, name) {
-    const donor = restoreFindTag(donorXml, name);
-    if (!donor) return baseXml;
-    const base = restoreFindTag(baseXml, name);
-    if (base) return baseXml.slice(0, base.start) + donor.text + baseXml.slice(base.end);
-    const rootClose = /<\/root\s*>/i.exec(baseXml);
-    if (!rootClose) return baseXml;
-    return baseXml.slice(0, rootClose.index) + donor.text + "\n" + baseXml.slice(rootClose.index);
+function mergeReplaceAttr(tag, attr, value) {
+    const re = new RegExp(`(\\b${mergeEscapeRegExp(attr)}\\s*=\\s*)(["'])(.*?)\\2`, "i");
+    if (re.test(tag)) return tag.replace(re, (_, prefix) => `${prefix}"${String(value)}"`);
+    const close = /\s*\/>$/.exec(tag);
+    if (close) return tag.slice(0, close.index) + ` ${attr}="${String(value)}"` + tag.slice(close.index);
+    return tag.replace(/>$/, ` ${attr}="${String(value)}">`);
 }
-function restoreVarTag(xml, name) {
-    const escaped = restoreEscapeRegExp(name);
-    const re = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*(?:\\/>|>[\\s\\S]*?<\\/Var\\s*>)`, "i");
-    const m = re.exec(xml);
-    return m ? m[0] : null;
-}
-function restoreCopyVar(donorXml, baseXml, name) {
-    const donor = restoreVarTag(donorXml, name);
-    if (!donor) return baseXml;
-    const escaped = restoreEscapeRegExp(name);
-    const re = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*(?:\\/>|>[\\s\\S]*?<\\/Var\\s*>)`, "i");
-    if (re.test(baseXml)) return baseXml.replace(re, () => donor);
-    const vars = restoreFindTag(baseXml, "Vars");
-    if (!vars) return baseXml;
-    const insertAt = baseXml.lastIndexOf("</Vars>", vars.end);
-    if (insertAt < 0) return baseXml;
-    return baseXml.slice(0, insertAt) + donor + "\n    " + baseXml.slice(insertAt);
-}
-function restoreCopyVarsByName(donorXml, baseXml, names, insertInto = "Vars") {
-    const wanted = new Set(names);
-    if (!wanted.size) return baseXml;
-    const donorTags = new Map();
-    for (const tag of donorXml.match(/<Var\b[^>]*\/>/gi) || []) {
-        const name = restoreAttr(tag, "name");
-        if (name && wanted.has(name)) donorTags.set(name, tag);
-    }
-    if (!donorTags.size) return baseXml;
-    const present = new Set();
-    baseXml = baseXml.replace(/<Var\b[^>]*\/>/gi, tag => {
-        const name = restoreAttr(tag, "name");
-        if (!name || !donorTags.has(name)) return tag;
-        present.add(name);
-        return donorTags.get(name);
+function mergeSelectedVar(xml, donorXml, name) {
+    const escaped = mergeEscapeRegExp(name);
+    const donorRe = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "i");
+    const donor = donorRe.exec(donorXml);
+    const value = donor ? (mergeAttr(donor[0], "v") || "") : "";
+    const targetRe = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "gi");
+    let first = true;
+    return xml.replace(targetRe, tag => {
+        if (!first) return "";
+        first = false;
+        return mergeReplaceAttr(tag, "v", value);
     });
-    const missing = [];
-    for (const [name, tag] of donorTags) if (!present.has(name)) missing.push(tag);
-    if (missing.length) {
-        const vars = restoreFindTag(baseXml, insertInto);
-        if (vars) {
-            const closeAt = baseXml.lastIndexOf(`</${insertInto}>`, vars.end);
-            if (closeAt >= 0) baseXml = baseXml.slice(0, closeAt) + missing.join("\n    ") + "\n    " + baseXml.slice(closeAt);
-        }
-    }
-    return baseXml;
 }
-function restoreVarValue(xml, name) {
-    const tag = restoreVarTag(xml, name);
-    return tag ? restoreAttr(tag, "v") : null;
-}
-function restoreSetVar(xml, name, value) {
-    const escaped = restoreEscapeRegExp(name);
-    const tagRe = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*/?>`, "i");
-    if (tagRe.test(xml)) {
-        return xml.replace(tagRe, tag => {
-            const valueRe = /(\bv=["'])[^"']*(["'])/i;
-            if (valueRe.test(tag)) return tag.replace(valueRe, (_, a, b) => a + String(value) + b);
-            const ending = /\s*\/>$/.exec(tag);
-            if (ending) return tag.slice(0, ending.index) + ` v="${String(value)}"` + tag.slice(ending.index);
-            return tag.replace(/>$/, ` v="${String(value)}">`);
-        });
-    }
-    const insertion = `<Var name="${name}" v="${String(value)}"/>`;
-    const global = restoreFindTag(xml, "Global");
-    if (global) return xml.slice(0, global.end - "</Global>".length) + insertion + "\n  " + xml.slice(global.end - "</Global>".length);
-    const vars = restoreFindTag(xml, "Vars");
-    if (vars) return xml.slice(0, vars.end - "</Vars>".length) + insertion + "\n    " + xml.slice(vars.end - "</Vars>".length);
-    return xml;
-}
-function restoreSetIntVar(xml, name, value) {
-    const escaped = restoreEscapeRegExp(name);
-    const replacement = `<Var name="${name}" v="${String(value)}" t="i"/>`;
-    const re = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*/>`, "i");
-    if (re.test(xml)) return xml.replace(re, () => replacement);
-    const global = restoreFindTag(xml, "Global");
-    if (!global) return restoreSetVar(xml, name, value);
-    const closeAt = global.end - "</Global>".length;
-    return xml.slice(0, closeAt) + replacement + "\n  " + xml.slice(closeAt);
-}
-function restoreCopyWholeVarGroups(donorXml, baseXml) {
-    const groups = [
-        ["moneyCash"], ["money"], ["levelup"],
-        ["m3_comp_lvls", "M3Ch_mainM3", "STLM3"],
-        ["FirstAttemptM3Levels"], ["LivesSent"],
-        ["Achievement_Teamwork"], ["FullCardCollections"],
-        ["RegataTasksCompleted"], ["gameStartDate"],
-        ["expeditionEnergy"], ["depth"], ["likes"]
-    ];
-    for (const names of groups) {
-        let value = null;
-        for (const name of names) {
-            value = restoreVarValue(donorXml, name);
-            if (value !== null) break;
-        }
-        if (value !== null) {
-            for (const name of names) baseXml = restoreSetVar(baseXml, name, value);
-        }
-    }
-    return baseXml;
-}
-function restoreCopyNamedDataElems(donorXml, baseXml, names, insertMissing = false) {
-    for (const name of names) {
-        const escaped = restoreEscapeRegExp(name);
-        const re = new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*/?>`, "i");
-        const donor = re.exec(donorXml);
-        if (!donor) continue;
-        if (re.test(baseXml)) baseXml = baseXml.replace(re, () => donor[0]);
-        else if (insertMissing) {
-            const rootClose = /<\/root\s*>/i.exec(baseXml);
-            if (rootClose) baseXml = baseXml.slice(0, rootClose.index) + donor[0] + "\n" + baseXml.slice(rootClose.index);
-        }
-    }
-    return baseXml;
-}
-function restorePhaseOne(baseXml, donorXml) {
-    // Scalar progression/resources transferred by Android C.k.
-    const direct = ["money", "moneyCash", "EarnedCoins", "residents", "wheatCounter",
-        "plowFieldsAchiev", "defaultOrdersCount", "match3Life", "Match3Lives_infTime",
-        "Achievement_IncreasedPopulation", "Achievement_PlowedFields", "Achievement_BuiltFactories",
-        "Achievement_SpentCoins", "Achievement_EarneCoins", "spentCash", "earnedCash", "timeInGame"];
-    for (const name of direct) baseXml = restoreCopyVar(donorXml, baseXml, name);
-    baseXml = restoreCopyWholeVarGroups(donorXml, baseXml);
-
-    const level = restoreVarValue(donorXml, "levelup");
-    const xp = restoreVarValue(donorXml, "experience");
-    if (level !== null && xp !== null) {
-        baseXml = restoreSetVar(baseXml, "levelup", level);
-        baseXml = restoreSetVar(baseXml, "experience", xp);
-        const parsedXp = Number.parseInt(xp, 10);
-        const n = Number.isFinite(parsedXp) ? parsedXp : 0;
-        baseXml = restoreSetVar(baseXml, "sexpx", String((509438470 ^ n) | 0));
-    }
-    baseXml = restoreCopyNamedDataElems(donorXml, baseXml, ["Common_prevQuestId", "lastContiniouslyCompletedQuest"]);
-    // The native app marks donor completed QB tasks as value=4.
-    const qb = /<DataElem\s+name="(QB_\d+_\d+)"\s+type="int"\s+value="4"\s*\/?\s*>/gi;
-    let match;
-    while ((match = qb.exec(donorXml)) !== null) {
-        const name = match[1];
-        const re = new RegExp(`<DataElem\\s+name=["']${restoreEscapeRegExp(name)}["'][^>]*/?>`, "i");
-        const tag = `<DataElem name="${name}" type="int" value="4"/>`;
-        if (re.test(baseXml)) baseXml = baseXml.replace(re, tag);
-        else baseXml = baseXml.replace(/(<DataElem\s+name="Common_prevQuestId"[^>]*\/>)/i, `${tag}\n    $1`);
-    }
-    for (const name of ["HarvestForTime", "SeasonTicketCenter"]) baseXml = restoreCopySection(donorXml, baseXml, name);
-    const donorTips = new Set(Array.from(donorXml.matchAll(/<v\s+n="(CHT_[^"]+)"/g), m => m[1]));
-    for (const id of donorTips) {
-        if (!new RegExp(`<v\\s+n="${restoreEscapeRegExp(id)}"`).test(baseXml)) {
-            const seen = restoreFindTag(baseXml, "SeenTips");
-            if (seen) baseXml = baseXml.slice(0, seen.end - "</SeenTips>".length) + `<v n="${id}"/>\n` + baseXml.slice(seen.end - "</SeenTips>".length);
-        }
-    }
-    const stateNames = Array.from(donorXml.matchAll(/<Var\s+name="([^"]+_state)"[^/]*\/>/gi), m => m[1]);
-    baseXml = restoreCopyVarsByName(donorXml, baseXml, stateNames);
-    baseXml = restoreCopyNamedDataElems(donorXml, baseXml, ["UnlockedBadges", "UnlockedExpRanks", "UnlockedFrames", "UnlockedStyles"], true);
-    for (const name of ["Skins", "BuildingsStash", "FragmentedBeautyManager"]) baseXml = restoreCopySection(donorXml, baseXml, name);
-    const unlocked = new Map(Array.from(donorXml.matchAll(/<Var\s+name="(Unlocked_ava\d+)"\s+v="([^"]*)"[^/]*\/>/g), m => [m[1], m[2]]));
-    baseXml = restoreCopyVarsByName(donorXml, baseXml, Array.from(unlocked.keys()), "Global");
-    return baseXml;
-}
-function restoreReplaceUser(xml, baseUser) {
-    if (!baseUser) return xml;
-    return xml.replace(/\buser=(['"])[^'"]*\1/g, `user="${baseUser}"`);
-}
-function restoreCopyFilteredGlobal(donorXml, baseXml) {
-    const global = restoreFindTag(donorXml, "Global");
-    if (!global) return baseXml;
-    const blocked = new Set(["deviceId", "advId", "cityId", "gameId", "facebookId", "Device", "DeviceLang",
-        "PrevFBID", "PrevGCID", "FBIsAuthorized", "MyClanId", "prevMyClanId", "MyClanJoinRegataId",
-        "MyClanNotExistLeaderId", "TrackNewDevice_TrackedDevices", "CCSecretApps", "CCSecretB", "CCSecretInstall",
-        "CCSecretM", "NotificationAuthStatus", "newNotificationAuthStatus", "ProgressComplainer_SessionId",
-        "Action_sessionsForSubsCounter", "EnteredGameAfterInstallDay", "gardenscapesInstallTime",
-        "Secret", "DeviceId", "SessionId", "InstallId", "Udid", "UDID"]);
-    const socialWords = ["friend", "clan", "regata", "social", "facebook", "fb", "gift", "help", "like", "chat", "mail", "invite", "leaderboard", "rating"];
-    const vars = global.text.match(/<Var\b[^>]*\/>/gi) || [];
-    const toCopy = [];
-    for (const tag of vars) {
-        const name = restoreAttr(tag, "name");
-        if (!name || blocked.has(name) || restoreAttr(tag, "v") === null) continue;
-        const lower = name.toLowerCase();
-        const allowed = lower.includes("m3") || name.includes("Boost") || name.startsWith("Achievement_") ||
-            name.startsWith("AchReward_") || name.startsWith("BLvl_") || name.startsWith("QB_") ||
-            name.includes("Quest") || name.includes("Event") || name.includes("Season") || name.startsWith("CHT_") ||
-            name.endsWith("_state") || name.includes("Tutorial") || name.includes("Hint") || name.includes("Seen") ||
-            name.includes("Shown") || socialWords.some(word => lower.includes(word));
-        if (allowed) toCopy.push(name);
-    }
-    baseXml = restoreCopyVarsByName(donorXml, baseXml, toCopy, "Global");
-
-    const donorCoupons = restoreFindTag(donorXml, "coupons");
-    if (donorCoupons) {
-        const couponIds = new Set(["HireDealer", "LoadTrainAirport", "UpgradeFactory", "UpgradeTrain", "UpgradeIsland"]);
-        const coupons = donorCoupons.text.match(/<coupon\b[^>]*\/>/gi) || [];
-        for (const tag of coupons) {
-            const id = restoreAttr(tag, "id");
-            if (!couponIds.has(id)) continue;
-            const count = Math.max(0, Math.min(10, Number.parseInt(restoreAttr(tag, "count") || "0", 10) || 0));
-            const replacement = `<coupon id="${id}" count="${count}"/>`;
-            const baseBlock = restoreFindTag(baseXml, "coupons");
-            if (!baseBlock) continue;
-            const re = new RegExp(`<coupon\\b(?=[^>]*\\bid=["']${restoreEscapeRegExp(id)}["'])[^>]*/>`, "i");
-            if (re.test(baseBlock.text)) {
-                const updated = baseBlock.text.replace(re, replacement);
-                baseXml = baseXml.slice(0, baseBlock.start) + updated + baseXml.slice(baseBlock.end);
-            } else {
-                const insertion = baseBlock.end - baseBlock.start - "</coupons>".length;
-                baseXml = baseXml.slice(0, baseBlock.start + insertion) + replacement + "\n  " + baseXml.slice(baseBlock.start + insertion);
-            }
-        }
-    }
-    const whu = restoreVarValue(donorXml, "WareHouseCashUpgrade");
-    if (whu !== null) {
-        const n = Number.parseInt(whu, 10);
-        if (Number.isFinite(n)) {
-            baseXml = restoreSetVar(baseXml, "WareHouseCashUpgrade", n);
-            baseXml = restoreSetIntVar(baseXml, "WHUdup", (514698188 ^ n) | 0);
-        }
-    }
-    return baseXml;
-}
-function restoreTransferGlobalInventory(donorXml, baseXml) {
-    const donorGlobal = restoreFindTag(donorXml, "Global");
-    const baseGlobal = restoreFindTag(baseXml, "Global");
-    if (!donorGlobal || !baseGlobal) return baseXml;
-    const resources = new Set([
-        "wheat",
-        "corn",
-        "carrot",
-        "sugarcane",
-        "cotton",
-        "strawberry",
-        "tomat",
-        "pine",
-        "potato",
-        "cacao",
-        "rubberTree",
-        "rubber",
-        "silk",
-        "shelk",
-        "pepper",
-        "rice",
-        "roseSeed",
-        "jasmine",
-        "coffee",
-        "soybean",
-        "teabush",
-        "mint",
-        "peanut",
-        "lavender",
-        "cork",
-        "milk",
-        "egg",
-        "wool",
-        "bacon",
-        "honeycomb",
-        "mushroom",
-        "downFeather",
-        "bigFeather",
-        "clay",
-        "apple",
-        "peach",
-        "watermelon",
-        "plum",
-        "grapes",
-        "fish",
-        "shrimp",
-        "lobster",
-        "scallop",
-        "pearl",
-        "seaweed",
-        "banana",
-        "coconut",
-        "pineapple",
-        "olive",
-        "lemon",
-        "aloe",
-        "mango1",
-        "cowfeed",
-        "chickenfeed",
-        "sheepfeed",
-        "pigfeed",
-        "beefeed",
-        "mushroomfeed",
-        "flour",
-        "bread",
-        "cookie",
-        "bagel",
-        "pizza",
-        "potatobread",
-        "bananabread",
-        "mushroomPie",
-        "strudel",
-        "marinepizza",
-        "dough",
-        "cream",
-        "cheese",
-        "butter",
-        "yogurt",
-        "peachyogurt",
-        "sugar",
-        "syrup",
-        "caramel",
-        "candy",
-        "caramelapple",
-        "jellybeans",
-        "toffee",
-        "candystick",
-        "lollipop",
-        "honeycandy",
-        "fruitjelly",
-        "chocobar",
-        "teacandies",
-        "mintlollipops",
-        "cottonCandy",
-        "chocolate",
-        "icecream",
-        "frozenyogurt",
-        "fruitice",
-        "eskimo",
-        "pineapplesorbet",
-        "roseSorbet",
-        "parfait",
-        "mintchocolateicecream",
-        "muffin",
-        "brownie",
-        "cupcake",
-        "doughnut",
-        "cheesecake",
-        "limepie",
-        "coconutmacaroon",
-        "honeycake",
-        "strawberrycake",
-        "weddingcake",
-        "coffeecake",
-        "chocolatecake",
-        "carrotcake",
-        "mintcake",
-        "tiramisu",
-        "chips",
-        "popcorn",
-        "cornchips",
-        "granola",
-        "canape",
-        "glazedbacon",
-        "puffedrice",
-        "saltedpeanut",
-        "frenchfries",
-        "sandwich",
-        "cheeseburger",
-        "bakedpotatoes",
-        "fishburger",
-        "fish_chips",
-        "peanot_crepes",
-        "hot_dog",
-        "corndog",
-        "cheese_coney",
-        "carrot_hotdog",
-        "taco",
-        "nachos",
-        "burrito",
-        "jalapeno",
-        "falafel",
-        "hummus",
-        "guacamole",
-        "bacon_eggs",
-        "pancake",
-        "milkshake",
-        "grap_fizz",
-        "chocolate_smoothie",
-        "watermelon_fresh",
-        "tropical_mix",
-        "cold_tea",
-        "minticetea",
-        "applefresh",
-        "espresso",
-        "cappuccino",
-        "mokachino",
-        "hot_chocolate",
-        "blacktea",
-        "whitetea",
-        "rosetea",
-        "tibettea",
-        "oolong",
-        "appletea",
-        "coconut_raf",
-        "woolfabric",
-        "cottonfabric",
-        "silkfabric",
-        "nylonthread",
-        "shirt",
-        "sweater",
-        "coat",
-        "hat",
-        "suit",
-        "tiroleanHat",
-        "eveningdress",
-        "dress",
-        "flipflops",
-        "sandals",
-        "sneakers",
-        "boots",
-        "heels",
-        "downBoots",
-        "downJacket",
-        "bathrobeslippers",
-        "paper",
-        "papertowel",
-        "wallpapers",
-        "book",
-        "stickers",
-        "marker",
-        "eraser",
-        "corkboard",
-        "table",
-        "chair",
-        "couch",
-        "bed",
-        "floor_lamp",
-        "pillow",
-        "duvet",
-        "tissue",
-        "dispenser",
-        "lounge",
-        "sushi",
-        "lobster_nigiri",
-        "scallopsushi",
-        "soup",
-        "misosoup",
-        "corn_soup",
-        "mushroomSoup",
-        "gazpacho",
-        "bouillabaisse",
-        "seaweadsalad",
-        "seaweedsalad",
-        "mushroomSalad",
-        "seafood_salad",
-        "nicoise",
-        "rice_noodle",
-        "thai_sauce",
-        "sauce",
-        "quiche",
-        "fried_fish",
-        "rice_casserole",
-        "baked_lobster",
-        "lobster_newburg",
-        "scallopskew",
-        "grilledMeat",
-        "ratatouille",
-        "profiteroles",
-        "gyoza",
-        "readylunch",
-        "frozenvegetables",
-        "seafoodcocktail",
-        "oliveoil",
-        "bruschetta",
-        "arrabbiata",
-        "ravioli",
-        "lasagna",
-        "mole",
-        "vegancheesecake",
-        "jam",
-        "strawberry_jam",
-        "peach_jam",
-        "watermelon_jam",
-        "plum_jam"
-    ]);
-    const rawItems = new Set([
-        "TNT",
-        "pick",
-        "axe",
-        "drill",
-        "jackhammer",
-        "powersaw",
-        "gem1",
-        "gem2",
-        "gem3",
-        "sgc1x",
-        "sgc2x",
-        "sgc3x",
-        "o1",
-        "o2",
-        "o3",
-        "o4",
-        "o5",
-        "m1",
-        "m2",
-        "m3",
-        "sm1x",
-        "sm2x",
-        "sm3x",
-        "BronzeBullionCounter",
-        "SilverBullionCounter",
-        "GoldBullionCounter",
-        "PlatinumBullionCounter",
-        "sbbcx",
-        "ssbcx",
-        "sgbcx",
-        "spbcx"
-    ]);
-    const directCounters = new Set([
-        "paintRedMat",
-        "pick",
-        "Plita",
-        "hammerMat",
-        "nailMat",
-        "Glass",
-        "jackhammer",
-        "Brick",
-        "powersaw",
-        "drill",
-        "TNT",
-        "axe"
-    ]);
-    const bullion = new Set(["BronzeBullion", "SilverBullion", "GoldBullion", "PlatinumBullion"]);
-    const wanted = new Set(rawItems);
-    for (const id of resources) {
-        if (bullion.has(id)) continue;
-        wanted.add(directCounters.has(id) ? id : id + "Counter");
-    }
-    const donorVars = new Map();
-    for (const tag of donorGlobal.text.match(/<Var\b[^>]*\/>/gi) || []) {
-        const name = restoreAttr(tag, "name");
-        if (name && !donorVars.has(name)) donorVars.set(name, tag);
-    }
-    const transfer = new Map();
-    for (const id of resources) {
-        if (bullion.has(id)) continue;
-        const name = directCounters.has(id) ? id : id + "Counter";
-        const tag = donorVars.get(name);
-        if (!tag) continue;
-        const n = Number.parseInt(restoreAttr(tag, "v"), 10);
-        if (Number.isFinite(n) && n >= 1) transfer.set(name, `<Var name="${name}" v="${n}" t="i"/>`);
-    }
-    for (const name of rawItems) {
-        const tag = donorVars.get(name);
-        if (!tag || !/^-?\d+$/.test(restoreAttr(tag, "v") || "")) continue;
-        transfer.set(name, tag);
-    }
-    if (!transfer.size) return baseXml;
-    const present = new Set();
-    let globalText = baseGlobal.text.replace(/<Var\b[^>]*\/>/gi, tag => {
-        const name = restoreAttr(tag, "name");
-        if (!name || !transfer.has(name)) return tag;
-        present.add(name);
-        return transfer.get(name);
+function mergeSelectedDataElem(xml, donorXml, name) {
+    const escaped = mergeEscapeRegExp(name);
+    const donorRe = new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "i");
+    const donor = donorRe.exec(donorXml);
+    const value = donor ? (mergeAttr(donor[0], "value") || "") : "";
+    const targetRe = new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "gi");
+    let first = true;
+    return xml.replace(targetRe, tag => {
+        if (!first) return "";
+        first = false;
+        return mergeReplaceAttr(tag, "value", value);
     });
-    const missing = [];
-    for (const [name, tag] of transfer) if (!present.has(name)) missing.push(tag);
-    if (missing.length) {
-        const closeAt = globalText.lastIndexOf("</Global>");
-        if (closeAt >= 0) globalText = globalText.slice(0, closeAt) + missing.join("\n  ") + "\n  " + globalText.slice(closeAt);
-    }
-    return baseXml.slice(0, baseGlobal.start) + globalText + baseXml.slice(baseGlobal.end);
 }
-function restoreCopyArtInfo(donorXml, baseXml) {
-    const donor = restoreFindTag(donorXml, "ArtInfo");
-    if (!donor) return baseXml;
-    const base = restoreFindTag(baseXml, "ArtInfo");
-    if (base) return baseXml.slice(0, base.start) + donor.text + baseXml.slice(base.end);
-    const laboratoryEnd = /<Laboratory\b[^>]*\/>|<\/Laboratory\s*>/i.exec(baseXml);
-    if (laboratoryEnd) {
-        const end = laboratoryEnd.index + laboratoryEnd[0].length;
-        return baseXml.slice(0, end) + "\n  " + donor.text + baseXml.slice(end);
+function mergeSelectedXml(baseXml, donorXml) {
+    if (typeof baseXml !== "string" || typeof donorXml !== "string" ||
+        !/^\s*</.test(baseXml) || !/^\s*</.test(donorXml)) {
+        throw new Error("يجب إرسال ملفي XML صالحين");
     }
-    const stash = /<BuildingsStash\b/i.exec(baseXml);
-    if (stash) return baseXml.slice(0, stash.index) + donor.text + "\n  " + baseXml.slice(stash.index);
-    const rootClose = /<\/root\s*>/i.exec(baseXml);
-    return rootClose ? baseXml.slice(0, rootClose.index) + donor.text + "\n" + baseXml.slice(rootClose.index) : baseXml;
-}
-function restoreActiveSeasonTicket(xml) {
-    const starts = /<SeasonTicket\b[^>]*>/gi;
-    let match;
-    while ((match = starts.exec(xml)) !== null) {
-        if (xml.slice(Math.max(0, match.index - 4), match.index).endsWith("Prev")) continue;
-        const block = restoreFindTag(xml, "SeasonTicket", match.index);
-        if (block) return block;
+    let result = baseXml.replace(/^\uFEFF/, "").trim();
+    const donor = donorXml.replace(/^\uFEFF/, "").trim();
+    for (const name of CURRENT_SCRIPT_VARS) result = mergeSelectedVar(result, donor, name);
+    for (const name of CURRENT_SCRIPT_DATAELEMS) result = mergeSelectedDataElem(result, donor, name);
+    if (!/<root(?:\s|>)/i.test(result) || !/<\/root>\s*$/i.test(result)) {
+        throw new Error("XML الناتج غير مكتمل");
     }
-    return null;
-}
-function restoreCopySeasonTicketBoosts(donorXml, baseXml) {
-    const donor = restoreActiveSeasonTicket(donorXml);
-    const base = restoreActiveSeasonTicket(baseXml);
-    if (!donor || !base) return baseXml;
-    const names = ["SP_BoostSpeedUpBuildings", "SP_BoostSpeedUpHarvest", "SP_BoostSpeedUpFarms",
-        "SP_BoostStorageCapacity", "SP_BoostSpeedUpAir", "SP_BoostSpeedUpTrains", "SP_BoostTrainMats"];
-    let ticket = base.text;
-    for (const name of names) {
-        const donorTag = restoreVarTag(donor.text, name);
-        if (!donorTag) continue;
-        const escaped = restoreEscapeRegExp(name);
-        const varRe = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*(?:\\/>|>[\\s\\S]*?<\\/Var\\s*>)`, "i");
-        if (varRe.test(ticket)) ticket = ticket.replace(varRe, () => donorTag);
-        else if (/<Vars\s*\/>/i.test(ticket)) ticket = ticket.replace(/<Vars\s*\/>/i, `<Vars>\n        ${donorTag}\n      </Vars>`);
-        else if (/<\/Vars\s*>/i.test(ticket)) ticket = ticket.replace(/<\/Vars\s*>/i, `        ${donorTag}\n      </Vars>`);
-        else ticket = ticket.replace(/<\/SeasonTicket\s*>/i, `  <Vars>\n        ${donorTag}\n      </Vars>\n    </SeasonTicket>`);
-    }
-    return baseXml.slice(0, base.start) + ticket + baseXml.slice(base.end);
-}
-const RESTORE_ACHIEVEMENT_DEFAULTS = ["marketBoom", "miner", "earthCenter", "strategyReserv", "factoryUpgrader", "collector", "teamwork", "casinoGame", "sendShips", "islandGoods", "collectBacon", "collectHoney", "collectorIslands", "progressWave", "downFeather", "metropolis", "community_developer", "entrepreneur", "lead_Architect", "population_boom", "construction_manager", "endless_fields", "magnate", "wacky_farmer", "urbanist_club", "honorary_freeman", "senior_train_driver", "road_champ", "production_genius", "customer_service_pro", "model_chicken_coop", "milky_way", "mushroom", "wool_art", "seaweed", "donate", "regataChampion", "match3_achievement"];
-const RESTORE_ACHIEVEMENT_THRESHOLDS = {"marketBoom": {"Achievement_MarketBoom": 16000}, "miner": {"Achievement_Miner": 14000}, "earthCenter": {"Achievement_EarthCenter": 17000}, "strategyReserv": {"Achievement_StrategyReserv": 3500}, "factoryUpgrader": {"Achievement_FactoryUpgrader": 42}, "collector": {"Achievement_Collector": 25}, "teamwork": {"Achievement_Teamwork": 20000}, "casinoGame": {"Achievement_CasinoGame": 4000}, "sendShips": {"Achievement_sendShips": 18000}, "islandGoods": {"Achievement_islandGoods": 110000}, "collectBacon": {"Achievement_CollectBacon": 15500}, "collectHoney": {"Achievement_CollectHoney": 14500}, "collectorIslands": {"Achievement_CollectorIslands": 30}, "progressWave": {"Achievement_progressWave": 165}, "downFeather": {"Achievement_DownFeather": 14000}, "metropolis": {"Achievement_IncreasedPopulation": 29000, "Achievement_IncreasedPopulation_Current": 12000}, "community_developer": {"Achievement_CommunityDeveloper": 70, "Achievement_CommunityDeveloper_Current": 70}, "entrepreneur": {"Achievement_FillOrders": 7100}, "lead_Architect": {"Achievement_BuiltHouses": 130, "Achievement_BuiltHouses_Current": 26}, "population_boom": {"Achievement_IncreasedPopulation": 29000, "Achievement_IncreasedPopulation_Current": 12000}, "construction_manager": {"Achievement_BuiltFactories": 45, "Achievement_BuiltFactories_Current": 45}, "endless_fields": {"Achievement_PlowedFields": 740000}, "magnate": {"Achievement_EarneCoins": 700000000}, "wacky_farmer": {"Achievement_GetFields": 132}, "urbanist_club": {"Achievement_ExpandField": 390}, "honorary_freeman": {"Achievement_EnteredGame": 235, "Achievement_EnteredGame_Current": 15}, "senior_train_driver": {"Achievement_SentTrain": 2300}, "road_champ": {"Achievement_BuiltRoad": 440, "Achievement_BuiltRoad_Current": 440}, "production_genius": {"Achievement_ProducedProducts": 400000}, "customer_service_pro": {"Achievement_FillOrders": 7100}, "model_chicken_coop": {"Achievement_CollectEggs": 60000}, "milky_way": {"Achievement_CollectMilk": 108000}, "mushroom": {"Achievement_CollectMushroom": 14600}, "wool_art": {"Achievement_CollectWool": 21200}, "seaweed": {"Achievement_seaweed": 20000}, "donate": {"Achievement_donate": 12500}, "regataChampion": {"Achievement_regataChampion": 1}, "match3_achievement": {"Achievement_CompleteMatch3Levels": 56000}};
-function restoreApplyAchievementRules(xml) {
-    const rewards = new Set(RESTORE_ACHIEVEMENT_DEFAULTS);
-    for (const match of xml.matchAll(/AchReward_([A-Za-z0-9_]+)/g)) rewards.add(match[1]);
-    const updates = new Map();
-    for (const key of rewards) {
-        updates.set("AchReward_" + key, 4);
-        const thresholds = RESTORE_ACHIEVEMENT_THRESHOLDS[key] || {};
-        for (const [name, limit] of Object.entries(thresholds)) {
-            const current = Number.parseInt(restoreVarValue(xml, name) || "0", 10) || 0;
-            updates.set(name, Math.max(current, limit));
-        }
-    }
-    const global = restoreFindTag(xml, "Global");
-    if (!global) return xml;
-    const present = new Set();
-    let text = global.text.replace(/<Var\b[^>]*\/>/gi, tag => {
-        const name = restoreAttr(tag, "name");
-        if (!name || !updates.has(name)) return tag;
-        present.add(name);
-        return `<Var name="${name}" v="${updates.get(name)}" t="i"/>`;
-    });
-    const missing = [];
-    for (const [name, value] of updates) if (!present.has(name)) missing.push(`<Var name="${name}" v="${value}" t="i"/>`);
-    if (missing.length) {
-        const closeAt = text.lastIndexOf("</Global>");
-        if (closeAt >= 0) text = text.slice(0, closeAt) + missing.join("\n  ") + "\n  " + text.slice(closeAt);
-    }
-    return xml.slice(0, global.start) + text + xml.slice(global.end);
-}
-function restoreMergeDeferredCoupons(donorXml, baseXml) {
-    const donorGlobal = restoreFindTag(donorXml, "Global");
-    const accepted = ["HireDealer", "LoadTrainAirport", "UpgradeFactory", "UpgradeTrain", "UpgradeIsland"];
-    const mapped = new Map();
-    const coupons = donorGlobal && restoreFindTag(donorGlobal.text, "coupons");
-    if (coupons) {
-        for (const tag of coupons.text.match(/<coupon\b[^>]*\/>/gi) || []) {
-            const id = restoreAttr(tag, "id");
-            if (!accepted.includes(id)) continue;
-            const n = Number.parseInt(restoreAttr(tag, "count"), 10);
-            if (Number.isFinite(n) && n > 0) mapped.set("Coupon" + id, Math.min(n, 10));
-        }
-    }
-    if (!mapped.size) for (const id of accepted) mapped.set("Coupon" + id, 3);
-    const current = restoreVarValue(baseXml, "GivingOffersDeferred") || "";
-    const combined = new Map();
-    for (const item of current.split(",")) {
-        const match = /^\s*([^:]+)\s*:\s*(-?\d+)\s*$/.exec(item);
-        if (match) combined.set(match[1], Number.parseInt(match[2], 10));
-    }
-    for (const [name, count] of mapped) combined.set(name, count);
-    const value = Array.from(combined, ([name, count]) => `${name}:${count}`).join(",");
-    return restoreSetVar(baseXml, "GivingOffersDeferred", value);
-}
-function restorePhaseTwo(baseXml, donorXml) {
-    const baseUser = (baseXml.match(/<Object\b[^>]*\buser="([^"]+)"/i) || [])[1];
-    const donorUser = (donorXml.match(/<Object\b[^>]*\buser="([^"]+)"/i) || [])[1];
-    // App transfers donor TownGround/Buildings to the target save, rewriting user IDs.
-    let groundDonor = restoreFindTag(donorXml, "TownGround", (donorXml.indexOf("</Zoo>") + 6) || 0);
-    let buildingsDonor = groundDonor ? restoreFindTag(donorXml, "Buildings", groundDonor.start) : null;
-    if (groundDonor) {
-        let ground = restoreReplaceUser(groundDonor.text, baseUser);
-        const startFrom = (baseXml.indexOf("</Zoo>") + 6) || 0;
-        const groundBase = restoreFindTag(baseXml, "TownGround", startFrom);
-        if (groundBase) baseXml = baseXml.slice(0, groundBase.start) + ground + baseXml.slice(groundBase.end);
-        if (buildingsDonor) {
-            const building = restoreReplaceUser(buildingsDonor.text, baseUser);
-            const currentGround = restoreFindTag(baseXml, "TownGround", startFrom);
-            const bBase = restoreFindTag(baseXml, "Buildings", currentGround ? currentGround.start : startFrom);
-            if (bBase) baseXml = baseXml.slice(0, bBase.start) + building + baseXml.slice(bBase.end);
-        }
-    }
-    if (donorUser && baseUser && donorUser !== baseUser) {
-        // Ensure copied top-level user-bound objects point to target account.
-        for (const tag of ["TownGround", "Buildings"]) {
-            const block = restoreFindTag(baseXml, tag, (baseXml.indexOf("</Zoo>") + 6) || 0);
-            if (block) baseXml = baseXml.slice(0, block.start) + restoreReplaceUser(block.text, baseUser) + baseXml.slice(block.end);
-        }
-    }
-    baseXml = restoreApplyAchievementRules(baseXml);
-    baseXml = restoreCopyFilteredGlobal(donorXml, baseXml);
-    baseXml = restoreTransferGlobalInventory(donorXml, baseXml);
-    for (const tag of ["Zoo", "ZooInfo", "ZooQuests"]) baseXml = restoreCopySection(donorXml, baseXml, tag);
-    baseXml = restoreCopyArtInfo(donorXml, baseXml);
-    for (const tag of ["Trains", "IslandsInfo", "Minigames", "DataStoreCollapseQuests", "QuestsBook", "DataStoreCollection",
-        "AirInfo", "AirOrders", "MapOrders", "Helic", "LevelInfo", "DailyBonusRewardDay6", "VipDailyBonusRewardDay6", "Upgrade",
-        "TimedEntityManager"]) baseXml = restoreCopySection(donorXml, baseXml, tag);
-    if (restoreFindTag(donorXml, "Minigames") && restoreFindTag(baseXml, "Minigames")) {
-        for (const tag of ["Mail", "ClanMail", "ReceivedGivings", "Balloons", "Ernie", "MagicBeansCenter"]) {
-            baseXml = restoreCopySection(donorXml, baseXml, tag);
-        }
-    }
-    baseXml = restoreCopySeasonTicketBoosts(donorXml, baseXml);
-    for (const name of ["MyBadge", "MyPicture", "MyTheme", "MyFrame", "MyStyle", "townName",
-        "m3Line", "m3Bomb", "m3RainbowBall", "m3Mallet", "m3HorizontalLine", "m3VerticalLine", "m3Reshuffle"]) {
-        const value = restoreVarValue(donorXml, name);
-        if (value !== null) baseXml = restoreSetVar(baseXml, name, value);
-    }
-    if (restoreFindTag(donorXml, "Minigames") && restoreFindTag(baseXml, "Minigames")) {
-        baseXml = restoreMergeDeferredCoupons(donorXml, baseXml);
-    }
-    return baseXml;
-}
-function mergeRestoreXml(baseXml, donorXml) {
-    if (typeof baseXml !== "string" || typeof donorXml !== "string" || !baseXml.trim().startsWith("<") || !donorXml.trim().startsWith("<")) {
-        throw new Error("يجب إرسال ملفي XML صالحين: serverXml وملف الصديق المفكوك");
-    }
-    let result = restorePhaseOne(baseXml.trim(), donorXml.trim());
-    result = restorePhaseTwo(result, donorXml.trim());
-    if (!result.includes("</root>")) throw new Error("XML الناتج غير مكتمل");
     return result;
 }
+function mergeRestoreXml(baseXml, donorXml) {
+    return mergeSelectedXml(baseXml, donorXml);
+}
+function mergeRestorePhase(baseXml, donorXml, phase) {
+    const normalizedPhase = Number(phase || 1);
+    if (normalizedPhase !== 1 && normalizedPhase !== 2) {
+        throw new Error("phase يجب أن يكون 1 أو 2");
+    }
+    return mergeSelectedXml(baseXml, donorXml);
+}
+
 function decodeRestoreLocalFile(input) {
     const raw = Buffer.isBuffer(input) ? input : Buffer.from(input || "");
     if (!raw.length) throw new Error("ملف الحساب المحلي فارغ");
@@ -3628,86 +2967,6 @@ function decodeRestoreLocalFile(input) {
     }
     throw new Error(`تعذر فك ملف الحساب المحلي بصيغة LocalInfo/FetchCity: ${failures.join(" | ")}`);
 }
-function restoreCopyVarFromSection(donorXml, baseXml, sectionName, varName) {
-    const donorSection = restoreFindTag(donorXml, sectionName);
-    const baseSection = restoreFindTag(baseXml, sectionName);
-    if (!donorSection || !baseSection) return baseXml;
-    const donorVar = restoreVarTag(donorSection.text, varName);
-    if (!donorVar) return baseXml;
-    const escaped = restoreEscapeRegExp(varName);
-    const varRe = new RegExp(`<Var\b(?=[^>]*\bname=["']${escaped}["'])[^>]*/>`, "i");
-    let text = baseSection.text;
-    if (varRe.test(text)) text = text.replace(varRe, () => donorVar);
-    else if (/<Vars\s*\/>/i.test(text)) text = text.replace(/<Vars\s*\/>/i, `<Vars>\n        ${donorVar}\n      </Vars>`);
-    else if (/<\/Vars\s*>/i.test(text)) text = text.replace(/<\/Vars\s*>/i, `        ${donorVar}\n      </Vars>`);
-    else text = text.replace(new RegExp(`</${restoreEscapeRegExp(sectionName)}\s*>`, "i"), `  <Vars>\n    ${donorVar}\n  </Vars>\n</${sectionName}>`);
-    return baseXml.slice(0, baseSection.start) + text + baseXml.slice(baseSection.end);
-}
-
-// Port of p012g0.C.l: preserve the same section order used by the APK.
-function restorePhaseTwoExact(baseXml, donorXml) {
-    const baseUser = (baseXml.match(/<Object\\b[^>]*\\buser="([^"]+)"/i) || [])[1];
-    const donorUser = (donorXml.match(/<Object\\b[^>]*\\buser="([^"]+)"/i) || [])[1];
-    let result = baseXml;
-    const donorGround = restoreFindTag(donorXml, "TownGround", Math.max(0, donorXml.indexOf("</Zoo>") + 6));
-    if (donorGround) {
-        const ground = restoreReplaceUser(donorGround.text, baseUser);
-        const baseGround = restoreFindTag(result, "TownGround", Math.max(0, result.indexOf("</Zoo>") + 6));
-        if (baseGround) result = result.slice(0, baseGround.start) + ground + result.slice(baseGround.end);
-        else result = restoreCopySection(donorXml, result, "TownGround");
-        const donorBuildings = restoreFindTag(donorXml, "Buildings", donorGround.start);
-        if (donorBuildings) {
-            const building = restoreReplaceUser(donorBuildings.text, baseUser);
-            const currentGround = restoreFindTag(result, "TownGround", Math.max(0, result.indexOf("</Zoo>") + 6));
-            const baseBuildings = restoreFindTag(result, "Buildings", currentGround ? currentGround.start : 0);
-            if (baseBuildings) result = result.slice(0, baseBuildings.start) + building + result.slice(baseBuildings.end);
-        }
-    }
-    if (donorUser && baseUser && donorUser !== baseUser) {
-        for (const tag of ["TownGround", "Buildings"]) {
-            const block = restoreFindTag(result, tag, Math.max(0, result.indexOf("</Zoo>") + 6));
-            if (block) result = result.slice(0, block.start) + restoreReplaceUser(block.text, baseUser) + result.slice(block.end);
-        }
-    }
-    for (const tag of ["Zoo", "ZooInfo", "ZooQuests"]) result = restoreCopySection(donorXml, result, tag);
-    result = restoreCopyArtInfo(donorXml, result);
-    for (const tag of ["Trains", "IslandsInfo", "Minigames", "DataStoreCollapseQuests", "QuestsBook", "DataStoreCollection",
-        "AirInfo", "AirOrders", "MapOrders", "Helic", "LevelInfo", "DailyBonusRewardDay6", "VipDailyBonusRewardDay6", "Upgrade"]) {
-        result = restoreCopySection(donorXml, result, tag);
-    }
-    result = restoreCopySeasonTicketBoosts(donorXml, result);
-    result = restoreCopyVarFromSection(donorXml, result, "Minigames", "Lives_infTime_Match3");
-    result = restoreCopySection(donorXml, result, "TimedEntityManager");
-    result = restoreApplyAchievementRules(result);
-    result = restoreTransferGlobalInventory(donorXml, result);
-    for (const name of ["MyBadge", "MyPicture", "MyTheme", "MyFrame", "MyStyle", "townName"]) {
-        const value = restoreVarValue(donorXml, name);
-        if (value !== null) result = restoreSetVar(result, name, value);
-    }
-    result = restoreCopyFilteredGlobal(donorXml, result);
-    if (restoreFindTag(donorXml, "Minigames") && restoreFindTag(result, "Minigames")) {
-        for (const tag of ["Mail", "ClanMail", "ReceivedGivings", "Balloons", "Ernie", "MagicBeansCenter"]) {
-            result = restoreCopySection(donorXml, result, tag);
-        }
-        result = restoreMergeDeferredCoupons(donorXml, result);
-    }
-    return result;
-}
-
-function mergeRestorePhase(baseXml, donorXml, phase) {
-    if (typeof baseXml !== "string" || typeof donorXml !== "string" ||
-        !baseXml.trim().startsWith("<") || !donorXml.trim().startsWith("<")) {
-        throw new Error("يجب إرسال ملفي XML صالحين");
-    }
-    const normalizedPhase = Number(phase || 1);
-    let result = baseXml.trim();
-    if (normalizedPhase === 1) result = restorePhaseOne(result, donorXml.trim());
-    else if (normalizedPhase === 2) result = restorePhaseTwoExact(result, donorXml.trim());
-    else throw new Error("phase يجب أن يكون 1 أو 2");
-    if (!result.includes("</root>")) throw new Error("XML الناتج غير مكتمل");
-    return result;
-}
-
 async function handleRestoreAccount(req, res) {
     try {
         const rawBody = Buffer.isBuffer(req.body) ? req.body : null;
