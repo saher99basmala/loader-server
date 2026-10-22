@@ -2876,6 +2876,18 @@ async function handleDecodeFriends(
 // Direct port of the current merge_selected_township.py script.
 // The previous server merge implementation has been replaced.
 // ============================================================
+const FULL_SCRIPT_VARS = [
+    "money", "moneyCash", "EarnedCoins", "residents", "wheatCounter",
+    "plowFieldsAchiev", "defaultOrdersCount", "match3Life",
+    "Match3Lives_infTime", "Achievement_IncreasedPopulation",
+    "Achievement_PlowedFields", "Achievement_BuiltFactories",
+    "Achievement_SpentCoins", "Achievement_EarneCoins", "spentCash",
+    "earnedCash", "timeInGame", "levelup", "experience", "sexpx",
+    "m3_comp_lvls", "M3Ch_mainM3", "STLM3", "FirstAttemptM3Levels",
+    "LivesSent", "Achievement_Teamwork", "FullCardCollections",
+    "RegataTasksCompleted", "gameStartDate", "expeditionEnergy",
+    "depth", "likes"
+];
 const CURRENT_SCRIPT_VARS = [
     "townName", "AirScore2", "AirScore1", "m3_comp_lvls", "M3Ch_mainM3",
     "FirstAttemptM3Levels", "RegataTasksCompleted", "LivesSent",
@@ -2899,31 +2911,68 @@ function mergeReplaceAttr(tag, attr, value) {
     if (close) return tag.slice(0, close.index) + ` ${attr}="${String(value)}"` + tag.slice(close.index);
     return tag.replace(/>$/, ` ${attr}="${String(value)}">`);
 }
-function mergeSelectedVar(xml, donorXml, name) {
+function mergeVarTag(xml, name) {
     const escaped = mergeEscapeRegExp(name);
-    const donorRe = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "i");
-    const donor = donorRe.exec(donorXml);
+    return new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "i");
+}
+function mergeDataTag(xml, name) {
+    const escaped = mergeEscapeRegExp(name);
+    return new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "i");
+}
+function mergeVarFromDonor(baseXml, donorXml, name, clearIfMissing) {
+    const donor = mergeVarTag(donorXml, name).exec(donorXml);
+    if (!donor && !clearIfMissing) return baseXml;
     const value = donor ? (mergeAttr(donor[0], "v") || "") : "";
-    const targetRe = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "gi");
+    const targetRe = mergeVarTag(baseXml, name);
     let first = true;
-    return xml.replace(targetRe, tag => {
+    return baseXml.replace(new RegExp(targetRe.source, "gi"), tag => {
         if (!first) return "";
         first = false;
         return mergeReplaceAttr(tag, "v", value);
     });
 }
-function mergeSelectedDataElem(xml, donorXml, name) {
-    const escaped = mergeEscapeRegExp(name);
-    const donorRe = new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "i");
-    const donor = donorRe.exec(donorXml);
+function mergeDataElemFromDonor(baseXml, donorXml, name) {
+    const donor = mergeDataTag(donorXml, name).exec(donorXml);
     const value = donor ? (mergeAttr(donor[0], "value") || "") : "";
-    const targetRe = new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escaped}["'])[^>]*\\/>`, "gi");
+    const targetRe = mergeDataTag(baseXml, name);
     let first = true;
-    return xml.replace(targetRe, tag => {
+    return baseXml.replace(new RegExp(targetRe.source, "gi"), tag => {
         if (!first) return "";
         first = false;
         return mergeReplaceAttr(tag, "value", value);
     });
+}
+function mergeFindBlocks(xml, wanted) {
+    const escaped = mergeEscapeRegExp(wanted);
+    const tokenRe = new RegExp(`<\\/?${escaped}\\b[^>]*>`, "gi");
+    const blocks = [];
+    const stack = [];
+    let m;
+    while ((m = tokenRe.exec(xml)) !== null) {
+        const raw = m[0];
+        if (/^<\//.test(raw)) {
+            const open = stack.pop();
+            if (open) blocks.push({ start: open.start, end: m.index + raw.length, text: xml.slice(open.start, m.index + raw.length) });
+        } else if (!/\/\s*>$/.test(raw)) {
+            stack.push({ start: m.index });
+        } else {
+            blocks.push({ start: m.index, end: m.index + raw.length, text: raw });
+        }
+    }
+    return blocks.sort((a, b) => a.start - b.start);
+}
+function mergeRepeatedSections(baseXml, donorXml) {
+    const replacements = [];
+    for (const name of ["TownGround", "Buildings"]) {
+        const baseBlocks = mergeFindBlocks(baseXml, name);
+        const donorBlocks = mergeFindBlocks(donorXml, name);
+        const count = Math.min(baseBlocks.length, donorBlocks.length);
+        for (let i = 0; i < count; i++) replacements.push([baseBlocks[i].start, baseBlocks[i].end, donorBlocks[i].text]);
+    }
+    for (const [start, end, text] of replacements.sort((a, b) => b[0] - a[0])) {
+        baseXml = baseXml.slice(0, start) + text + baseXml.slice(end);
+    }
+    return baseXml;
 }
 function mergeSelectedXml(baseXml, donorXml) {
     if (typeof baseXml !== "string" || typeof donorXml !== "string" ||
@@ -2932,8 +2981,16 @@ function mergeSelectedXml(baseXml, donorXml) {
     }
     let result = baseXml.replace(/^\uFEFF/, "").trim();
     const donor = donorXml.replace(/^\uFEFF/, "").trim();
-    for (const name of CURRENT_SCRIPT_VARS) result = mergeSelectedVar(result, donor, name);
-    for (const name of CURRENT_SCRIPT_DATAELEMS) result = mergeSelectedDataElem(result, donor, name);
+    // Full COPY_VARS behavior from the original script.
+    for (const name of FULL_SCRIPT_VARS) result = mergeVarFromDonor(result, donor, name, false);
+    // Explicit requested fields: donor absence means an empty value.
+    for (const name of CURRENT_SCRIPT_VARS) result = mergeVarFromDonor(result, donor, name, true);
+    for (const name of CURRENT_SCRIPT_DATAELEMS) result = mergeDataElemFromDonor(result, donor, name);
+    result = mergeRepeatedSections(result, donor);
+    // The original script also transfers dynamically named unlocked avatars.
+    const unlocked = new Set();
+    for (const m of donor.matchAll(/<Var\b[^>]*\bname=["'](Unlocked_ava\d+)["'][^>]*\/>/gi)) unlocked.add(m[1]);
+    for (const name of unlocked) result = mergeVarFromDonor(result, donor, name, false);
     if (!/<root(?:\s|>)/i.test(result) || !/<\/root>\s*$/i.test(result)) {
         throw new Error("XML الناتج غير مكتمل");
     }
