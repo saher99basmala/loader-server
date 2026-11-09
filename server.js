@@ -681,6 +681,14 @@ app.get(
 // تشغيل السيرفر
 // ============================================================
 
+// Health check for Render and Cloudflare Cron
+app.get("/health", (_req, res) => {
+    res.status(200).json({
+        ok: true,
+        service: "loader-server"
+    });
+});
+
 app.listen(
     PORT,
     "0.0.0.0",
