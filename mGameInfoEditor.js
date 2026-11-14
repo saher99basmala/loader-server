@@ -241,7 +241,24 @@ function changeBarnCapacity(xml, value) {
 }
 
 function changeFrameCoins(xml, value) {
-    return _changeVerifiedMoney(xml, 'LR2_Currency', value, 'عملات الإطار');
+    const amount = _nonNegativeInteger(value, 'عملات الإطار');
+    const source = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
+    const name = 'LR2_Currency';
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const existing = new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])`, 'i');
+    let updated;
+    if (existing.test(source)) {
+        updated = _changeVerifiedMoney(source, name, amount, 'عملات الإطار').toString('utf8');
+    } else {
+        // التطبيق الأصلي يضيف LR2_Currency قبل أول Var في ملف الحفظ.
+        const insertion = `<Var name="${name}" v="${amount}" t="i"/>`;
+        const result = source.replace(/<Var\s/i, `${insertion}\n<Var `);
+        if (result === source) throw new Error('لم يتم العثور على عقدة Var لإضافة LR2_Currency.');
+        updated = result;
+    }
+    const verify = updated.match(new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*\\bv\\s*=\\s*(["'])([^"']*)\\1`, 'i'));
+    if (!verify || Number(verify[2]) !== amount) throw new Error('فشل التحقق من عملات الإطار بعد التعديل.');
+    return Buffer.from(updated, 'utf8');
 }
 
 function changeResource(xml, value) {
@@ -1992,6 +2009,13 @@ const EDITORS = {
         function(xml, value) {
             return changeResource(xml, value);
         },
+    resourceBatch:
+        function(xml, value) {
+            if (!Array.isArray(value) || value.length === 0) throw new Error('دفعة الموارد فارغة أو غير صحيحة.');
+            let result = Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
+            for (const item of value) result = changeResource(result, item);
+            return result;
+        },
     coupon:
         function(xml, value) {
             let options = value;
@@ -2006,6 +2030,13 @@ const EDITORS = {
     barnItem:
         function(xml, value) {
             return changeBarnItem(xml, value);
+        },
+    barnBatch:
+        function(xml, value) {
+            if (!Array.isArray(value) || value.length === 0) throw new Error('دفعة الشونة فارغة أو غير صحيحة.');
+            let result = Buffer.isBuffer(xml) ? xml : Buffer.from(xml);
+            for (const item of value) result = changeBarnItem(result, item);
+            return result;
         },
 
 
