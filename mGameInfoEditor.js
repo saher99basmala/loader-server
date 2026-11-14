@@ -1626,11 +1626,157 @@ function unlockGoldenTicket2(xml) {
 }
 /*
 ========================================
+Train editor
+========================================
+The game stores each train as an XML <train> tag whose v attribute contains
+an XML-escaped JSON object.  This mirrors G2.b/G2.c from the application:
+product slots are numbered 1..5, orderBlue is represented by 1, and the
+optional clearBox operation removes the old order/helper fields.
+*/
+function _decodeXmlEntities(value) {
+    return String(value)
+        .replace(/&apos;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+}
+function _encodeXmlEntities(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/'/g, '&apos;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+function _trainSection(text) {
+    const limit = text.search(/<Ernie\b/i);
+    const endLimit = limit < 0 ? text.length : limit;
+    const open = /<Trains\b[^>]*>/i.exec(text.slice(0, endLimit));
+    if (!open) throw new Error('لم أجد قسم <Trains> الرئيسي.');
+    const start = open.index + open[0].length;
+    const closeRel = text.slice(start, endLimit).search(/<\/Trains\s*>/i);
+    if (closeRel < 0) throw new Error('قسم <Trains> غير مكتمل.');
+    return {start, end: start + closeRel, closeEnd: start + closeRel + text.slice(start + closeRel).match(/^<\/Trains\s*>/i)[0].length};
+}
+function _trainRecords(text) {
+    const section = _trainSection(text);
+    const body = text.slice(section.start, section.end);
+    const records = [];
+    const re = /<train\s+v\s*=\s*(["'])(.*?)\1\s*\/\s*>/gis;
+    let match;
+    while ((match = re.exec(body))) {
+        let data;
+        try {
+            data = JSON.parse(_decodeXmlEntities(match[2]));
+        } catch (error) {
+            throw new Error('بيانات قطار غير صالحة بصيغة JSON.');
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('بنية بيانات القطار غير متوقعة.');
+        records.push({match, data, start: match.index, end: match.index + match[0].length});
+    }
+    if (!records.length) throw new Error('لم أجد قطارات قابلة للقراءة داخل قسم Trains الرئيسي.');
+    return {section, body, records};
+}
+function _trainOptions(value, requireIndex) {
+    let options = value;
+    if (typeof options === 'string') {
+        try { options = JSON.parse(options); } catch (_) { throw new Error('إعدادات القطار يجب أن تكون JSON صالحًا.'); }
+    }
+    if (!options || typeof options !== 'object' || Array.isArray(options)) throw new Error('إعدادات القطار غير صحيحة.');
+    const trainIndex = Number(options.trainIndex);
+    const boxIndex = Number(options.boxIndex);
+    if (requireIndex && (!Number.isInteger(trainIndex) || trainIndex < 1)) throw new Error('رقم القطار غير صحيح.');
+    if (requireIndex && (!Number.isInteger(boxIndex) || boxIndex < 1 || boxIndex > 5)) throw new Error('رقم الصندوق يجب أن يكون بين 1 و5.');
+    const productId = String(options.productId ?? '').trim();
+    if (!productId) throw new Error('كود المنتج فارغ.');
+    const productCount = Number(options.productCount);
+    if (!Number.isInteger(productCount) || productCount < 0) throw new Error('كمية المنتج يجب أن تكون عددًا صحيحًا غير سالب.');
+    const orderBlue = options.orderBlue === true || options.orderBlue === 1 || options.orderBlue === '1' || options.orderBlue === 'true';
+    const clearBox = options.clearBox === true || options.clearBox === 1 || options.clearBox === '1' || options.clearBox === 'true';
+    return {trainIndex, boxIndex, productId, productCount, orderBlue, clearBox, orderBlueTime: options.orderBlueTime};
+}
+function _applyTrainSlot(data, boxIndex, options) {
+    const suffix = String(boxIndex);
+    data['productId_' + suffix] = options.productId;
+    data['productCount_' + suffix] = options.productCount;
+    if (options.orderBlue) {
+        data['orderBlue_' + suffix] = 1;
+        if (!Object.prototype.hasOwnProperty.call(data, 'orderBlueTime_' + suffix)) {
+            const supplied = Number(options.orderBlueTime);
+            data['orderBlueTime_' + suffix] = Number.isFinite(supplied) && supplied > 0 ? Math.floor(supplied) : Math.floor(Date.now() / 1000);
+        }
+    } else {
+        delete data['orderBlue_' + suffix];
+        delete data['orderBlueTime_' + suffix];
+    }
+    if (options.clearBox) {
+        for (const key of [
+            'orderId_' + suffix, 'productDone_' + suffix, 'checked_' + suffix,
+            'productSpent' + suffix, 'cashSpent' + suffix, 'expEarned' + suffix,
+            'couponsSpent' + suffix, 'cardPack' + suffix,
+            'orderFriend_' + suffix + '_city_id', 'orderFriend_' + suffix + '_friend_city_name',
+            'orderFriend_' + suffix + '_pic', 'orderFriend_' + suffix + '_friend_type'
+        ]) delete data[key];
+    }
+}
+function _editTrains(xml, value, allTrains) {
+    const text = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
+    const options = _trainOptions(value, !allTrains);
+    const parsed = _trainRecords(text);
+    if (!allTrains && options.trainIndex > parsed.records.length) throw new Error(`القطار ${options.trainIndex} غير موجود. الموجود ${parsed.records.length}.`);
+    const targets = allTrains ? parsed.records.map((_, index) => index + 1) : [options.trainIndex];
+    const replacements = new Map();
+    for (const trainIndex of targets) {
+        const record = parsed.records[trainIndex - 1];
+        const next = {...record.data};
+        const boxes = allTrains ? [1, 2, 3, 4, 5] : [options.boxIndex];
+        for (const boxIndex of boxes) _applyTrainSlot(next, boxIndex, options);
+        replacements.set(record.start, `<train v='${_encodeXmlEntities(JSON.stringify(next))}'/>`);
+    }
+    let updatedBody = parsed.body;
+    for (const record of [...parsed.records].reverse()) {
+        const replacement = replacements.get(record.start);
+        if (replacement) updatedBody = updatedBody.slice(0, record.start) + replacement + updatedBody.slice(record.end);
+    }
+    const resultText = text.slice(0, parsed.section.start) + updatedBody + text.slice(parsed.section.end);
+    const verified = _trainRecords(resultText).records;
+    for (const trainIndex of targets) {
+        const data = verified[trainIndex - 1].data;
+        const boxes = allTrains ? [1, 2, 3, 4, 5] : [options.boxIndex];
+        for (const boxIndex of boxes) {
+            const suffix = String(boxIndex);
+            if (data['productId_' + suffix] !== options.productId || Number(data['productCount_' + suffix]) !== options.productCount ||
+                (Number(data['orderBlue_' + suffix] || 0) === 1) !== options.orderBlue) throw new Error('فشل التحقق من صندوق القطار بعد التعديل.');
+            if (options.clearBox) {
+                const forbidden = [
+                    'orderId_' + suffix, 'productDone_' + suffix, 'checked_' + suffix,
+                    'productSpent' + suffix, 'cashSpent' + suffix, 'expEarned' + suffix,
+                    'couponsSpent' + suffix, 'cardPack' + suffix,
+                    'orderFriend_' + suffix + '_city_id', 'orderFriend_' + suffix + '_friend_city_name',
+                    'orderFriend_' + suffix + '_pic', 'orderFriend_' + suffix + '_friend_type'
+                ];
+                if (forbidden.some(key => Object.prototype.hasOwnProperty.call(data, key))) throw new Error('فشل تنظيف بيانات صندوق القطار.');
+            }
+        }
+    }
+    return Buffer.from(resultText, 'utf8');
+}
+/*
+========================================
 EDITORS
 ========================================
 */
 
 const EDITORS = {
+    trainBox:
+        function(xml, value) {
+            return _editTrains(xml, value, false);
+        },
+    trainAll:
+        function(xml, value) {
+            return _editTrains(xml, value, true);
+        },
     goldenTicket:
         function(xml) {
             return unlockGoldenTicket(xml);
@@ -2195,6 +2341,12 @@ EXPORTS
 module.exports = {
 
     applyEdits,
+    editTrainBox: function(xml, options) {
+        return _editTrains(xml, options, false);
+    },
+    editAllTrains: function(xml, options) {
+        return _editTrains(xml, options, true);
+    },
     unlockGoldenTicket,
     unlockGoldenTicket2,
 
