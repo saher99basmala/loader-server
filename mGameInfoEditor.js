@@ -140,6 +140,41 @@ function changeGameStartDate(xml, value) {
     return updated;
 }
 
+function changeBarnCapacity(xml, value) {
+    const amount = _nonNegativeInteger(value, 'ترقية الحظيرة');
+    const duplicate = (514698188 ^ amount) >>> 0;
+    let updated = _changeVerifiedMoney(xml, 'WareHouseCashUpgrade', amount, 'ترقية الحظيرة');
+    updated = _changeVerifiedMoney(updated, 'WHUdup', duplicate, 'نسخة ترقية الحظيرة');
+    updated = _changeVerifiedMoney(updated, 'gv_barn_upg', amount, 'ترقية الحظيرة');
+    return updated;
+}
+
+function changeFrameCoins(xml, value) {
+    return _changeVerifiedMoney(xml, 'LR2_Currency', value, 'عملات الإطار');
+}
+
+function changeResource(xml, value) {
+    let options = value;
+    if (typeof options === 'string') {
+        try { options = JSON.parse(options); } catch (_) { throw new Error('إعداد المورد يجب أن يكون JSON صالحًا.'); }
+    }
+    if (!options || typeof options !== 'object' || Array.isArray(options)) throw new Error('إعداد المورد غير صحيح.');
+    const name = String(options.name ?? options.key ?? '').trim();
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,100}$/.test(name)) throw new Error('اسم المورد غير صالح.');
+    return _changeVerifiedMoney(xml, name, options.value, `المورد ${name}`);
+}
+
+function changeBarnItem(xml, value) {
+    let options = value;
+    if (typeof options === 'string') {
+        try { options = JSON.parse(options); } catch (_) { throw new Error('إعداد عنصر الشونة غير صالح.'); }
+    }
+    if (!options || typeof options !== 'object' || Array.isArray(options)) throw new Error('إعداد عنصر الشونة غير صحيح.');
+    const name = String(options.name ?? '').trim();
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,100}$/.test(name)) throw new Error('اسم عنصر الشونة غير صالح.');
+    return _changeVerifiedMoney(xml, `${name}Counter`, options.value, `عنصر الشونة ${name}`);
+}
+
 function changeDataElem(
     xml,
     elemName,
@@ -1839,6 +1874,22 @@ const EDITORS = {
         function(xml, value) {
             return changeGameStartDate(xml, value);
         },
+    barnCapacity:
+        function(xml, value) {
+            return changeBarnCapacity(xml, value);
+        },
+    frameCoins:
+        function(xml, value) {
+            return changeFrameCoins(xml, value);
+        },
+    resource:
+        function(xml, value) {
+            return changeResource(xml, value);
+        },
+    barnItem:
+        function(xml, value) {
+            return changeBarnItem(xml, value);
+        },
 
 
     /*
@@ -2409,6 +2460,10 @@ module.exports = {
     changeMoney,
     changeMoneyCash,
     changeGameStartDate,
+    changeBarnCapacity,
+    changeFrameCoins,
+    changeResource,
+    changeBarnItem,
 
     changeDataElem,
 
