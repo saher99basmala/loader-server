@@ -153,9 +153,24 @@ function changeGameStartDate(xml, value) {
 function changeBarnCapacity(xml, value) {
     const amount = _nonNegativeInteger(value, 'ترقية الحظيرة');
     const duplicate = (514698188 ^ amount) >>> 0;
-    let updated = _changeVerifiedMoney(xml, 'WareHouseCashUpgrade', amount, 'ترقية الحظيرة');
-    updated = _changeVerifiedMoney(updated, 'WHUdup', duplicate, 'نسخة ترقية الحظيرة');
-    updated = _changeVerifiedMoney(updated, 'gv_barn_upg', amount, 'ترقية الحظيرة');
+    const setOrInsert = (input, name, number) => {
+        const source = Buffer.isBuffer(input) ? input : Buffer.from(input);
+        const text = source.toString('utf8');
+        const escapedName = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])`, 'i').test(text)) {
+            return _changeVerifiedMoney(source, name, number, `ترقية الشونة ${name}`);
+        }
+        const varsEnd = text.search(/<\/Vars\s*>/i);
+        if (varsEnd < 0) throw new Error(`لم يتم العثور على قسم Vars لإضافة ${name}.`);
+        const inserted = text.slice(0, varsEnd) + `<Var name="${name}" v="${number}" t="i"/>` + text.slice(varsEnd);
+        const result = Buffer.from(inserted, 'utf8');
+        const verify = result.toString('utf8').match(new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*\\bv\\s*=\\s*(["'])([^"']*)\\1`, 'i'));
+        if (!verify || Number(verify[2]) !== number) throw new Error(`فشل التحقق من إضافة ${name}.`);
+        return result;
+    };
+    let updated = setOrInsert(xml, 'WareHouseCashUpgrade', amount);
+    updated = setOrInsert(updated, 'WHUdup', duplicate);
+    updated = setOrInsert(updated, 'gv_barn_upg', amount);
     return updated;
 }
 
