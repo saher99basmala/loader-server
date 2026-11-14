@@ -1502,11 +1502,94 @@ function changeRegataTasks(
 
 /*
 ========================================
+Golden Tickets
+========================================
+
+These editors operate on the decoded mGameInfo XML.  They deliberately use
+balanced DataElem scanning instead of a non-greedy XML regex, because the
+save contains deeply nested DataElem nodes.
+*/
+function _xmlAttr(tag, name) {
+    const re = new RegExp("\\b" + name + "\\s*=\\s*([\\\"'])(.*?)\\1", "i");
+    const m = tag.match(re);
+    return m ? m[2] : null;
+}
+function _setXmlAttr(tag, name, value) {
+    const re = new RegExp("(\\b" + name + "\\s*=\\s*)([\\\"'])[^\\\"']*\\2", "i");
+    if (re.test(tag)) return tag.replace(re, '$1"' + String(value) + '"');
+    return tag.replace(/\s*\/?>$/, ' ' + name + '="' + String(value) + '"$&');
+}
+function _findNamedDataElem(text, names, from = 0) {
+    const wanted = new Set(names.map(String));
+    const openRe = /<DataElem\b[^>]*>/gi;
+    openRe.lastIndex = from;
+    let m;
+    while ((m = openRe.exec(text))) {
+        const tag = m[0];
+        if (/\/\s*>$/.test(tag)) continue;
+        const name = _xmlAttr(tag, 'name');
+        if (!wanted.has(name)) continue;
+        let depth = 1;
+        const tokenRe = /<DataElem\b[^>]*>|<\/DataElem\s*>/gi;
+        tokenRe.lastIndex = openRe.lastIndex;
+        let t;
+        while ((t = tokenRe.exec(text))) {
+            if (/^<DataElem\b/i.test(t[0]) && !/\/\s*>$/.test(t[0])) depth++;
+            else if (/^<\/DataElem/i.test(t[0])) {
+                depth--;
+                if (depth === 0) return {start:m.index, end:t.index+t[0].length, open:tag};
+            }
+        }
+        throw new Error('بنية DataElem غير مكتملة: ' + name);
+    }
+    return null;
+}
+function unlockGoldenTicket(xml) {
+    const text = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
+    const hit = _findNamedDataElem(text, ['SeasonTicket', 'SeasonPass']);
+    if (!hit) throw new Error('لم يتم العثور على SeasonTicket أو SeasonPass');
+    let block = text.slice(hit.start, hit.end);
+    if (!/\b(?:premium|score|lastSeenScoreInHUD)\s*=/.test(block)) throw new Error('بنية التذكرة الذهبية غير متوقعة');
+    const scores = [...block.matchAll(/\b(?:score|lastSeenScoreInHUD)\s*=\s*["'](-?\d+)["']/gi)].map(m => Number(m[1]));
+    const maxScore = scores.length ? Math.max(...scores) : 0;
+    block = block.replace(/\brewardGiven\s*=\s*["'][^"']*["']\s*/gi, '');
+    block = block.replace(/(<DataElem\b[^>]*\bname=["'](?:SeasonTicket|SeasonPass)["'][^>]*>)/i, m => {
+        let out = _setXmlAttr(m, 'premium', '1');
+        out = _setXmlAttr(out, 'score', String(maxScore));
+        return out;
+    });
+    block = block.replace(/(\b(?:lastSeenScoreInHUD|newStageAvailableInHUD)\s*=\s*["'])[^"']*(["'])/gi, (m, a, b) => m.toLowerCase().includes('newstageavailableinhud') ? a + '0' + b : a + String(maxScore) + b);
+    if (!/\bpremium\s*=\s*["']1["']/i.test(block) || /\brewardGiven\s*=/i.test(block)) throw new Error('فشل التحقق من فتح التذكرة الذهبية');
+    return Buffer.from(text.slice(0, hit.start) + block + text.slice(hit.end), 'utf8');
+}
+function unlockGoldenTicket2(xml) {
+    const text = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
+    const city = _findNamedDataElem(text, ['CityTicket']);
+    if (!city) throw new Error('لم يتم العثور على CityTicket');
+    const cityText = text.slice(city.start, city.end);
+    const level = _findNamedDataElem(cityText, ['CityTicketLevel']);
+    if (!level) throw new Error('لم يتم العثور على CityTicketLevel داخل CityTicket');
+    const desired = '<DataElem name="CityTicketLevel" type="dataStore"><DataElem name="cm" type="double" value="1.0000000000000000"/><DataElem name="level" type="string" value="Vip"/><DataElem name="rewards" type="dataStore"><DataElem name="g" type="dataStore"><DataElem name="c" type="int" value="0"/><DataElem name="collected" type="bool" value="true"/><DataElem name="points" type="int" value="0"/><DataElem name="selected" type="bool" value="true"/><DataElem name="t" type="string" value=""/></DataElem><DataElem name="v" type="dataStore"><DataElem name="c" type="int" value="0"/><DataElem name="collected" type="bool" value="true"/><DataElem name="points" type="int" value="0"/><DataElem name="selected" type="bool" value="true"/><DataElem name="t" type="string" value=""/></DataElem></DataElem></DataElem>';
+    const newCity = cityText.slice(0, level.start) + desired + cityText.slice(level.end);
+    const out = text.slice(0, city.start) + newCity + text.slice(city.end);
+    if (!/name="CityTicketLevel"/.test(newCity) || !/value="Vip"/.test(newCity)) throw new Error('فشل التحقق من التذكرة الذهبية 2');
+    return Buffer.from(out, 'utf8');
+}
+/*
+========================================
 EDITORS
 ========================================
 */
 
 const EDITORS = {
+    goldenTicket:
+        function(xml) {
+            return unlockGoldenTicket(xml);
+        },
+    goldenTicket2:
+        function(xml) {
+            return unlockGoldenTicket2(xml);
+        },
 
 
     /*
@@ -2063,6 +2146,8 @@ EXPORTS
 module.exports = {
 
     applyEdits,
+    unlockGoldenTicket,
+    unlockGoldenTicket2,
 
     changeVar,
 
