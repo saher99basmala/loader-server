@@ -99,6 +99,47 @@ function changeVar(
 ========================================
 */
 
+function _nonNegativeInteger(value, label) {
+    const text = String(value ?? '').trim();
+    if (!/^\d+$/.test(text)) throw new Error(`${label} يجب أن يكون عددًا صحيحًا غير سالب.`);
+    const number = Number(text);
+    if (!Number.isSafeInteger(number)) throw new Error(`${label} أكبر من الحد المدعوم.`);
+    return number;
+}
+
+function _changeVerifiedMoney(xml, varName, value, label) {
+    const amount = _nonNegativeInteger(value, label);
+    const updated = changeVar(xml, varName, String(amount));
+    const text = updated.toString('utf8');
+    const escapedName = String(varName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const verify = text.match(new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*\\bv\\s*=\\s*(["'])([^"']*)\\1`, 'i'));
+    if (!verify || Number(verify[2]) !== amount) throw new Error(`فشل التحقق من ${label}.`);
+    return updated;
+}
+
+function changeMoney(xml, value) {
+    return _changeVerifiedMoney(xml, 'money', value, 'النقود');
+}
+
+function changeMoneyCash(xml, value) {
+    return _changeVerifiedMoney(xml, 'moneyCash', value, 'T-Cash');
+}
+
+function changeGameStartDate(xml, value) {
+    const date = String(value ?? '').trim();
+    if (!/^(0[1-9]|1[0-2])\/\d{4}$/.test(date)) throw new Error('صيغة التاريخ يجب أن تكون MM/yyyy مثل 09/2026.');
+    const [monthText, yearText] = date.split('/');
+    const timestamp = Math.floor(Date.UTC(Number(yearText), Number(monthText) - 1, 1) / 1000);
+    if (!Number.isSafeInteger(timestamp) || timestamp < 0) throw new Error('التاريخ غير صالح.');
+    const updated = _changeVerifiedMoney(xml, 'gameStartDate', timestamp, 'التاريخ');
+    const match = updated.toString('utf8').match(new RegExp(`<Var\\b(?=[^>]*\\bname=["']gameStartDate["'])[^>]*\\bv\\s*=\\s*(["'])([^"']*)\\1`, 'i'));
+    if (!match) throw new Error('فشل التحقق من التاريخ.');
+    const storedDate = new Date(Number(match[2]) * 1000);
+    const verified = `${String(storedDate.getUTCMonth() + 1).padStart(2, '0')}/${storedDate.getUTCFullYear()}`;
+    if (verified !== date) throw new Error('فشل التحقق من التاريخ.');
+    return updated;
+}
+
 function changeDataElem(
     xml,
     elemName,
@@ -1786,6 +1827,19 @@ const EDITORS = {
             return unlockGoldenTicket2(xml);
         },
 
+    money:
+        function(xml, value) {
+            return changeMoney(xml, value);
+        },
+    moneyCash:
+        function(xml, value) {
+            return changeMoneyCash(xml, value);
+        },
+    gameStartDate:
+        function(xml, value) {
+            return changeGameStartDate(xml, value);
+        },
+
 
     /*
     Level
@@ -2351,6 +2405,10 @@ module.exports = {
     unlockGoldenTicket2,
 
     changeVar,
+
+    changeMoney,
+    changeMoneyCash,
+    changeGameStartDate,
 
     changeDataElem,
 
