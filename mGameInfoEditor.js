@@ -117,6 +117,16 @@ function _changeVerifiedMoney(xml, varName, value, label) {
     return updated;
 }
 
+function _changeVerifiedDataElem(xml, elemName, value, label) {
+    const amount = _nonNegativeInteger(value, label);
+    const updated = changeDataElem(xml, elemName, String(amount));
+    const text = updated.toString('utf8');
+    const escapedName = String(elemName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const verify = text.match(new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*\\bvalue\\s*=\\s*(["'])([^"']*)\\1`, 'i'));
+    if (!verify || Number(verify[2]) !== amount) throw new Error(`فشل التحقق من ${label}.`);
+    return updated;
+}
+
 function changeMoney(xml, value) {
     return _changeVerifiedMoney(xml, 'money', value, 'النقود');
 }
@@ -161,7 +171,15 @@ function changeResource(xml, value) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) throw new Error('إعداد المورد غير صحيح.');
     const name = String(options.name ?? options.key ?? '').trim();
     if (!/^[A-Za-z][A-Za-z0-9_]{0,100}$/.test(name)) throw new Error('اسم المورد غير صالح.');
-    return _changeVerifiedMoney(xml, name, options.value, `المورد ${name}`);
+    const text = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])`, 'i').test(text)) {
+        return _changeVerifiedMoney(xml, name, options.value, `المورد ${name}`);
+    }
+    if (new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escapedName}["'])`, 'i').test(text)) {
+        return _changeVerifiedDataElem(xml, name, options.value, `المورد ${name}`);
+    }
+    throw new Error(`لم يتم العثور على Var أو DataElem: ${name}`);
 }
 
 function changeBarnItem(xml, value) {
