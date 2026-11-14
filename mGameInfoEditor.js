@@ -172,6 +172,27 @@ function _changeCoupon(xml, couponName, value) {
     return Buffer.from(updated, 'utf8');
 }
 
+function _insertVerifiedGlobalVar(xml, name, value, label) {
+    const amount = _nonNegativeInteger(value, label);
+    const source = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
+    const globalEnd = source.search(/<\/Global\s*>/i);
+    if (globalEnd < 0) throw new Error(`لم يتم العثور على قسم Global لإضافة ${name}.`);
+    const inserted = source.slice(0, globalEnd) + `<Var name="${name}" v="${amount}" t="i"/>` + source.slice(globalEnd);
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const verify = inserted.match(new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*\\bv\\s*=\\s*(["'])([^"']*)\\1`, 'i'));
+    if (!verify || Number(verify[2]) !== amount) throw new Error(`فشل التحقق من إضافة ${label}.`);
+    return Buffer.from(inserted, 'utf8');
+}
+
+const APP_RESOURCE_TARGETS = Object.freeze({
+    GoldBullion: 'GoldBullionCounter',
+    SilverBullion: 'SilverBullionCounter',
+    BronzeBullion: 'BronzeBullionCounter',
+    PlatinumBullion: 'PlatinumBullionCounter',
+    energy_expedition: 'expeditionEnergy',
+    star: 'currentTokens'
+});
+
 function changeMoney(xml, value) {
     return _changeVerifiedMoney(xml, 'money', value, 'النقود');
 }
@@ -234,15 +255,19 @@ function changeResource(xml, value) {
     if (/^Coupon[A-Za-z0-9_]*$/.test(name) || name === 'freeExpansion' || name === 'freeAmbarInc') {
         return _changeCoupon(xml, name, options.value);
     }
+    const target = APP_RESOURCE_TARGETS[name] || name;
+    if (name === 'star') {
+        return _changeVerifiedDataElem(xml, target, options.value, `المورد ${name}`);
+    }
     const text = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
-    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedName = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])`, 'i').test(text)) {
-        return _changeVerifiedMoney(xml, name, options.value, `المورد ${name}`);
+        return _changeVerifiedMoney(xml, target, options.value, `المورد ${name}`);
     }
     if (new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escapedName}["'])`, 'i').test(text)) {
-        return _changeVerifiedDataElem(xml, name, options.value, `المورد ${name}`);
+        return _changeVerifiedDataElem(xml, target, options.value, `المورد ${name}`);
     }
-    throw new Error(`لم يتم العثور على Var أو DataElem: ${name}`);
+    return _insertVerifiedGlobalVar(xml, target, options.value, `المورد ${name}`);
 }
 
 function changeBarnItem(xml, value) {
