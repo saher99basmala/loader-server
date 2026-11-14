@@ -1505,9 +1505,9 @@ function changeRegataTasks(
 Golden Tickets
 ========================================
 
-These editors operate on the decoded mGameInfo XML.  They deliberately use
-balanced DataElem scanning instead of a non-greedy XML regex, because the
-save contains deeply nested DataElem nodes.
+These editors operate on the decoded mGameInfo XML.  The application stores
+the current season as a real <SeasonTicket> or <SeasonPass> element (not only
+as a DataElem named SeasonTicket).  Keep the DataElem fallback for older saves.
 */
 function _xmlAttr(tag, name) {
     const re = new RegExp("\\b" + name + "\\s*=\\s*([\\\"'])(.*?)\\1", "i");
@@ -1544,23 +1544,72 @@ function _findNamedDataElem(text, names, from = 0) {
     }
     return null;
 }
+function _findXmlElement(text, names, from = 0) {
+    const wanted = new Set(names.map(String));
+    const openRe = /<([A-Za-z_][\w:.-]*)\b[^>]*>/g;
+    openRe.lastIndex = from;
+    let m;
+    while ((m = openRe.exec(text))) {
+        const tagName = m[1];
+        if (!wanted.has(tagName) || /\/\s*>$/.test(m[0])) continue;
+        const closeRe = new RegExp(`<\\/${tagName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*>`, 'gi');
+        closeRe.lastIndex = openRe.lastIndex;
+        const close = closeRe.exec(text);
+        if (!close) throw new Error('بنية XML غير مكتملة: ' + tagName);
+        return {start: m.index, end: close.index + close[0].length, open: m[0], name: tagName};
+    }
+    return null;
+}
+function _findSeasonElement(text) {
+    return _findXmlElement(text, ['SeasonTicket', 'SeasonPass']) ||
+        _findNamedDataElem(text, ['SeasonTicket', 'SeasonPass']);
+}
+function _findNamedContainer(text, name) {
+    const hit = _findXmlElement(text, [name]);
+    if (hit) return hit;
+    return _findNamedDataElem(text, [name]);
+}
+function _maxStageScore(road) {
+    const scores = [];
+    for (const match of road.matchAll(/<(?:Stage\b[^>]*|DataElem\b[^>]*\bname\s*=\s*["']Stage["'][^>]*)>/gi)) {
+        const score = _xmlAttr(match[0], 'score');
+        if (score !== null && /^-?\d+$/.test(score.trim())) scores.push(Number(score));
+    }
+    return scores.length ? Math.max(...scores) : -1;
+}
 function unlockGoldenTicket(xml) {
     const text = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
-    const hit = _findNamedDataElem(text, ['SeasonTicket', 'SeasonPass']);
+    if (!text.trim()) throw new Error('XML فارغ.');
+    const hit = _findSeasonElement(text);
     if (!hit) throw new Error('لم يتم العثور على SeasonTicket أو SeasonPass');
     let block = text.slice(hit.start, hit.end);
-    if (!/\b(?:premium|score|lastSeenScoreInHUD)\s*=/.test(block)) throw new Error('بنية التذكرة الذهبية غير متوقعة');
-    const scores = [...block.matchAll(/\b(?:score|lastSeenScoreInHUD)\s*=\s*["'](-?\d+)["']/gi)].map(m => Number(m[1]));
-    const maxScore = scores.length ? Math.max(...scores) : 0;
-    block = block.replace(/\brewardGiven\s*=\s*["'][^"']*["']\s*/gi, '');
-    block = block.replace(/(<DataElem\b[^>]*\bname=["'](?:SeasonTicket|SeasonPass)["'][^>]*>)/i, m => {
-        let out = _setXmlAttr(m, 'premium', '1');
-        out = _setXmlAttr(out, 'score', String(maxScore));
-        return out;
-    });
-    block = block.replace(/(\b(?:lastSeenScoreInHUD|newStageAvailableInHUD)\s*=\s*["'])[^"']*(["'])/gi, (m, a, b) => m.toLowerCase().includes('newstageavailableinhud') ? a + '0' + b : a + String(maxScore) + b);
-    if (!/\bpremium\s*=\s*["']1["']/i.test(block) || /\brewardGiven\s*=/i.test(block)) throw new Error('فشل التحقق من فتح التذكرة الذهبية');
-    return Buffer.from(text.slice(0, hit.start) + block + text.slice(hit.end), 'utf8');
+    const originalId = _xmlAttr(hit.open, 'id');
+    const roads = ['FreeRoad', 'PremiumRoad'].map(name => _findNamedContainer(block, name));
+    if (roads.some(road => !road)) throw new Error('لم يتم العثور على مراحل FreeRoad / PremiumRoad داخل التذكرة الحالية');
+    const maxScore = Math.max(...roads.map(road => _maxStageScore(block.slice(road.start, road.end))));
+    if (!Number.isFinite(maxScore) || maxScore < 0) throw new Error('لم يتم العثور على score صالح داخل مراحل التذكرة');
+    let updatedBlock = block;
+    const seasonOpen = hit.open;
+    let updatedOpen = _setXmlAttr(seasonOpen, 'premium', '1');
+    updatedOpen = _setXmlAttr(updatedOpen, 'score', String(maxScore));
+    updatedBlock = updatedOpen + block.slice(seasonOpen.length);
+    for (const name of ['FreeRoad', 'PremiumRoad']) {
+        const road = _findNamedContainer(updatedBlock, name);
+        const roadText = updatedBlock.slice(road.start, road.end);
+        const cleaned = roadText.replace(/\s+rewardGiven\s*=\s*(["'])[^"']*\1/gi, '');
+        updatedBlock = updatedBlock.slice(0, road.start) + cleaned + updatedBlock.slice(road.end);
+    }
+    let resultText = text.slice(0, hit.start) + updatedBlock + text.slice(hit.end);
+    resultText = resultText.replace(/(\blastSeenScoreInHUD\s*=\s*["'])[^"']*(["'])/gi, `$1${maxScore}$2`);
+    resultText = resultText.replace(/(\bnewStageAvailableInHUD\s*=\s*["'])[^"']*(["'])/gi, (m, prefix, suffix) => prefix + '0' + suffix);
+    const verify = _findSeasonElement(resultText);
+    if (!verify || !_xmlAttr(verify.open, 'premium') || _xmlAttr(verify.open, 'premium') !== '1' ||
+        Number(_xmlAttr(verify.open, 'score')) < maxScore ||
+        !verify || /\brewardGiven\s*=/i.test(resultText.slice(verify.start, verify.end)) ||
+        (originalId !== null && _xmlAttr(verify.open, 'id') !== originalId)) {
+        throw new Error('فشل التحقق من فتح التذكرة الذهبية');
+    }
+    return Buffer.from(resultText, 'utf8');
 }
 function unlockGoldenTicket2(xml) {
     const text = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
