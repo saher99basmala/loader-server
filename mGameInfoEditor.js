@@ -1,4 +1,3 @@
-
 /*
 ========================================
 mGameInfoEditor.js
@@ -108,6 +107,12 @@ function _nonNegativeInteger(value, label) {
     return number;
 }
 
+function _positiveInteger(value, label) {
+    const number = _nonNegativeInteger(value, label);
+    if (number <= 0) throw new Error(`${label} يجب أن يكون أكبر من صفر.`);
+    return number;
+}
+
 function _changeVerifiedMoney(xml, varName, value, label) {
     const amount = _nonNegativeInteger(value, label);
     const updated = changeVar(xml, varName, String(amount));
@@ -126,6 +131,45 @@ function _changeVerifiedDataElem(xml, elemName, value, label) {
     const verify = text.match(new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${escapedName}["'])[^>]*\\bvalue\\s*=\\s*(["'])([^"']*)\\1`, 'i'));
     if (!verify || Number(verify[2]) !== amount) throw new Error(`فشل التحقق من ${label}.`);
     return updated;
+}
+
+function _changeCoupon(xml, couponName, value) {
+    const amount = _positiveInteger(value, `القسيمة ${couponName}`);
+    const source = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
+    const varPattern = /<Var\b(?=[^>]*\bname=["']GivingOffersDeferred["'])[^>]*>/i;
+    const match = source.match(varPattern);
+    let entries = [];
+    if (match) {
+        const valueMatch = match[0].match(/\bv\s*=\s*(["'])([^"']*)\1/i);
+        if (valueMatch) {
+            for (const item of valueMatch[2].split(',')) {
+                const pair = item.split(':');
+                if (pair.length === 2 && /^[A-Za-z][A-Za-z0-9_]{0,100}$/.test(pair[0].trim()) && /^\d+$/.test(pair[1].trim())) {
+                    entries.push([pair[0].trim(), pair[1].trim()]);
+                }
+            }
+        }
+    }
+    const merged = new Map(entries);
+    merged.set(couponName, String(amount));
+    const encoded = Array.from(merged, ([name, count]) => `${name}:${count}`).join(',');
+    const escaped = encoded.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let updated;
+    if (match) {
+        const element = match[0];
+        const valueAttr = /\bv\s*=\s*(["'])[^"']*\1/i;
+        const replacement = valueAttr.test(element) ? element.replace(valueAttr, `v="${escaped}"`) : element.replace(/\s*\/?>$/, ` v="${escaped}"$&`);
+        updated = source.replace(element, replacement);
+    } else {
+        const globalEnd = source.search(/<\/Global\s*>/i);
+        if (globalEnd < 0) throw new Error('لم يتم العثور على قسم Global لإضافة GivingOffersDeferred.');
+        updated = source.slice(0, globalEnd) + `<Var name="GivingOffersDeferred" v="${escaped}"/>` + source.slice(globalEnd);
+    }
+    const verify = updated.match(varPattern);
+    if (!verify || !new RegExp(`(?:^|,)${couponName}:${amount}(?:,|$)`).test((verify[0].match(/\bv\s*=\s*(["'])([^"']*)\1/i) || [])[2] || '')) {
+        throw new Error(`فشل التحقق من القسيمة ${couponName}.`);
+    }
+    return Buffer.from(updated, 'utf8');
 }
 
 function changeMoney(xml, value) {
@@ -187,6 +231,9 @@ function changeResource(xml, value) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) throw new Error('إعداد المورد غير صحيح.');
     const name = String(options.name ?? options.key ?? '').trim();
     if (!/^[A-Za-z][A-Za-z0-9_]{0,100}$/.test(name)) throw new Error('اسم المورد غير صالح.');
+    if (/^Coupon[A-Za-z0-9_]*$/.test(name) || name === 'freeExpansion' || name === 'freeAmbarInc') {
+        return _changeCoupon(xml, name, options.value);
+    }
     const text = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
     const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (new RegExp(`<Var\\b(?=[^>]*\\bname=["']${escapedName}["'])`, 'i').test(text)) {
