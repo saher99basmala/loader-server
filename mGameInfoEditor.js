@@ -1967,6 +1967,17 @@ const EDITORS = {
         function(xml, value) {
             return changeResource(xml, value);
         },
+    coupon:
+        function(xml, value) {
+            let options = value;
+            if (typeof options === 'string') {
+                try { options = JSON.parse(options); } catch (_) { throw new Error('إعداد القسيمة يجب أن يكون JSON صالحًا.'); }
+            }
+            if (!options || typeof options !== 'object' || Array.isArray(options)) throw new Error('إعداد القسيمة غير صحيح.');
+            const name = String(options.name ?? '').trim();
+            if (!/^Coupon[A-Za-z0-9_]*$/.test(name) && name !== 'freeExpansion' && name !== 'freeAmbarInc') throw new Error(`اسم القسيمة غير معروف: ${name}`);
+            return _changeCoupon(xml, name, options.value);
+        },
     barnItem:
         function(xml, value) {
             return changeBarnItem(xml, value);
