@@ -261,6 +261,63 @@ function changeFrameCoins(xml, value) {
     return Buffer.from(updated, 'utf8');
 }
 
+const APP_EVENT_BLOCKS = Object.freeze([
+    'DragonNest', 'DragonNestController', 'TrainJourney', 'TrainJourneyController',
+    'FlipTheTile', 'FlipTheTileController', 'MayorsBreak', 'MayorsDuties',
+    'MedalChallenges', 'MedalChallengesController', 'ZenMatchEvent'
+]);
+
+function _findDataElemBlock(text, name, fromIndex) {
+    const startRe = new RegExp(`<DataElem\\b(?=[^>]*\\bname=["']${name.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}["'])[^>]*>`, 'i');
+    const match = startRe.exec(text.slice(fromIndex || 0));
+    if (!match) return null;
+    const start = (fromIndex || 0) + match.index;
+    const opening = match[0];
+    if (/\/\s*>$/.test(opening)) return {start, end: start + opening.length};
+    let depth = 1;
+    const tokenRe = /<DataElem\b[^>]*>|<\/DataElem\s*>/gi;
+    tokenRe.lastIndex = start + opening.length;
+    let token;
+    while ((token = tokenRe.exec(text))) {
+        if (/^<\/DataElem/i.test(token[0])) depth--;
+        else if (!/\/\s*>$/.test(token[0])) depth++;
+        if (depth === 0) return {start, end: tokenRe.lastIndex};
+    }
+    return null;
+}
+
+function showAllEvents(xml) {
+    const source = Buffer.isBuffer(xml) ? xml.toString('utf8') : String(xml);
+    let updated = source;
+    let changed = 0;
+    for (const blockName of APP_EVENT_BLOCKS) {
+        const block = _findDataElemBlock(updated, blockName, 0);
+        if (!block) continue;
+        let body = updated.slice(block.start, block.end);
+        body = body.replace(/(<DataElem\b(?=[^>]*\bname=["'](?:currentState|state|State)["'])[^>]*\bvalue=["'])([^"']*)(["'])/i,
+            (all, prefix, value, suffix) => /^(Disabled|Disable|Inactive|None|idle|Locked|active|enabled)$/i.test(value) ? prefix + 'Active' + suffix : all);
+        body = body.replace(/(<DataElem\b(?=[^>]*\bname=["']IsHidden["'])[^>]*\bvalue=["'])[^"']*(["'])/gi, '$1false$2');
+        body = body.replace(/(<DataElem\b(?=[^>]*\bname=["']IsEventActive["'])[^>]*\bvalue=["'])[^"']*(["'])/gi, '$1true$2');
+        body = body.replace(/(<DataElem\b(?=[^>]*\bname=["'](?:IsTimeOver|isTimeOut)["'])[^>]*\bvalue=["'])[^"']*(["'])/gi, '$1false$2');
+        if (body !== updated.slice(block.start, block.end)) {
+            updated = updated.slice(0, block.start) + body + updated.slice(block.end);
+            changed++;
+        }
+    }
+    if (changed === 0) return Buffer.from(source, 'utf8');
+    for (const blockName of APP_EVENT_BLOCKS) {
+        const block = _findDataElemBlock(updated, blockName, 0);
+        if (!block) continue;
+        const body = updated.slice(block.start, block.end);
+        if (/name=["']IsHidden["'][^>]*value=["']true["']/i.test(body) ||
+            /name=["']IsEventActive["'][^>]*value=["']false["']/i.test(body) ||
+            /name=["'](?:IsTimeOver|isTimeOut)["'][^>]*value=["']true["']/i.test(body)) {
+            throw new Error(`فشل التحقق من الحدث ${blockName}.`);
+        }
+    }
+    return Buffer.from(updated, 'utf8');
+}
+
 function changeResource(xml, value) {
     let options = value;
     if (typeof options === 'string') {
@@ -2005,6 +2062,10 @@ const EDITORS = {
         function(xml, value) {
             return changeFrameCoins(xml, value);
         },
+    showAllEvents:
+        function(xml) {
+            return showAllEvents(xml);
+        },
     resource:
         function(xml, value) {
             return changeResource(xml, value);
@@ -2610,6 +2671,7 @@ module.exports = {
     changeGameStartDate,
     changeBarnCapacity,
     changeFrameCoins,
+    showAllEvents,
     changeResource,
     changeBarnItem,
 
