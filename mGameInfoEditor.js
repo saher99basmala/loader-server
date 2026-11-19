@@ -2020,6 +2020,98 @@ function _editTrains(xml, value, allTrains) {
 }
 /*
 ========================================
+المظاهر والديكورات — منطق التطبيق
+========================================
+*/
+const APP_SKINS_XML = "<Skins>\n\t\t<type id=\"Sheep\" available=\"Skin_Sheep_butterfly_71|Skin_Sheep_halloween2022|Skin_Sheep_lunarNY2022|Skin_Sheep_easter2023|Skin_Sheep_nordicGod|Skin_Sheep_detective|Skin_Sheep_sweet|Skin_Sheep_robinHood|Skin_Sheep_brazil|Skin_Sheep_rocknroll|Skin_Sheep_knight|Skin_Sheep_wildwest2024|Skin_Sheep_birthday2024|Skin_Sheep_birthday2024s|Skin_Sheep_egypt|Skin_Sheep_christmas2024|Skin_Sheep_allinclusive2025|Skin_Sheep_hellas2025|Skin_Sheep_masquerade|Skin_Sheep_Default|Skin_Sheep_Birthday_2025|Skin_Sheep_Halloween2025|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Helicopter\" available=\"Skin_Helicopter_butterfly_71|Skin_Helicopter_Resort|Skin_Helicopter_Travel|Skin_Helicopter_Sport|Skin_Helicopter_cinderella|Skin_Helicopter_detective|Skin_Helicopter_halloween2023|Skin_Helicopter_brazil|Skin_Helicopter_easter2024|Skin_Helicopter_atlantis|Skin_Helicopter_pirate2024|Skin_Helicopter_disco|Skin_Helicopter_mars2025|Skin_Helicopter_Ufo|Skin_Helicopter_Robot|Skin_Helicopter_sport|Skin_Helicopter_Arabic|Skin_Helicopter_travel|Skin_Helicopter_Sleigh|Skin_Helicopter_Gatsby|Skin_Helicopter_masquerade|Skin_Helicopter_cny2025|Skin_Helicopter_Ufo:2|Skin_Helicopter_Sleigh:2|Skin_Helicopter_Harvest|Skin_Helicopter_Robot:2|Skin_Helicopter_Default|Skin_Helicopter_Birthday_2025|Skin_Helicopter_christmas_67|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Airplane\" available=\"Skin_Airplane_carnival_70|Skin_Airplane_movie|Skin_Airplane_christmas2022|Skin_Airplane_easter2023|Skin_Airplane_sweet|Skin_Airplane_winterSport|Skin_Airplane_ireland|Skin_Airplane_spy|Skin_Airplane_allinclusive|Skin_Airplane_fashion|Skin_Airplane_arab|Skin_Airplane_SP3:2|Skin_Airplane_halloween2021:2|Skin_Airplane_space|Skin_Airplane_rock|Skin_Airplane_classicmusic|Skin_Airplane_Default|Skin_Airplane_Halloween2025|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Chicken\" available=\"Skin_Chicken_easter_72|Skin_Chicken_travel|Skin_Chicken_theatrical|Skin_Chicken_sport|Skin_Chicken_cinderella|Skin_Chicken_jungle|Skin_Chicken_sweet|Skin_Chicken_christmas2023|Skin_Chicken_ireland|Skin_Chicken_hellas|Skin_Chicken_allinclusive|Skin_Chicken_birthday2024|Skin_Chicken_halloween2024|Skin_Chicken_fashion|Skin_Chicken_disco|Skin_Chicken_mars2025|Skin_Chicken_cny2025|Skin_Chicken_Default|Skin_Chicken_Birthday_2025|Skin_Chicken_Birthday_2025s|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"TrainStation\" available=\"Skin_TrainStation_prehistoric|Skin_TrainStation_theatrical|Skin_TrainStation_lunarNY2022|Skin_TrainStation_mars|Skin_TrainStation_robinHood|Skin_TrainStation_rocknroll|Skin_TrainStation_knight|Skin_TrainStation_italy2024|Skin_TrainStation_halloween2024|Skin_TrainStation_christmas2024|Skin_TrainStation_festival|Skin_TrainStation_hellas2025|Skin_TrainStation_Default|Skin_TrainStation_western|Skin_TrainStation_easter|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"HelicopterPlace\" available=\"Skin_HelicopterPlace_butterfly_71|Skin_HelicopterPlace_Travel|Skin_HelicopterPlace_Sport|Skin_HelicopterPlace_cinderella|Skin_HelicopterPlace_detective|Skin_HelicopterPlace_halloween2023|Skin_HelicopterPlace_brazil|Skin_HelicopterPlace_easter2024|Skin_HelicopterPlace_atlantis|Skin_HelicopterPlace_pirate2024|Skin_HelicopterPlace_disco|Skin_HelicopterPlace_mars2025|Skin_HelicopterPlace_masquerade|Skin_HelicopterPlace_cny2025|Skin_HelicopterPlace_Sleigh|Skin_HelicopterPlace_Harvest|Skin_HelicopterPlace_Arabic|Skin_HelicopterPlace_Resort|Skin_HelicopterPlace_Default|Skin_HelicopterPlace_Birthday_2025|Skin_HelicopterPlace_christmas_67|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Harbor\" available=\"Skin_Harbor_easter_72|Skin_Harbor_halloween2022|Skin_Harbor_valentinesDay|Skin_Harbor_nordicGod|Skin_Harbor_jungle|Skin_Harbor_christmas2023|Skin_Harbor_CNY|Skin_Harbor_hellas|Skin_Harbor_wildwest2024|Skin_Harbor_birthday2024|Skin_Harbor_egypt|Skin_Harbor_allinclusive2025|Skin_Harbor_arctic|Skin_Harbor_japan|Skin_Harbor_SP9|Skin_Harbor_venice|Skin_Harbor_Default|Skin_Harbor_ST1|Skin_Harbor_paris|Skin_Harbor_ST8|Skin_Harbor_ST35|Skin_Harbor_ST43|Skin_Harbor_ST51|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Airport\" available=\"Skin_Airport_carnival_70|Skin_Airport_christmas2022|Skin_Airport_sweet|Skin_Airport_winterSport|Skin_Airport_ireland|Skin_Airport_spy|Skin_Airport_allinclusive|Skin_Airport_arab|Skin_Airport_SP3|Skin_Airport_rock|Skin_Airport_halloween2021|Skin_Airport_easter2023|Skin_Airport_classicmusic|Skin_Airport_fashion|Skin_Airport_Default|Skin_Airport_movie|Skin_Airport_Halloween2025|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Ship\" available=\"Skin_Ship_easter_72|Skin_Ship_halloween2022|Skin_Ship_valentinesDay|Skin_Ship_nordicGod|Skin_Ship_jungle|Skin_Ship_christmas2023|Skin_Ship_CNY|Skin_Ship_hellas|Skin_Ship_wildwest2024|Skin_Ship_birthday2024|Skin_Ship_egypt|Skin_Ship_allinclusive2025|Skin_Ship_Default|Skin_Ship_ST1|Skin_Ship_paris|Skin_Ship_venice|Skin_Ship_arctic|Skin_Ship_japan|Skin_Ship_SP9|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Train\" available=\"Skin_Train_prehistoric|Skin_Train_theatrical|Skin_Train_lunarNY2022|Skin_Train_mars|Skin_Train_robinHood|Skin_Train_rocknroll|Skin_Train_knight|Skin_Train_italy2024|Skin_Train_halloween2024|Skin_Train_christmas2024|Skin_Train_festival|Skin_Train_hellas2025|Skin_Train_easter|Skin_Train_christmas|Skin_Train_SP5|Skin_Train_SP8|Skin_Train_western|Skin_Train_Default1|Skin_Train_SP2:2|Skin_Train_ST45|Skin_Train_ST50|Skin_Train_ST47|Skin_Train_ST24,Skin_Train_mars|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Cow\" available=\"Skin_Cow_carnival_70|Skin_Cow_movie|Skin_Cow_christmas2022|Skin_Cow_valentine|Skin_Cow_mars|Skin_Cow_sweet2|Skin_Cow_sweet|Skin_Cow_halloween2023|Skin_Cow_winterSport|Skin_Cow_CNY|Skin_Cow_easter2024|Skin_Cow_spy|Skin_Cow_atlantis|Skin_Cow_italy2024|Skin_Cow_birthday2024|Skin_Cow_pirate2024|Skin_Cow_festival|Skin_Cow_arab|Skin_Cow_arctic|Skin_Cow_japan|Skin_Cow_pirate20|Skin_Cow_classicmusic|Skin_Cow_Birthday_2025|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Pig\" available=\"Skin_Pig_CNY|Skin_Pig_valentinesDay|\" needViewUpgradeEffect=\"0\"/>\n\t\t<type id=\"Fortress\" available=\"Skin_Fortress_aztecs|Skin_Fortress_Pirate1|Skin_Fortress_Pirate2|Skin_Fortress_Pirate3|Skin_Fortress_Gatsby1|Skin_Fortress_Gatsby2|Skin_Fortress_Gatsby3|Skin_Fortress_Christmas|Skin_Fortress_paris|Skin_Fortress_easter|Skin_Fortress_Halloween2021_1|Skin_Fortress_Halloween2021_2|Skin_Fortress_Halloween2021_3|Skin_Fortress_prehistoric|\" needViewUpgradeEffect=\"0\"/>\n\t\t<item id=\"Sheep2\" current=\"Skin_Sheep_Default\"/>\n\t\t<item id=\"Sheep0\" current=\"Skin_Sheep_Halloween2025\"/>\n\t\t<item id=\"Helicopter\" current=\"Skin_Helicopter_christmas_67\"/>\n\t\t<item id=\"Train1\" current=\"Skin_Train_SP5\"/>\n\t\t<item id=\"HelicopterPlace\" current=\"Skin_HelicopterPlace_christmas_67\"/>\n\t\t<item id=\"Chicken0\" current=\"Skin_Chicken_halloween2024\"/>\n\t\t<item id=\"Cow1\" current=\"Skin_Cow_halloween2023\"/>\n\t\t<item id=\"Train2\" current=\"Skin_Train_SP5\"/>\n\t\t<item id=\"Ship2\" current=\"Skin_Ship_halloween2022\"/>\n\t\t<item id=\"Sheep1\" current=\"Skin_Sheep_Halloween2025\"/>\n\t\t<item id=\"TrainStation\" current=\"Skin_TrainStation_halloween2024\"/>\n\t\t<item id=\"Airplane\" current=\"Skin_Airplane_Halloween2025\"/>\n\t\t<item id=\"Chicken2\" current=\"Skin_Chicken_halloween2024\"/>\n\t\t<item id=\"Train0\" current=\"Skin_Train_SP5\"/>\n\t\t<item id=\"Pig1\" current=\"Skin_Pig_valentinesDay\"/>\n\t\t<item id=\"Ship0\" current=\"Skin_Ship_halloween2022\"/>\n\t\t<item id=\"Pig2\" current=\"Skin_Pig_Default\"/>\n\t\t<item id=\"Fortress\" current=\"Skin_Fortress_Halloween2021_3\"/>\n\t\t<item id=\"Pig0\" current=\"Skin_Pig_valentinesDay\"/>\n\t\t<item id=\"Harbor\" current=\"Skin_Harbor_halloween2022\"/>\n\t\t<item id=\"Cow2\" current=\"Skin_Cow_halloween2023\"/>\n\t\t<item id=\"Airport\" current=\"Skin_Airport_Halloween2025\"/>\n\t\t<item id=\"Ship1\" current=\"Skin_Ship_halloween2022\"/>\n\t\t<item id=\"Ship3\" current=\"Skin_Ship_halloween2022\"/>\n\t\t<item id=\"Cow0\" current=\"Skin_Cow_halloween2023\"/>\n\t\t<item id=\"Chicken1\" current=\"Skin_Chicken_halloween2024\"/>\n\t</Skins>";
+const APP_DECOR_XML = "<FragmentedBeautyManager>\n\t\t<Buildings>\n\t\t\t<ExpeditionDecoration guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration>\n\t\t\t<ExpeditionDecoration10 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration10>\n\t\t\t<ExpeditionDecoration11 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration11>\n\t\t\t<ExpeditionDecoration12 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration12>\n\t\t\t<ExpeditionDecoration13 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"0\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration13>\n\t\t\t<ExpeditionDecoration14 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"0\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration14>\n\t\t\t<ExpeditionDecoration15 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"0\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration15>\n\t\t\t<ExpeditionDecoration16 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"0\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration16>\n\t\t\t<ExpeditionDecoration17 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"0\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration17>\n\t\t\t<ExpeditionDecoration18 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"0\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration18>\n\t\t\t<ExpeditionDecoration19 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"0\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration19>\n\t\t\t<ExpeditionDecoration2 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part3 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration2>\n\t\t\t<ExpeditionDecoration3 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration3>\n\t\t\t<ExpeditionDecoration4 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration4>\n\t\t\t<ExpeditionDecoration5 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration5>\n\t\t\t<ExpeditionDecoration6 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration6>\n\t\t\t<ExpeditionDecoration7 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration7>\n\t\t\t<ExpeditionDecoration8 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration8>\n\t\t\t<ExpeditionDecoration9 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</ExpeditionDecoration9>\n\t\t\t<Merge2Decoration1 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part3 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration1>\n\t\t\t<Merge2Decoration10 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration10>\n\t\t\t<Merge2Decoration11 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration11>\n\t\t\t<Merge2Decoration12 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration12>\n\t\t\t<Merge2Decoration2 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part3 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration2>\n\t\t\t<Merge2Decoration3 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part3 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration3>\n\t\t\t<Merge2Decoration4 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part3 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration4>\n\t\t\t<Merge2Decoration5 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part3 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration5>\n\t\t\t<Merge2Decoration6 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part3 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration6>\n\t\t\t<Merge2Decoration7 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part3 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration7>\n\t\t\t<Merge2Decoration8 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"0\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part2 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration8>\n\t\t\t<Merge2Decoration9 guid=\"\">\n\t\t\t\t<base active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t\t<part1 active=\"1\" beenSetOnField=\"1\"/>\n\t\t\t</Merge2Decoration9>\n\t\t</Buildings>\n\t</FragmentedBeautyManager>";
+
+function _xmlEscape(value) {
+    return String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function _replaceOrInsert(text, pattern, replacement) {
+    if (pattern.test(text)) return text.replace(pattern, replacement);
+    const end = text.lastIndexOf("</");
+    if (end < 0) throw new Error("لم يتم العثور على موضع XML للإضافة");
+    return text.slice(0, end) + replacement + "\n" + text.slice(end);
+}
+function _selectedList(value, key) {
+    const obj = value && typeof value === "object" && !Array.isArray(value) ? value : {selected: value};
+    const list = obj[key] || [];
+    if (!Array.isArray(list) || list.length === 0) throw new Error("لم يتم اختيار أي عنصر");
+    return [...new Set(list.map(x => String(x).trim()).filter(Boolean))];
+}
+function editSkinsLikeApp(xml, value) {
+    const selected = new Set(_selectedList(value, "selected"));
+    const types = [];
+    for (const match of APP_SKINS_XML.matchAll(/<type\b[^>]*\bid="([^"]+)"[^>]*\bavailable="([^"]*)"[^>]*\/>/gi)) {
+        const ids = [...new Set(match[2].split(/[|,]/).map(x => x.trim()).filter(x => selected.has(x)))];
+        if (ids.length) types.push(`<type id="${_xmlEscape(match[1])}" available="${_xmlEscape(ids.join("|"))}|" needViewUpgradeEffect="0"/>`);
+    }
+    const items = [];
+    for (const match of APP_SKINS_XML.matchAll(/<item\b[^>]*\bid="([^"]+)"[^>]*\bcurrent="([^"]*)"[^>]*\/>/gi)) {
+        if (selected.has(match[2].trim())) items.push(`<item id="${_xmlEscape(match[1])}" current="${_xmlEscape(match[2].trim())}"/>`);
+    }
+    if (!types.length && !items.length) throw new Error("المظاهر المحددة غير موجودة في كتالوج التطبيق");
+    const block = `<Skins>\n\t\t${types.concat(items).join("\n\t\t")}\n\t</Skins>`;
+    return Buffer.from(_replaceOrInsert(Buffer.isBuffer(xml) ? xml.toString("utf8") : String(xml), /<Skins\b[^>]*>[\s\S]*?<\/Skins>/i, block), "utf8");
+}
+function _incrementStash(text, items, count) {
+    let stash = text.match(/<BuildingsStash\b[^>]*>[\s\S]*?<\/BuildingsStash>/i);
+    let body = stash ? (stash[0].match(/<BuildingsStash\b[^>]*>([\s\S]*?)<\/BuildingsStash>/i) || ["", ""])[1] : "";
+    for (const id of items) {
+        const pattern = new RegExp(`<Building\\b[^>]*\\bid=["']${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'][^>]*\\bcount=["'](\\d+)["'][^>]*/?>`, "i");
+        const found = body.match(pattern);
+        if (found) body = body.replace(found[0], found[0].replace(/\bcount=["']\d+["']/i, `count="${Number(found[1]) + count}"`));
+        else body += `\n<Building id="${_xmlEscape(id)}" count="${count}"/>`;
+    }
+    const replacement = `<BuildingsStash>${body}\n</BuildingsStash>`;
+    return stash ? text.replace(stash[0], replacement) : _replaceOrInsert(text, /<FragmentedBeautyManager\b[^>]*>[\s\S]*?<\/FragmentedBeautyManager>/i, m => m + "\n" + replacement);
+}
+function editDecorLikeApp(xml, value) {
+    const obj = value && typeof value === "object" ? value : {};
+    const items = _selectedList(obj, "items");
+    const count = Math.max(1, Math.floor(Number(obj.count || 1)));
+    if (!Number.isFinite(count)) throw new Error("عدد الديكورات غير صالح");
+    let text = Buffer.isBuffer(xml) ? xml.toString("utf8") : String(xml);
+    text = _replaceOrInsert(text, /<FragmentedBeautyManager\b[^>]*>[\s\S]*?<\/FragmentedBeautyManager>/i, APP_DECOR_XML);
+    return Buffer.from(_incrementStash(text, items, count), "utf8");
+}
+
+function enableAllSkins(xml) {
+    const text = Buffer.isBuffer(xml) ? xml.toString("utf8") : String(xml);
+    const match = text.match(/<Skins\b[^>]*>[\s\S]*?<\/Skins>/i);
+    if (!match) throw new Error("لم يتم العثور على عقدة Skins");
+    const normalized = match[0].replace(/\bavailable=(['"])(.*?)\1/gi, (full, quote, value) => {
+        const values = [...new Set(value.split(/[|,]/).map(v => v.trim()).filter(Boolean))];
+        if (!values.length) return full;
+        return `available="${values.join("|")}|"`;
+    });
+    return Buffer.from(text.replace(match[0], normalized), "utf8");
+}
+
+function enableAllDecorations(xml) {
+    const text = Buffer.isBuffer(xml) ? xml.toString("utf8") : String(xml);
+    const manager = text.match(/<FragmentedBeautyManager\b[^>]*>[\s\S]*?<\/FragmentedBeautyManager>/i);
+    if (!manager) throw new Error("لم يتم العثور على عقدة FragmentedBeautyManager");
+    const buildings = manager[0].match(/<Buildings\b[^>]*>[\s\S]*?<\/Buildings>/i);
+    if (!buildings) throw new Error("لم يتم العثور على عقدة Buildings داخل FragmentedBeautyManager");
+    let changed = 0;
+    const body = buildings[0].replace(/<[^>]+>/g, tag => {
+        if (/^<\//.test(tag) || /^<Buildings\b/i.test(tag)) return tag;
+        let next = tag;
+        if (/\bactive\s*=/.test(next)) next = next.replace(/\bactive\s*=\s*(["'])[^"']*\1/i, 'active="1"');
+        if (/\bbeenSetOnField\s*=/.test(next)) next = next.replace(/\bbeenSetOnField\s*=\s*(["'])[^"']*\1/i, 'beenSetOnField="1"');
+        if (next !== tag) changed++;
+        return next;
+    });
+    if (!changed) throw new Error("لم يتم العثور على عناصر ديكور قابلة للتفعيل");
+    const updatedManager = manager[0].replace(buildings[0], body);
+    return Buffer.from(text.replace(manager[0], updatedManager), "utf8");
+}
+
+/*
+========================================
 EDITORS
 ========================================
 */
@@ -2255,6 +2347,16 @@ const EDITORS = {
     /*
     Frames
     */
+
+    skins:
+        function(xml, value) {
+            return editSkinsLikeApp(xml, value);
+        },
+
+    allDecor:
+        function(xml, value) {
+            return editDecorLikeApp(xml, value);
+        },
 
     unlockedFrames:
         function(
@@ -2676,6 +2778,10 @@ module.exports = {
     changeBarnItem,
 
     changeDataElem,
+
+    editSkinsLikeApp,
+
+    editDecorLikeApp,
 
     changeLevel,
 
