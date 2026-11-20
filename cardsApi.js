@@ -21,8 +21,9 @@ const KEY = Buffer.from('Wucai6oj0sheiX3p', 'utf8');
 const SENDBOX = 'https://township.playrix.com/api/1/SendBox?cityId=';
 
 // Playrix may temporarily reject rapid consecutive SendBox requests.
-const CARD_SEND_DELAY_MS = 1200;
-const CARD_403_RETRY_DELAYS_MS = [3000, 6000];
+// Keep the normal batch fast while spacing requests enough to avoid bursts.
+const CARD_SEND_DELAY_MS = 300;
+const CARD_403_RETRY_DELAYS_MS = [1000, 2000];
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
