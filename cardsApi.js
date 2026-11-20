@@ -635,14 +635,14 @@ async function sendOne(cfg, friend, cardId, collectionId, setId, sendCounter) {
             ? parsed.result
             : null;
 
-    /* Match the APK: an empty result is SERVER_NO_OP, not acceptance. */
+    /* SendBox uses an empty result object as the normal accepted reply here. */
     const serverNoOp =
         Boolean(resultObject) &&
         Object.keys(resultObject).length === 0;
     const accepted =
         response.status >= 200 &&
         response.status < 300 &&
-        !serverNoOp;
+        serverNoOp;
 
     return {
         cardId,
