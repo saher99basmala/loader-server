@@ -563,11 +563,11 @@ function changeLevel(
 */
 
 const UNLOCKED_FRAMES_VALUE =
-    "JBsYDjhUWyATVlUjXw==,VEdYLhJsA3Y9Gy0tFgIwCCM=,VEdYLhJsA3c9Gy0tFgIwCCM=,VEdYLhJsA3U9Gy0tFgIwCCM=,VFBKNx5FUig9Gy0tFgIwCCM=,VEdYLhJsA3A9Gy0tFgIwCCM=,VEdYLhJsA3E9Gy0tFgIwCCM=,VEdYLhJsA3I9Gy0tFgIwCCM=,VEdYLhJsA3M9Gy0tFgIwCCM=,fbwcfgtQVl0mEVRb,VEdYLhJsA3w9Gy0tFgIwCCM=,VEdYLhJsA309Gy0tFgIwCCM=,VEdYLhJsAnQ9Gy0tFgIwCCM=,VEdYLhJsAnU9Gy0tFgIwCCM=";
+    "JBsYDjhUWyATVlUjXw==,VEdYLhJsA3Y9Gy0tFgIwCCM=,VEdYLhJsA3c9Gy0tFgIwCCM=,VEdYLhJsA3U9Gy0tFgIwCCM=,VFBKNx5FUig9Gy0tFgIwCCM=,VEdYLhJsA3A9Gy0tFgIwCCM=,VEdYLhJsA3E9Gy0tFgIwCCM=,VEdYLhJsA3I9Gy0tFgIwCCM=,VEdYLhJsA3M9Gy0tFgIwCCM=,fbwcfgtQVl0mEVRb,VEdYLhJsA3w9Gy0tFgIwCCM=,VEdYLhJsA309Gy0tFgIwCCM=,VEdYLhJsAnQ9Gy0tFgIwCCM=,VEdYLhJsAnU9Gy0tFgIwCCM=,VEdYLhJsAnY9Gy0tFgIwCCM=";
 
 
 const UNLOCKED_STYLES_VALUE =
-    "festival,easter,cooking,Gold,neon,glow,animatedUnderwaterViolet,flame,valentine,christmas,halloween,summer,default,pink,dragon,bubble,bevel,pumpkin,train";
+    "rainy,neon,animatedUnderwaterViolet,bubble,train,easter,glow,Gold,pink,flame,dragon,summer,default,christmas,halloween,valentine,pumpkin,sprinkle,st200,tropic,diamond,garland,atom,xmas_ts,st790,st780,st770,st760,st750,st740,st730,st720,st710,st700,st341,st281,st201,cooking,festival";
 
 
 const UNLOCKED_EXP_RANKS_VALUE =
