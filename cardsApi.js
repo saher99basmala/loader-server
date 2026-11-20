@@ -915,6 +915,15 @@ const ids = selectedIds
                     accepted: result.accepted
                 });
 
+                if (result.httpStatus === 403 && !result.accepted) {
+                    console.warn('[CARDS] FINAL 403 DETAILS', {
+                        cardId: result.cardId,
+                        setId: result.setId,
+                        sendCounter: result.sendCounter,
+                        httpStatus: result.httpStatus
+                    });
+                }
+
                 if (i < ids.length - 1) {
                     await sleep(CARD_SEND_DELAY_MS);
                 }
@@ -961,6 +970,14 @@ const ids = selectedIds
             sentCardIds: accepted.map(
                 item => item.cardId
             ),
+            forbiddenCards: failed
+                .filter(item => item.httpStatus === 403)
+                .map(item => ({
+                    cardId: item.cardId,
+                    setId: item.setId,
+                    sendCounter: item.sendCounter,
+                    httpStatus: item.httpStatus
+                })),
             failedCards: failed,
             results
         });
