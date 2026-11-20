@@ -20,6 +20,14 @@ const router = express.Router();
 const KEY = Buffer.from('Wucai6oj0sheiX3p', 'utf8');
 const SENDBOX = 'https://township.playrix.com/api/1/SendBox?cityId=';
 
+// Playrix may temporarily reject rapid consecutive SendBox requests.
+const CARD_SEND_DELAY_MS = 1200;
+const CARD_403_RETRY_DELAYS_MS = [3000, 6000];
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
@@ -636,6 +644,45 @@ async function sendOne(cfg, friend, cardId, setId, sendCounter) {
     };
 }
 
+async function sendOneWithRetry(cfg, friend, cardId, setId, sendCounter) {
+    let lastError;
+
+    for (let attempt = 0; attempt <= CARD_403_RETRY_DELAYS_MS.length; attempt++) {
+        try {
+            const result = await sendOne(
+                cfg,
+                friend,
+                cardId,
+                setId,
+                sendCounter
+            );
+
+            if (
+                result.accepted ||
+                result.httpStatus !== 403 ||
+                attempt === CARD_403_RETRY_DELAYS_MS.length
+            ) {
+                return result;
+            }
+
+            console.warn('[CARDS] HTTP 403; retrying', {
+                cardId,
+                attempt: attempt + 1,
+                waitMs: CARD_403_RETRY_DELAYS_MS[attempt]
+            });
+            await sleep(CARD_403_RETRY_DELAYS_MS[attempt]);
+        } catch (error) {
+            lastError = error;
+            if (attempt === CARD_403_RETRY_DELAYS_MS.length) {
+                throw error;
+            }
+            await sleep(CARD_403_RETRY_DELAYS_MS[attempt]);
+        }
+    }
+
+    throw lastError || new Error('Card send failed');
+}
+
 /* ------------------------------------------------------------
    ANALYZE BOTH FILES
 ------------------------------------------------------------ */
@@ -851,7 +898,7 @@ const ids = selectedIds
                     sendCounter
                 });
 
-                const result = await sendOne(
+                const result = await sendOneWithRetry(
                     cfg,
                     friend,
                     cardId,
@@ -866,6 +913,10 @@ const ids = selectedIds
                     status: result.httpStatus,
                     accepted: result.accepted
                 });
+
+                if (i < ids.length - 1) {
+                    await sleep(CARD_SEND_DELAY_MS);
+                }
             } catch (error) {
                 results.push({
                     cardId,
