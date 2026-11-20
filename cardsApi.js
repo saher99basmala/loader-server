@@ -378,44 +378,56 @@ function validateConfig(cfg) {
    COLLECTION SET
 ------------------------------------------------------------ */
 
-function collectionSetId(xml, cardId) {
+function collectionRoute(xml, cardId) {
     const match = s(cardId).match(/^card_(\d+)$/i);
-    if (!match) return 'set_01';
+    const cardNumber = match ? Number(match[1]) : 1;
 
-    const cardNumber = Number(match[1]);
-
+    // The APK sends collectionId and setId as two different fields.
+    let collectionId = '';
     let x = xml.match(
         /<DataElem\s+name="configId"\s+type="string"\s+value="CardCollections_(\d+)"/i
     );
+    if (x && x[1]) collectionId = x[1];
 
-    if (x && x[1]) return x[1];
+    if (!collectionId) {
+        x = xml.match(
+            /<DataElem\s+name="pinnedCardCollectionsBalanceId"\s+type="string"\s+value="CardC(\d+)_Balance"/i
+        );
+        if (x && x[1]) collectionId = x[1];
+    }
 
-    x = xml.match(
-        /<DataElem\s+name="pinnedCardCollectionsBalanceId"\s+type="string"\s+value="CardC(\d+)_Balance"/i
-    );
+    if (!collectionId) {
+        x = xml.match(
+            /<DataElem\s+name="first"\s+type="string"\s*\/?>\s*<DataElem\s+name="second"\s+type="string"\s+value="(\d+)"/i
+        );
+        if (x && x[1]) collectionId = x[1];
+    }
 
-    if (x && x[1]) return x[1];
+    // This is the APK fallback when no collection identifier is present.
+    if (!collectionId) collectionId = '6';
+
+    let setId = 'set_' + String(
+        Math.floor((cardNumber - 1) / 10) + 1
+    ).padStart(2, '0');
 
     const block = xml.match(
         /<DataElem\s+name="LastSeenSetProgress"\s+type="dataStore">([\s\S]*?)<\/DataElem>/i
     );
-
     if (block) {
         const re =
             /<DataElem\s+name="(set_\d+)"\s+type="int"\s+value="(\d+)"\s*\/>/gi;
-
         let sum = 0;
         let z;
-
         while ((z = re.exec(block[1]))) {
             sum += Number(z[2]);
-            if (cardNumber <= sum) return z[1].toLowerCase();
+            if (cardNumber <= sum) {
+                setId = z[1].toLowerCase();
+                break;
+            }
         }
     }
 
-    return 'set_' + String(
-        Math.floor((cardNumber - 1) / 10) + 1
-    ).padStart(2, '0');
+    return { collectionId, setId };
 }
 
 /* ------------------------------------------------------------
@@ -451,7 +463,7 @@ function generateSeed() {
    EXACT BOX SHAPE FROM APK
 ------------------------------------------------------------ */
 
-function buildBox(cfg, friend, cardId, setId, sendCounter, colEt, seed) {
+function buildBox(cfg, friend, cardId, collectionId, setId, sendCounter, colEt, seed) {
     const from = qjsonPairs([
         ['city_id', cfg.ownCityId],
         ['friend_city_name', friend.name || ''],
@@ -463,7 +475,7 @@ function buildBox(cfg, friend, cardId, setId, sendCounter, colEt, seed) {
         ['box_type', 'collections_send_card'],
         ['card_id', cardId],
         ['col_et', colEt],
-        ['col_id', setId],
+        ['col_id', collectionId],
         ['friend_type', 'send_friend'],
         ['from', from],
         ['seed', String(seed)],
@@ -549,13 +561,14 @@ function decryptResponse(tsId, body) {
    ONE SENDBOX REQUEST
 ------------------------------------------------------------ */
 
-async function sendOne(cfg, friend, cardId, setId, sendCounter) {
+async function sendOne(cfg, friend, cardId, collectionId, setId, sendCounter) {
     const seed = generateSeed();
 
     const payload = buildBox(
         cfg,
         friend,
         cardId,
+        collectionId,
         setId,
         sendCounter,
         colEtNow(),
@@ -622,15 +635,18 @@ async function sendOne(cfg, friend, cardId, setId, sendCounter) {
             ? parsed.result
             : null;
 
-    /* APK logs distinguish accepted from a successful HTTP code. */
+    /* Match the APK: an empty result is SERVER_NO_OP, not acceptance. */
+    const serverNoOp =
+        Boolean(resultObject) &&
+        Object.keys(resultObject).length === 0;
     const accepted =
         response.status >= 200 &&
         response.status < 300 &&
-        resultObject &&
-        Object.keys(resultObject).length === 0;
+        !serverNoOp;
 
     return {
         cardId,
+        collectionId,
         setId,
         sendCounter,
         seed,
@@ -645,7 +661,7 @@ async function sendOne(cfg, friend, cardId, setId, sendCounter) {
     };
 }
 
-async function sendOneWithRetry(cfg, friend, cardId, setId, sendCounter) {
+async function sendOneWithRetry(cfg, friend, cardId, collectionId, setId, sendCounter) {
     let lastError;
 
     for (let attempt = 0; attempt <= CARD_403_RETRY_DELAYS_MS.length; attempt++) {
@@ -654,6 +670,7 @@ async function sendOneWithRetry(cfg, friend, cardId, setId, sendCounter) {
                 cfg,
                 friend,
                 cardId,
+                collectionId,
                 setId,
                 sendCounter
             );
@@ -884,7 +901,7 @@ const ids = selectedIds
 
         for (let i = 0; i < ids.length; i++) {
             const cardId = ids[i];
-            const setId = collectionSetId(
+            const route = collectionRoute(
                 cardsXml,
                 cardId
             );
@@ -894,7 +911,8 @@ const ids = selectedIds
             try {
                 console.log('[CARDS] SEND', {
                     cardId,
-                    setId,
+                    collectionId: route.collectionId,
+                    setId: route.setId,
                     friendId: friend.id,
                     sendCounter
                 });
@@ -903,7 +921,8 @@ const ids = selectedIds
                     cfg,
                     friend,
                     cardId,
-                    setId,
+                    route.collectionId,
+                    route.setId,
                     sendCounter
                 );
 
@@ -918,6 +937,7 @@ const ids = selectedIds
                 if (result.httpStatus === 403 && !result.accepted) {
                     console.warn('[CARDS] FINAL 403 DETAILS', {
                         cardId: result.cardId,
+                        collectionId: result.collectionId,
                         setId: result.setId,
                         sendCounter: result.sendCounter,
                         httpStatus: result.httpStatus
@@ -930,7 +950,8 @@ const ids = selectedIds
             } catch (error) {
                 results.push({
                     cardId,
-                    setId,
+                    collectionId: route.collectionId,
+                    setId: route.setId,
                     sendCounter,
                     accepted: false,
                     error: error.message
@@ -974,6 +995,7 @@ const ids = selectedIds
                 .filter(item => item.httpStatus === 403)
                 .map(item => ({
                     cardId: item.cardId,
+                    collectionId: item.collectionId,
                     setId: item.setId,
                     sendCounter: item.sendCounter,
                     httpStatus: item.httpStatus
